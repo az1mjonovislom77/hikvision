@@ -25,7 +25,7 @@ LOCAL_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'user.apps.UserConfig',
-    'event.apps.EventConfig'
+    'event'
 ]
 
 THIRD_PARTY_APPS = [
