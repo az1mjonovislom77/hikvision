@@ -1,30 +1,36 @@
 import json
 from django.http import JsonResponse
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.dateparse import parse_datetime
 from .models import AccessEvent
 from .serializers import AccessEventSerializer
 from .utils.fetch import fetch_face_events
 from .utils.events_name import major_name, minor_name
+from rest_framework.generics import ListAPIView
+from rest_framework.pagination import PageNumberPagination
+from datetime import timedelta
 
 
-class AccessEventList(APIView):
-    def get(self, request, *args, **kwargs):
-        try:
-            fetched_count = fetch_face_events()
-            events = AccessEvent.objects.filter(major=5, minor=75).order_by('-time')
-            serializer = AccessEventSerializer(events, many=True)
+class CustomPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = None
 
-            return Response({
-                "fetched": fetched_count,
-                "total": events.count(),
-                "events": serializer.data
-            }, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class AccessEventList(ListAPIView):
+    serializer_class = AccessEventSerializer
+    pagination_class = CustomPagination
+
+    def get_queryset(self):
+        latest = AccessEvent.objects.filter(major=5, minor=75).order_by('-time').first()
+        since_time = None
+        if latest:
+            since_time = latest.time - timedelta(seconds=5)
+        new_count = fetch_face_events(since=since_time)
+
+        if new_count > 0:
+            print(f"Yangi {new_count} ta event avtomatik yuklandi")
+
+        return AccessEvent.objects.filter(major=5, minor=75).order_by('-time')
 
 
 @csrf_exempt

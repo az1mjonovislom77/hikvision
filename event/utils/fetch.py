@@ -4,18 +4,16 @@ from requests.auth import HTTPDigestAuth
 from django.utils.dateparse import parse_datetime
 from event.models import AccessEvent
 from event.utils.events_name import major_name, minor_name
+from datetime import datetime
 
 
-def fetch_face_events():
+def fetch_face_events(since: datetime = None):
     url = "http://192.168.0.68/ISAPI/AccessControl/AcsEvent?format=json"
     headers = {"Content-Type": "application/json"}
-
     saved = 0
     search_id = "0"
     offset = 0
     limit = 50
-
-    print("Face eventlar yuklanmoqda (faqat offset bilan, time filter yo‘q)...")
 
     while True:
         session = requests.Session()
@@ -32,41 +30,33 @@ def fetch_face_events():
             }
         }
 
+        if since:
+            payload["AcsEventCond"]["startTime"] = since.strftime("%Y-%m-%d %H:%M:%S")
+
         try:
             r = session.post(url, json=payload, timeout=15)
-            print(f"Offset {offset} → Status: {r.status_code}")
-
             if r.status_code == 401:
-                print("  401 chiqdi → yangi session bilan davom etamiz")
                 time.sleep(1)
                 continue
-
             if r.status_code != 200:
-                print(f"  Xato {r.status_code}: {r.text[:200]}")
                 break
-
             data = r.json()
-
-        except Exception as e:
-            print(f"  Request xatosi: {e}")
+        except:
             break
 
         acs = data.get("AcsEvent", {})
-        events = acs.get("InfoList", [])
+        events = acs.get("InfoList", []) or []
         status = acs.get("responseStatusStrg", "")
 
-        if search_id == "0" and acs.get("searchID") and acs.get("searchID") != "0":
+        if acs.get("searchID") and acs["searchID"] != "0":
             search_id = acs["searchID"]
-            print(f"  Yangi searchID: {search_id}")
 
-        if not events:
-            print("  Hech nima kelmedi → tugadi")
-            break
-
-        new_in_page = 0
         for ev in events:
             t = parse_datetime(ev.get("time"))
             if not t:
+                continue
+
+            if since and t <= since:
                 continue
 
             if AccessEvent.objects.filter(serial_no=ev.get("serialNo"), time=t).exists():
@@ -75,35 +65,21 @@ def fetch_face_events():
             AccessEvent.objects.create(
                 serial_no=ev.get("serialNo"),
                 time=t,
-                major=ev.get("major"),
-                minor=ev.get("minor"),
-                major_name=major_name(ev.get("major")),
-                minor_name=minor_name(ev.get("minor")),
+                major=5,
+                minor=75,
+                major_name=major_name(5),
+                minor_name=minor_name(75),
                 name=ev.get("name", ""),
                 employee_no=ev.get("employeeNoString", ""),
                 picture_url=ev.get("pictureURL"),
                 raw_json=ev
             )
             saved += 1
-            new_in_page += 1
 
-        print(f"  {len(events)} ta keldi → {new_in_page} tasi yangi saqlandi | {status}")
+        if status != "MORE" or len(events) == 0:
+            break
 
         offset += len(events)
-
-        if status != "MORE":
-            print("  Hikvision: hammasi berildi (MORE emas)")
-            break
-
-        if offset >= 1000:
-            print("  Offset 1000 ga yetdi → qolganlari boshqa usul bilan olinadi")
-            break
-
-        time.sleep(0.5)
-
-    total = AccessEvent.objects.filter(major=5, minor=75).count()
-    print(f"\nTUGADI!")
-    print(f"Yangi qo‘shilgan: {saved} ta")
-    print(f"DB’da jami: {total} ta (418 bo‘lishi kerak)")
+        time.sleep(0.3)
 
     return saved
