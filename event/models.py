@@ -2,16 +2,24 @@ from django.db import models
 
 
 class AccessEvent(models.Model):
-    serial_no = models.IntegerField(unique=True)
+    serial_no = models.CharField(max_length=100, db_index=True)
     time = models.DateTimeField()
     major = models.IntegerField()
     minor = models.IntegerField()
-    major_name = models.CharField(max_length=100, null=True, blank=True)
-    minor_name = models.CharField(max_length=100, null=True, blank=True)
-    name = models.CharField(max_length=200, null=True, blank=True)
-    employee_no = models.CharField(max_length=50, null=True, blank=True)
-    picture_url = models.TextField(null=True, blank=True)
+    major_name = models.CharField(max_length=100)
+    minor_name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100)
+    employee_no = models.CharField(max_length=50)
+    picture_url = models.TextField()
     raw_json = models.JSONField()
 
+    class Meta:
+        ordering = ['-time']
+        indexes = [
+            models.Index(fields=['-time']),
+            models.Index(fields=['serial_no']),
+            models.Index(fields=['major', 'minor']),
+        ]
+
     def __str__(self):
-        return f"{self.time} | {self.name} | minor={self.minor}"
+        return f"{self.name} - {self.time}"

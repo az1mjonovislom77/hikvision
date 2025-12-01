@@ -2,24 +2,29 @@ import json
 from django.http import JsonResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import AccessEvent
-from .serializers import AccessEventSerializer
-from .utils.fetch import fetch_history_events
+from rest_framework import status
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.dateparse import parse_datetime
+from .models import AccessEvent
+from .serializers import AccessEventSerializer
+from .utils.fetch import fetch_face_events
 from .utils.events_name import major_name, minor_name
 
 
 class AccessEventList(APIView):
-    def get(self, request):
-        events = AccessEvent.objects.order_by('-time')[:200]
-        serializer = AccessEventSerializer(events, many=True)
-        return Response(serializer.data)
+    def get(self, request, *args, **kwargs):
+        try:
+            fetched_count = fetch_face_events()
+            events = AccessEvent.objects.filter(major=5, minor=75).order_by('-time')
+            serializer = AccessEventSerializer(events, many=True)
 
-
-def load_hikvision_history(request):
-    count = fetch_history_events()
-    return JsonResponse({"saved": count})
+            return Response({
+                "fetched": fetched_count,
+                "total": events.count(),
+                "events": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @csrf_exempt
@@ -32,25 +37,27 @@ def hikvision_webhook(request):
         events = data.get("Notification", {}).get("Event", [])
 
         for ev in events:
-            serial = ev.get("serialNo")
-            if not serial:
-                continue
+            event_time = parse_datetime(ev.get("time"))
+            event_major = ev.get("major")
+            event_minor = ev.get("minor")
 
-            if AccessEvent.objects.filter(serial_no=serial).exists():
+            if AccessEvent.objects.filter(time=event_time, major=event_major, minor=event_minor).exists():
                 continue
 
             AccessEvent.objects.create(
-                serial_no=serial,
-                time=parse_datetime(ev.get("time")),
-                major=ev.get("major"),
-                minor=ev.get("minor"),
-                major_name=major_name(ev.get("major")),
-                minor_name=minor_name(ev.get("minor")),
+                serial_no=ev.get("serialNo"),
+                time=event_time,
+                major=event_major,
+                minor=event_minor,
+                major_name=major_name(event_major),
+                minor_name=minor_name(event_minor),
                 name=ev.get("name"),
                 employee_no=ev.get("employeeNoString"),
                 picture_url=ev.get("pictureURL"),
                 raw_json=ev
             )
+
         return JsonResponse({"status": "ok"})
+
     except Exception as e:
         return JsonResponse({"status": "error", "detail": str(e)}, status=400)
