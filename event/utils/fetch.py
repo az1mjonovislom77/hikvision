@@ -6,14 +6,14 @@ from event.models import AccessEvent
 from event.utils.events_name import major_name, minor_name
 from datetime import datetime
 from decouple import config
-
+import pytz
 HIKVISION_IP = config("HIKVISION_IP")
 HIKVISION_USER = config("HIKVISION_USER")
 HIKVISION_PASS = config("HIKVISION_PASS")
-
+UZ_TZ = pytz.timezone("Asia/Shanghai")
 
 def fetch_face_events(since: datetime = None):
-    url = f"http://{HIKVISION_IP}ISAPI/AccessControl/AcsEvent?format=json"
+    url = f"http://{HIKVISION_IP}/ISAPI/AccessControl/AcsEvent?format=json"
     headers = {"Content-Type": "application/json"}
     saved = 0
     search_id = "0"
@@ -57,9 +57,16 @@ def fetch_face_events(since: datetime = None):
             search_id = acs["searchID"]
 
         for ev in events:
+
             t = parse_datetime(ev.get("time"))
             if not t:
                 continue
+
+            # ❗❗❗ Uzbekistan vaqtiga konvert qilish
+            if t.tzinfo is None:
+                t = UZ_TZ.localize(t)
+            else:
+                t = t.astimezone(UZ_TZ)
 
             if since and t <= since:
                 continue

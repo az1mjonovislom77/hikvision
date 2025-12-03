@@ -9,7 +9,6 @@ from .utils.events_name import major_name, minor_name
 from rest_framework.generics import ListAPIView
 from rest_framework.pagination import PageNumberPagination
 from datetime import timedelta
-from drf_spectacular.utils import extend_schema
 
 
 class CustomPagination(PageNumberPagination):
@@ -17,7 +16,6 @@ class CustomPagination(PageNumberPagination):
     page_size_query_param = None
 
 
-@extend_schema(tags=['Event'])
 class AccessEventList(ListAPIView):
     serializer_class = AccessEventSerializer
     pagination_class = CustomPagination
