@@ -5,10 +5,15 @@ from django.utils.dateparse import parse_datetime
 from event.models import AccessEvent
 from event.utils.events_name import major_name, minor_name
 from datetime import datetime
+from decouple import config
+
+HIKVISION_IP = config("HIKVISION_IP")
+HIKVISION_USER = config("HIKVISION_USER")
+HIKVISION_PASS = config("HIKVISION_PASS")
 
 
 def fetch_face_events(since: datetime = None):
-    url = "http://192.168.0.68/ISAPI/AccessControl/AcsEvent?format=json"
+    url = f"http://{HIKVISION_IP}ISAPI/AccessControl/AcsEvent?format=json"
     headers = {"Content-Type": "application/json"}
     saved = 0
     search_id = "0"
@@ -17,7 +22,7 @@ def fetch_face_events(since: datetime = None):
 
     while True:
         session = requests.Session()
-        session.auth = HTTPDigestAuth("admin", "Ats@amaar442")
+        session.auth = HTTPDigestAuth(f"{HIKVISION_USER}", f"{HIKVISION_PASS}")
         session.headers.update(headers)
 
         payload = {

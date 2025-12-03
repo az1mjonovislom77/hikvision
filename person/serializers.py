@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from person.models import Person
+from person.models import Person, Staff
 
 
 class PersonSerializer(serializers.ModelSerializer):
@@ -44,3 +44,9 @@ class PersonUpdateSerializer(serializers.Serializer):
     begin_time = serializers.DateTimeField(required=False)
     end_time = serializers.DateTimeField(required=False)
     door_right = serializers.CharField(required=False)
+
+
+class StaffSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Staff
+        fields = '__all__'

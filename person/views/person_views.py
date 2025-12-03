@@ -8,12 +8,14 @@ from person.utils import download_face_from_url, fix_hikvision_time, get_next_em
 from person.serializers import PersonSerializer, PersonCreateSerializer, PersonUpdateSerializer
 from datetime import timedelta
 from django.utils import timezone
+from decouple import config
 
-HIKVISION_IP = "192.168.0.68"
-HIKVISION_USER = "admin"
-HIKVISION_PASS = "Ats@amaar442"
+HIKVISION_IP = config("HIKVISION_IP")
+HIKVISION_USER = config("HIKVISION_USER")
+HIKVISION_PASS = config("HIKVISION_PASS")
 
 
+@extend_schema(tags=['Person'])
 class FullSyncPersonsView(APIView):
     def get(self, request):
 
@@ -89,13 +91,14 @@ class FullSyncPersonsView(APIView):
         return Response({"synced": True, "deleted": len(to_delete), "added": added, "users": serializer.data})
 
 
+@extend_schema(tags=['Person'])
 class PersonCreateView(APIView):
 
     @extend_schema(request=PersonCreateSerializer, responses={200: None})
     def post(self, request):
-        ser = PersonCreateSerializer(data=request.data)
-        ser.is_valid(raise_exception=True)
-        v = ser.validated_data
+        serializers = PersonCreateSerializer(data=request.data)
+        serializers.is_valid(raise_exception=True)
+        v = serializers.validated_data
         next_emp = get_next_employee_no()
         begin_fixed, end_fixed = fix_hikvision_time(v["begin_time"], v["end_time"])
 
@@ -135,6 +138,7 @@ class PersonCreateView(APIView):
         })
 
 
+@extend_schema(tags=['Person'])
 class PersonUpdateView(APIView):
 
     @extend_schema(request=PersonUpdateSerializer, responses={200: None})
@@ -188,6 +192,7 @@ class PersonUpdateView(APIView):
         return Response({"status": "updated"})
 
 
+@extend_schema(tags=['Person'])
 class PersonDeleteView(APIView):
 
     def delete(self, request, employee_no):

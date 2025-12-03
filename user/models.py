@@ -9,7 +9,6 @@ class UserManager(BaseUserManager):
     def create_user(self, phone_number, password=None, **extra_fields):
         if not phone_number:
             raise ValueError("Phone number is required")
-        extra_fields.setdefault("username", phone_number)
         user = self.model(phone_number=phone_number, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
@@ -42,7 +41,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
     def __str__(self):
-        return f'{self.full_name} {self.username}'
+        return f'{self.full_name or ""} {self.phone_number}'
 
     class Meta:
         db_table = 'user'

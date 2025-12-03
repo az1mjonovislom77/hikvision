@@ -26,7 +26,9 @@ LOCAL_APPS = [
     'django.contrib.staticfiles',
     'user.apps.UserConfig',
     'event',
-    'person'
+    'person',
+    'day',
+    'utils'
 ]
 
 THIRD_PARTY_APPS = [
