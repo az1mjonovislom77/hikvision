@@ -1,13 +1,17 @@
+import pytz
 import base64
 import requests
 from django.core.files.base import ContentFile
 from requests.auth import HTTPDigestAuth
+from decouple import config
 
-from person.models import Person
+from person.models import Employee
 
-HIKVISION_IP = "192.168.0.68"
-HIKVISION_USER = "admin"
-HIKVISION_PASS = "Ats@amaar442"
+UZ_TZ = pytz.timezone("Asia/Shanghai")
+
+HIKVISION_IP = config("HIKVISION_IP")
+HIKVISION_USER = config("HIKVISION_USER")
+HIKVISION_PASS = config("HIKVISION_PASS")
 
 
 def base64_to_image_file(base64_str, filename):
@@ -68,7 +72,7 @@ def get_next_employee_no():
         if emp and emp.isdigit():
             hk_ids.add(int(emp))
 
-    db_ids = set(int(e) for e in Person.objects.values_list("employee_no", flat=True) if str(e).isdigit())
+    db_ids = set(int(e) for e in Employee.objects.values_list("employee_no", flat=True) if str(e).isdigit())
     all_ids = hk_ids | db_ids
     next_id = max(all_ids) + 1 if all_ids else 1
 
@@ -76,3 +80,11 @@ def get_next_employee_no():
         next_id += 1
 
     return str(next_id)
+
+
+def format_late(minutes):
+    if minutes is None:
+        return None
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}:{mins:02d}"
