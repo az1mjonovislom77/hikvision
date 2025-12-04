@@ -1,7 +1,6 @@
 from django.urls import path
-from .views import AccessEventList, hikvision_webhook
+from .views import AccessEventList
 
 urlpatterns = [
-    path("events/", AccessEventList.as_view()),
-    path("webhook/", hikvision_webhook)
+    path("events/", AccessEventList.as_view())
 ]

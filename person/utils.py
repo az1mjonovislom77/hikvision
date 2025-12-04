@@ -1,10 +1,9 @@
 import pytz
-import base64
 import requests
 from django.core.files.base import ContentFile
 from requests.auth import HTTPDigestAuth
 from decouple import config
-
+from event.models import AccessEvent
 from person.models import Employee
 
 UZ_TZ = pytz.timezone("Asia/Shanghai")
@@ -12,24 +11,6 @@ UZ_TZ = pytz.timezone("Asia/Shanghai")
 HIKVISION_IP = config("HIKVISION_IP")
 HIKVISION_USER = config("HIKVISION_USER")
 HIKVISION_PASS = config("HIKVISION_PASS")
-
-
-def base64_to_image_file(base64_str, filename):
-    try:
-        if "," in base64_str: base64_str = base64_str.split(",")[1]
-        return ContentFile(base64.b64decode(base64_str), name=filename)
-    except:
-        return None
-
-
-def get_face_from_device(employee_no):
-    url = f"http://{HIKVISION_IP}/ISAPI/AccessControl/UserInfo/FaceData/{employee_no}?format=json"
-    try:
-        res = requests.get(url, auth=HTTPDigestAuth(HIKVISION_USER, HIKVISION_PASS), timeout=10)
-        data = res.json()
-        return data.get("FaceDataRecord", {}).get("imageData")
-    except:
-        return None
 
 
 def download_face_from_url(url):
@@ -88,3 +69,19 @@ def format_late(minutes):
     hours = minutes // 60
     mins = minutes % 60
     return f"{hours}:{mins:02d}"
+
+
+def get_first_last_events(emp_no, date_obj, label_in="Kirish", label_out="Chiqish"):
+    first_entry = AccessEvent.objects.filter(
+        employee_no=emp_no,
+        raw_json__label=label_in,
+        time__date=date_obj
+    ).order_by("time").first()
+
+    last_exit = AccessEvent.objects.filter(
+        employee_no=emp_no,
+        raw_json__label=label_out,
+        time__date=date_obj
+    ).order_by("-time").first()
+
+    return first_entry, last_exit
