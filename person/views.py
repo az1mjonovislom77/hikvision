@@ -6,27 +6,37 @@ from person.models import Employee
 from person.serializers import EmployeeSerializer, EmployeeCreateSerializer, EmployeeUpdateSerializer
 from person.services.employee import EmployeeService
 from person.services.hikvision import HikvisionService
-from person.utils import get_next_employee_no, fix_hikvision_time, UZ_TZ, format_late, download_face_from_url, \
-    get_first_last_events
+from person.utils import get_next_employee_no, fix_hikvision_time, UZ_TZ, format_late, get_first_last_events
 from django.utils.timezone import now, make_aware
 from django.utils.dateparse import parse_date
 from datetime import datetime
 from django.http import HttpResponse
+from rest_framework.permissions import IsAuthenticated
+
+from user.models import User
 
 
 @extend_schema(tags=['Employee'])
 class FullSyncEmployeesView(APIView):
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         hk_users = HikvisionService.search_users()
         stats = EmployeeService.sync_from_hikvision(hk_users)
-        serializer = EmployeeSerializer(Employee.objects.all(), many=True, context={"request": request})
 
+        if request.user.UserRoles.SUPERADMIN or request.user.is_staff:
+            employees = Employee.objects.all()
+
+        else:
+            employees = Employee.objects.filter(user=request.user)
+
+        serializer = EmployeeSerializer(employees, many=True, context={"request": request})
         return Response({"synced": True, **stats, "users": serializer.data})
 
 
 @extend_schema(tags=['Employee'])
 class EmployeeCreateView(APIView):
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(request=EmployeeCreateSerializer, responses={200: None})
     def post(self, request):
@@ -55,7 +65,20 @@ class EmployeeCreateView(APIView):
         if result.status_code != 200:
             return Response({"error": "Hikvision error", "detail": result.text}, status=400)
 
+        if request.user.is_superuser or request.user.is_staff:
+            user_id = request.data.get("user_id")
+            if not user_id:
+                return Response({"error": "user_id majburiy (admin uchun)"}, status=400)
+
+            user = User.objects.filter(id=user_id).first()
+            if not user:
+                return Response({"error": "user_id bo‘yicha user topilmadi"}, status=404)
+
+        else:
+            user = request.user
+
         Employee.objects.create(
+            user=user,
             employee_no=employees_no,
             name=data["name"],
             user_type=data.get("user_type"),
@@ -129,13 +152,19 @@ class EmployeeDeleteView(APIView):
 
 @extend_schema(tags=["Employee"], parameters=[OpenApiParameter(name="date", type=str)])
 class DailyAccessListView(APIView):
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         date_str = request.GET.get("date")
         date_obj = parse_date(date_str) if date_str else now().date()
-        employees = Employee.objects.select_related("shift")
-        result = []
 
+        if request.user.UserRoles.SUPERADMIN or request.user.is_staff:
+            employees = Employee.objects.all()
+
+        else:
+            employees = Employee.objects.filter(user=request.user)
+
+        result = []
         stats = {"total": employees.count(), "came": 0, "late": 0, "absent": 0}
 
         for employee in employees:
@@ -168,11 +197,14 @@ class DailyAccessListView(APIView):
 @extend_schema(tags=["DailyExel"],
                parameters=[OpenApiParameter(name="date", required=False, type=str, description="YYYY-MM-DD")])
 class DailyAccessExcelExport(APIView):
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         date_str = request.GET.get("date")
         date_obj = parse_date(date_str) if date_str else now().date()
-        employees = Employee.objects.select_related("shift")
+
+        employees = Employee.objects.filter(user=request.user).select_related("shift")
+
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = f"{date_obj}"

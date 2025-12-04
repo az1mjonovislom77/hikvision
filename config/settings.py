@@ -25,7 +25,7 @@ LOCAL_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'user.apps.UserConfig',
-    'event',
+    'event.apps.EventConfig',
     'person',
     'day',
     'utils'

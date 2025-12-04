@@ -78,10 +78,7 @@ def get_first_last_events(emp_no, date_obj, label_in="Kirish", label_out="Chiqis
         time__date=date_obj
     ).order_by("time").first()
 
-    last_exit = AccessEvent.objects.filter(
-        employee_no=emp_no,
-        raw_json__label=label_out,
-        time__date=date_obj
-    ).order_by("-time").first()
+    last_exit = (AccessEvent.objects.filter(employee_no=emp_no, raw_json__label=label_out, time__date=date_obj)
+                 .order_by("-time").first())
 
     return first_entry, last_exit

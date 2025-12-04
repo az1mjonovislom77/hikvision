@@ -1,9 +1,11 @@
 from django.db import models
 from day.models import Shift, BreakTime, WorkDay, DayOff
+from user.models import User
 from utils.models import Department, Branch
 
 
 class Employee(models.Model):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     employee_no = models.CharField(max_length=50, unique=True)
     name = models.CharField(max_length=200)
     user_type = models.CharField(max_length=50, default="normal")

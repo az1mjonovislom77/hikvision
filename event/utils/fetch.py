@@ -6,8 +6,8 @@ from event.models import AccessEvent
 from event.utils.events_name import major_name, minor_name
 from datetime import datetime
 from decouple import config
-
 from person.utils import UZ_TZ
+from person.models import Employee
 
 HIKVISION_IP = config("HIKVISION_IP")
 HIKVISION_USER = config("HIKVISION_USER")
@@ -75,7 +75,13 @@ def fetch_face_events(since: datetime = None):
             if AccessEvent.objects.filter(serial_no=ev.get("serialNo"), time=t).exists():
                 continue
 
+            emp_no = ev.get("employeeNoString", "")
+            employee_obj = None
+            if emp_no:
+                employee_obj = Employee.objects.filter(employee_no=emp_no).first()
+
             AccessEvent.objects.create(
+                employee=employee_obj,
                 serial_no=ev.get("serialNo"),
                 time=t,
                 major=5,
@@ -83,10 +89,11 @@ def fetch_face_events(since: datetime = None):
                 major_name=major_name(5),
                 minor_name=minor_name(75),
                 name=ev.get("name", ""),
-                employee_no=ev.get("employeeNoString", ""),
+                employee_no=emp_no,
                 picture_url=ev.get("pictureURL"),
                 raw_json=ev
             )
+
             saved += 1
 
         if status != "MORE" or len(events) == 0:
