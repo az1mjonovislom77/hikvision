@@ -7,7 +7,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Employee
-        fields = ["id", "user", "employee_no", "name", "user_type", "employment", "department", "position", "shift",
+        fields = ["id", "device", "employee_no", "name", "user_type", "employment", "department", "position", "shift",
                   "description", "phone_number", "salary", "break_time", "work_day", "branch", "fine", "day_off",
                   "begin_time", "end_time", "door_right", "face_url", "local_face", "created_at"]
 
@@ -27,7 +27,7 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Employee
-        fields = ["user", "name", "user_type", "begin_time", "end_time", "door_right", "employment", "department",
+        fields = ["device", "name", "user_type", "begin_time", "end_time", "door_right", "employment", "department",
                   "position", "shift", "description", "phone_number", "salary", "break_time", "work_day", "branch",
                   "fine", "day_off"]
 
@@ -35,7 +35,7 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
 class EmployeeUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
-        fields = ["user", "name", "user_type", "begin_time", "end_time", "door_right", "employment", "department",
+        fields = ["device", "name", "user_type", "begin_time", "end_time", "door_right", "employment", "department",
                   "position", "shift", "description", "phone_number", "salary", "break_time", "work_day", "branch",
                   "fine", "day_off"]
         extra_kwargs = {"name": {"required": False}}

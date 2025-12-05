@@ -1,5 +1,6 @@
 import requests
 import time
+from urllib.parse import urlparse
 from requests.auth import HTTPDigestAuth
 from django.utils.dateparse import parse_datetime
 from event.models import AccessEvent
@@ -24,7 +25,7 @@ def fetch_face_events(since: datetime = None):
 
     while True:
         session = requests.Session()
-        session.auth = HTTPDigestAuth(f"{HIKVISION_USER}", f"{HIKVISION_PASS}")
+        session.auth = HTTPDigestAuth(HIKVISION_USER, HIKVISION_PASS)
         session.headers.update(headers)
 
         payload = {
@@ -42,9 +43,6 @@ def fetch_face_events(since: datetime = None):
 
         try:
             r = session.post(url, json=payload, timeout=15)
-            if r.status_code == 401:
-                time.sleep(1)
-                continue
             if r.status_code != 200:
                 break
             data = r.json()
@@ -72,13 +70,24 @@ def fetch_face_events(since: datetime = None):
             if since and t <= since:
                 continue
 
+            pic_url = ev.get("pictureURL") or ev.get("faceURL")
+
+            event_ip = None
+            if pic_url:
+                parsed = urlparse(pic_url)
+                event_ip = parsed.hostname
+
+            local_emp = ev.get("employeeNoString", "")
+
+            employee_obj = None
+            if event_ip and local_emp:
+                employee_obj = Employee.objects.filter(
+                    employee_no=local_emp,
+                    device__ip=event_ip
+                ).first()
+
             if AccessEvent.objects.filter(serial_no=ev.get("serialNo"), time=t).exists():
                 continue
-
-            emp_no = ev.get("employeeNoString", "")
-            employee_obj = None
-            if emp_no:
-                employee_obj = Employee.objects.filter(employee_no=emp_no).first()
 
             AccessEvent.objects.create(
                 employee=employee_obj,
@@ -89,8 +98,8 @@ def fetch_face_events(since: datetime = None):
                 major_name=major_name(5),
                 minor_name=minor_name(75),
                 name=ev.get("name", ""),
-                employee_no=emp_no,
-                picture_url=ev.get("pictureURL"),
+                employee_no=local_emp,
+                picture_url=pic_url,
                 raw_json=ev
             )
 
