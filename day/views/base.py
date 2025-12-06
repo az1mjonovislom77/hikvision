@@ -18,10 +18,10 @@ class BaseUserModelViewSet(PartialPutMixin, viewsets.ModelViewSet):
         return self.queryset.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        req = self.request
+        requested = self.request
 
-        if req.user.is_superuser or req.user.is_staff:
-            user_id = req.data.get("user_id")
+        if requested.user.is_superuser or requested.user.is_staff:
+            user_id = requested.data.get("user_id")
             if not user_id:
                 raise ValueError("user_id admin uchun majburiy")
 
@@ -31,4 +31,4 @@ class BaseUserModelViewSet(PartialPutMixin, viewsets.ModelViewSet):
 
             return serializer.save(user=user)
 
-        return serializer.save(user=req.user)
+        return serializer.save(user=requested.user)

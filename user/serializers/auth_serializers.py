@@ -8,10 +8,7 @@ class SignInSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
-        user = AuthService.authenticate_user(
-            phone_number=attrs.get('phone_number'),
-            password=attrs.get('password')
-        )
+        user = AuthService.authenticate_user(phone_number=attrs.get('phone_number'), password=attrs.get('password'))
         attrs['user'] = user
         return attrs
 
