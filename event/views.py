@@ -1,12 +1,10 @@
 from rest_framework.generics import ListAPIView
 from rest_framework.pagination import PageNumberPagination
-from event.models import AccessEvent
 from event.serializers import AccessEventSerializer
 from event.services.event_sync import EventSyncService
 from person.models import Employee
-from rest_framework.permissions import IsAuthenticated
-
 from utils.models import Devices
+from rest_framework.permissions import IsAuthenticated
 
 
 class CustomPagination(PageNumberPagination):
@@ -22,11 +20,11 @@ class AccessEventList(ListAPIView):
     def get_queryset(self):
         EventSyncService.sync_events()
         user = self.request.user
-        if user.is_staff or user.is_superuser:
-            return EventSyncService.get_events_queryset()
+        queryset = EventSyncService.get_events_queryset()
+        if user.is_superuser or user.is_staff:
+            return queryset
         user_devices = Devices.objects.filter(user=user)
         employees = Employee.objects.filter(device__in=user_devices)
         if not employees.exists():
-            return AccessEvent.objects.none()
-
-        return EventSyncService.get_events_queryset().filter(employee__in=employees)
+            return queryset.none()
+        return queryset.filter(employee__in=employees)

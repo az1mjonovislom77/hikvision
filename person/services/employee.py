@@ -5,24 +5,23 @@ from person.utils import download_face_from_url
 class EmployeeService:
 
     @staticmethod
-    def sync_from_hikvision(hk_users):
-        db_users = Employee.objects.all()
-        db_ids = set(db_users.values_list("employee_no", flat=True))
-        hk_ids = {u.get("employeeNo") for u in hk_users}
-
+    def sync_from_hikvision(device, hk_users):
+        device_emps = Employee.objects.filter(device=device)
+        db_ids = set(device_emps.values_list("employee_no", flat=True))
+        hk_ids = {u.get("employeeNo") for u in hk_users if u.get("employeeNo")}
         to_delete = db_ids - hk_ids
-        Employee.objects.filter(employee_no__in=to_delete).delete()
+        Employee.objects.filter(device=device, employee_no__in=to_delete).delete()
 
-        to_add = hk_ids - db_ids
         added = 0
 
         for u in hk_users:
-            employees_no = u.get("employeeNo")
-            if employees_no not in to_add:
+            emp_no = u.get("employeeNo")
+            if not emp_no:
                 continue
 
-            person, _ = Employee.objects.update_or_create(
-                employee_no=employees_no,
+            emp_obj, created = Employee.objects.update_or_create(
+                device=device,
+                employee_no=emp_no,
                 defaults={
                     "name": u.get("name"),
                     "door_right": u.get("doorRight"),
@@ -35,8 +34,13 @@ class EmployeeService:
             if u.get("faceURL"):
                 img = download_face_from_url(u["faceURL"])
                 if img:
-                    person.face_image.save(f"{employees_no}.jpg", img, save=True)
+                    emp_obj.face_image.save(f"{device.ip}_{emp_no}.jpg", img, save=True)
 
-            added += 1
+            if created:
+                added += 1
 
-        return {"added": added, "deleted": len(to_delete)}
+        return {
+            "added": added,
+            "deleted": len(to_delete),
+            "device_ip": device.ip,
+        }

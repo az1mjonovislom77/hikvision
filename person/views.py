@@ -2,53 +2,120 @@ import openpyxl
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
-from person.models import Employee
-from person.serializers import EmployeeSerializer, EmployeeCreateSerializer, EmployeeUpdateSerializer
-from person.services.employee import EmployeeService
-from person.services.hikvision import HikvisionService
-from person.utils import get_next_employee_no, fix_hikvision_time, UZ_TZ, format_late, get_first_last_events
+from rest_framework.permissions import IsAuthenticated
+from django.http import HttpResponse
 from django.utils.timezone import now, make_aware
 from django.utils.dateparse import parse_date
 from datetime import datetime
-from django.http import HttpResponse
-from rest_framework.permissions import IsAuthenticated
-
+from person.models import Employee
 from user.models import User
+from utils.models import Devices
+from person.serializers import (EmployeeSerializer, EmployeeCreateSerializer, EmployeeUpdateSerializer)
+from person.utils import (fix_hikvision_time, get_next_employee_no, get_first_last_events, format_late, UZ_TZ)
+from person.services.hikvision import HikvisionService
+from person.services.employee import EmployeeService
 
 
-@extend_schema(tags=['Employee'])
+@extend_schema(
+    tags=["Employee"],
+    parameters=[
+        OpenApiParameter(
+            name="user_id",
+            type=int,
+            required=False,
+            description="Faqat superadmin uchun. Tanlangan userning device larini sync qiladi."
+        )
+    ],
+    responses={200: EmployeeSerializer(many=True)}
+)
 class FullSyncEmployeesView(APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = EmployeeSerializer
 
     def get(self, request):
-        hk_users = HikvisionService.search_users()
-        stats = EmployeeService.sync_from_hikvision(hk_users)
 
-        if request.user.UserRoles.SUPERADMIN or request.user.is_staff:
-            employees = Employee.objects.all()
+        user = request.user
+
+        if user.is_superuser or user.is_staff:
+            user_id = request.GET.get("user_id")
+
+            if not user_id:
+                return Response(
+                    {"error": "user_id superadmin uchun majburiy"},
+                    status=400
+                )
+
+            target_user = User.objects.filter(id=user_id).first()
+            if not target_user:
+                return Response({"error": "Bunday user topilmadi"}, status=404)
+
+            devices = Devices.objects.filter(user=target_user)
 
         else:
-            employees = Employee.objects.filter(user=request.user)
+            devices = Devices.objects.filter(user=user)
 
-        serializer = EmployeeSerializer(employees, many=True, context={"request": request})
-        return Response({"synced": True, **stats, "users": serializer.data})
+        if not devices.exists():
+            return Response({"error": "Ushbu userga device biriktirilmagan"}, status=400)
+
+        total_stats = {
+            "synced_devices": 0,
+            "added": 0,
+            "deleted": 0,
+        }
+
+        employees_final = []
+
+        for device in devices:
+            hk_users = HikvisionService.search_users(device)
+
+            stats = EmployeeService.sync_from_hikvision(device, hk_users)
+
+            total_stats["synced_devices"] += 1
+            total_stats["added"] += stats["added"]
+            total_stats["deleted"] += stats["deleted"]
+
+            employees_final.extend(Employee.objects.filter(device=device))
+
+        employees_final = list(set(employees_final))
+
+        serializer = EmployeeSerializer(employees_final, many=True, context={"request": request})
+
+        return Response({"success": True, **total_stats, "employees": serializer.data})
 
 
-@extend_schema(tags=['Employee'])
+@extend_schema(tags=["Employee"])
 class EmployeeCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(request=EmployeeCreateSerializer, responses={200: None})
+    @extend_schema(request=EmployeeCreateSerializer)
     def post(self, request):
-        serializers = EmployeeCreateSerializer(data=request.data)
-        serializers.is_valid(raise_exception=True)
-        data = serializers.validated_data
-        employees_no = get_next_employee_no()
+        ser = EmployeeCreateSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+
+        user = request.user
+
+        if user.is_superuser or user.is_staff:
+            device_id = request.data.get("device_id")
+            if not device_id:
+                return Response({"error": "device_id admin uchun majburiy"}, status=400)
+
+            device = Devices.objects.filter(id=device_id).first()
+            if not device:
+                return Response({"error": "Device topilmadi"}, status=404)
+
+        else:
+            device = Devices.objects.filter(user=user).first()
+            if not device:
+                return Response({"error": "Sizga biror device biriktirilmagan"}, status=400)
+
+        employee_no = get_next_employee_no(device)
+
         begin, end = fix_hikvision_time(data["begin_time"], data["end_time"])
 
         payload = {
             "UserInfo": {
-                "employeeNo": employees_no,
+                "employeeNo": employee_no,
                 "name": data["name"],
                 "userType": data.get("user_type", "normal"),
                 "doorRight": data.get("door_right", "1"),
@@ -61,51 +128,49 @@ class EmployeeCreateView(APIView):
             }
         }
 
-        result = HikvisionService.create_user(payload)
+        result = HikvisionService.create_user(device, payload)
         if result.status_code != 200:
-            return Response({"error": "Hikvision error", "detail": result.text}, status=400)
-
-        if request.user.is_superuser or request.user.is_staff:
-            user_id = request.data.get("user_id")
-            if not user_id:
-                return Response({"error": "user_id majburiy (admin uchun)"}, status=400)
-
-            user = User.objects.filter(id=user_id).first()
-            if not user:
-                return Response({"error": "user_id bo‘yicha user topilmadi"}, status=404)
-
-        else:
-            user = request.user
+            return Response({"error": "Hikvision xatosi", "detail": result.text}, status=400)
 
         Employee.objects.create(
-            user=user,
-            employee_no=employees_no,
+            device=device,
+            employee_no=employee_no,
             name=data["name"],
             user_type=data.get("user_type"),
             door_right=data.get("door_right"),
             begin_time=data["begin_time"],
-            end_time=data["end_time"]
+            end_time=data["end_time"],
         )
 
-        return Response({"status": "created", "employee_no": employees_no})
+        return Response({
+            "status": "created",
+            "employee_no": employee_no,
+            "device": device.ip
+        })
 
 
-@extend_schema(tags=['Employee'])
+@extend_schema(tags=["Employee"])
 class EmployeeUpdateView(APIView):
+    permission_classes = [IsAuthenticated]
 
     def put(self, request, employee_no):
-        person = Employee.objects.filter(employee_no=employee_no).first()
-        if not person:
-            return Response({"error": "Not found"}, status=404)
+        emp = Employee.objects.filter(employee_no=employee_no).first()
+        if not emp:
+            return Response({"error": "Topilmadi"}, status=404)
 
-        serializers = EmployeeUpdateSerializer(data=request.data, partial=True)
-        serializers.is_valid(raise_exception=True)
-        data = serializers.validated_data
-        name = data.get("name", person.name)
-        user_type = data.get("user_type", person.user_type)
-        door_right = data.get("door_right", person.door_right)
-        begin = data.get("begin_time", person.begin_time)
-        end = data.get("end_time", person.end_time)
+        if not request.user.is_superuser and not request.user.is_staff:
+            if emp.device.user != request.user:
+                return Response({"error": "Ruxsat yo‘q"}, status=403)
+
+        ser = EmployeeUpdateSerializer(data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+
+        name = data.get("name", emp.name)
+        user_type = data.get("user_type", emp.user_type)
+        door_right = data.get("door_right", emp.door_right)
+        begin = data.get("begin_time", emp.begin_time)
+        end = data.get("end_time", emp.end_time)
 
         begin_str, end_str = fix_hikvision_time(begin, end)
 
@@ -124,29 +189,39 @@ class EmployeeUpdateView(APIView):
             }
         }
 
-        result = HikvisionService.update_user(payload)
+        result = HikvisionService.update_user(emp.device, payload)
         if result.status_code != 200:
             return Response({"error": "Update failed", "detail": result.text}, status=400)
 
-        person.name = name
-        person.user_type = user_type
-        person.door_right = door_right
-        person.begin_time = begin
-        person.end_time = end
-        person.save()
+        emp.name = name
+        emp.user_type = user_type
+        emp.door_right = door_right
+        emp.begin_time = begin
+        emp.end_time = end
+        emp.save()
 
         return Response({"status": "updated"})
 
 
-@extend_schema(tags=['Employee'])
+@extend_schema(tags=["Employee"])
 class EmployeeDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
 
     def delete(self, request, employee_no):
-        result = HikvisionService.delete_user(employee_no)
+        emp = Employee.objects.filter(employee_no=employee_no).first()
+        if not emp:
+            return Response({"error": "Not found"}, status=404)
+
+        if not request.user.is_superuser and not request.user.is_staff:
+            if emp.device.user != request.user:
+                return Response({"error": "Ruxsat yo‘q"}, status=403)
+
+        result = HikvisionService.delete_user(emp.device, employee_no)
         if result.status_code != 200:
             return Response({"error": "Delete failed", "detail": result.text}, status=400)
 
-        Employee.objects.filter(employee_no=employee_no).delete()
+        emp.delete()
+
         return Response({"status": "deleted"})
 
 
@@ -158,44 +233,44 @@ class DailyAccessListView(APIView):
         date_str = request.GET.get("date")
         date_obj = parse_date(date_str) if date_str else now().date()
 
-        if request.user.UserRoles.SUPERADMIN or request.user.is_staff:
+        user = request.user
+
+        if user.is_superuser or user.is_staff:
             employees = Employee.objects.all()
-
         else:
-            employees = Employee.objects.filter(user=request.user)
+            employees = Employee.objects.filter(device__user=user)
 
-        result = []
+        results = []
         stats = {"total": employees.count(), "came": 0, "late": 0, "absent": 0}
 
-        for employee in employees:
-            first, last = get_first_last_events(employee.employee_no, date_obj)
+        for emp in employees:
+            first, last = get_first_last_events(emp.employee_no, date_obj)
 
             if first:
                 stats["came"] += 1
             else:
                 stats["absent"] += 1
 
-            late_min = 0
-            if employee.shift and first:
-                shift_start = make_aware(datetime.combine(date_obj, employee.shift.start_time), UZ_TZ)
+            late_minutes = 0
+            if emp.shift and first:
+                shift_start = make_aware(datetime.combine(date_obj, emp.shift.start_time), UZ_TZ)
                 if first.time > shift_start:
                     stats["late"] += 1
-                    late_min = int((first.time - shift_start).total_seconds() / 60)
+                    late_minutes = int((first.time - shift_start).total_seconds() / 60)
 
-            result.append({
-                "employee_no": employee.employee_no,
-                "name": employee.name,
+            results.append({
+                "employee_no": emp.employee_no,
+                "name": emp.name,
                 "kirish": first.time.astimezone(UZ_TZ) if first else None,
                 "chiqish": last.time.astimezone(UZ_TZ) if last else None,
-                "late": format_late(late_min),
-                "face": request.build_absolute_uri(employee.face_image.url) if employee.face_image else None
+                "late": format_late(late_minutes),
+                "face": request.build_absolute_uri(emp.face_image.url) if emp.face_image else None
             })
 
-        return Response({"date": str(date_obj), "employees": result, "stats": stats})
+        return Response({"date": str(date_obj), "employees": results, "stats": stats})
 
 
-@extend_schema(tags=["DailyExel"],
-               parameters=[OpenApiParameter(name="date", required=False, type=str, description="YYYY-MM-DD")])
+@extend_schema(tags=["DailyExel"], parameters=[OpenApiParameter(name="date", type=str)])
 class DailyAccessExcelExport(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -203,31 +278,33 @@ class DailyAccessExcelExport(APIView):
         date_str = request.GET.get("date")
         date_obj = parse_date(date_str) if date_str else now().date()
 
-        employees = Employee.objects.filter(user=request.user).select_related("shift")
+        employees = Employee.objects.filter(device__user=request.user).select_related("shift")
 
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = f"{date_obj}"
-        headers = ["Employee No", "Name", "Kirish", "Chiqish", "Late", "Shift"]
-        ws.append(headers)
 
-        for employee in employees:
-            first, last = get_first_last_events(employee.employee_no, date_obj)
+        ws.append(["Employee No", "Name", "Kirish", "Chiqish", "Late", "Shift"])
+
+        for emp in employees:
+            first, last = get_first_last_events(emp.employee_no, date_obj)
             kirish = first.time.astimezone(UZ_TZ).strftime("%H:%M:%S") if first else ""
             chiqish = last.time.astimezone(UZ_TZ).strftime("%H:%M:%S") if last else ""
 
             late_text = ""
-            if employee.shift and first:
-                shift_start = make_aware(datetime.combine(date_obj, employee.shift.start_time), UZ_TZ)
+            if emp.shift and first:
+                shift_start = make_aware(datetime.combine(date_obj, emp.shift.start_time), UZ_TZ)
                 if first.time > shift_start:
-                    diff_min = int((first.time - shift_start).total_seconds() / 60)
-                    late_text = format_late(diff_min)
+                    diff = int((first.time - shift_start).total_seconds() / 60)
+                    late_text = format_late(diff)
 
-            shift_start = employee.shift.start_time.strftime("%H:%M") if employee.shift else ""
+            shift_start = emp.shift.start_time.strftime("%H:%M") if emp.shift else ""
 
-            ws.append([employee.employee_no, employee.name, kirish, chiqish, late_text, shift_start])
+            ws.append([emp.employee_no, emp.name, kirish, chiqish, late_text, shift_start])
 
-        response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        response = HttpResponse(
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
         response["Content-Disposition"] = f'attachment; filename="daily_{date_obj}.xlsx"'
         wb.save(response)
         return response
