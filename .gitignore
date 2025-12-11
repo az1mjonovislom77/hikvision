@@ -9,6 +9,8 @@ __pycache__/
 # Database
 *.sqlite3
 
+staticfiles/
+
 # Media and Static files
 media/
 static_collected/ # If you collect static files here
