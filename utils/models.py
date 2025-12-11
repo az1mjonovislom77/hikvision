@@ -36,3 +36,12 @@ class Branch(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Notifications(models.Model):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.text

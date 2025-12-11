@@ -4,6 +4,7 @@ from event.serializers import AccessEventSerializer
 from event.services.event_sync import EventSyncService
 from person.models import Employee
 from utils.models import Devices
+from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import IsAuthenticated
 
 
@@ -12,6 +13,7 @@ class CustomPagination(PageNumberPagination):
     page_size_query_param = None
 
 
+@extend_schema(tags=["Event"])
 class AccessEventList(ListAPIView):
     serializer_class = AccessEventSerializer
     pagination_class = CustomPagination

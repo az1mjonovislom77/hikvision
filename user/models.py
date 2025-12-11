@@ -25,9 +25,15 @@ class User(AbstractBaseUser, PermissionsMixin):
         SUPERADMIN = 's', "superadmin"
         ADMIN = 'a', "admin"
 
+    class PaymentStatus(models.TextChoices):
+        PAID = "p", "paid"
+        NOT_PAID = "np", "not paid"
+
     full_name = models.CharField(max_length=100, null=True, blank=True)
     phone_number = models.CharField(max_length=100, unique=True, null=True, blank=True)
     role = models.CharField(max_length=10, choices=UserRoles.choices, null=True, blank=True)
+    payment_status = models.CharField(max_length=10, choices=PaymentStatus.choices, null=True, blank=True)
+
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
