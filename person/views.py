@@ -154,8 +154,8 @@ class EmployeeUpdateView(APIView):
     serializer_class = EmployeeUpdateSerializer
     permission_classes = [IsAuthenticated]
 
-    def put(self, request, employee_no):
-        emp = Employee.objects.filter(employee_no=employee_no).first()
+    def put(self, request, employee_id):
+        emp = Employee.objects.select_related("device__user").filter(id=employee_id).first()
         if not emp:
             return Response({"error": "Topilmadi"}, status=404)
 
@@ -163,9 +163,9 @@ class EmployeeUpdateView(APIView):
             if emp.device.user != request.user:
                 return Response({"error": "Ruxsat yo‘q"}, status=403)
 
-        ser = EmployeeUpdateSerializer(data=request.data, partial=True)
-        ser.is_valid(raise_exception=True)
-        data = ser.validated_data
+        serializer = EmployeeUpdateSerializer(emp, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
         name = data.get("name", emp.name)
         user_type = data.get("user_type", emp.user_type)
@@ -177,7 +177,7 @@ class EmployeeUpdateView(APIView):
 
         payload = {
             "UserInfo": {
-                "employeeNo": employee_no,
+                "employeeNo": emp.employee_no,
                 "name": name,
                 "userType": user_type,
                 "doorRight": door_right,
@@ -208,8 +208,8 @@ class EmployeeUpdateView(APIView):
 class EmployeeDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def delete(self, request, employee_no):
-        emp = Employee.objects.filter(employee_no=employee_no).first()
+    def delete(self, request, employee_id):
+        emp = Employee.objects.select_related("device__user").filter(id=employee_id).first()
         if not emp:
             return Response({"error": "Not found"}, status=404)
 
@@ -217,12 +217,14 @@ class EmployeeDeleteView(APIView):
             if emp.device.user != request.user:
                 return Response({"error": "Ruxsat yo‘q"}, status=403)
 
-        result = HikvisionService.delete_user(emp.device, employee_no)
+        result = HikvisionService.delete_user(emp.device, emp.employee_no)
         if result.status_code != 200:
-            return Response({"error": "Delete failed", "detail": result.text}, status=400)
+            return Response(
+                {"error": "Delete failed", "detail": result.text},
+                status=400
+            )
 
         emp.delete()
-
         return Response({"status": "deleted"})
 
 
