@@ -31,7 +31,7 @@ class FullSyncEmployeesView(APIView):
 
         user = request.user
 
-        if user.is_superuser or user.is_staff:
+        if user.UserRoles.SUPERADMIN or user.is_staff:
             user_id = request.GET.get("user_id")
 
             if not user_id:
@@ -88,7 +88,7 @@ class EmployeeDetailView(APIView):
         if not emp:
             return Response({"error": "Topilmadi"}, status=404)
 
-        if not request.user.is_superuser and not request.user.is_staff:
+        if not request.user.UserRoles.SUPERADMIN and not request.user.is_staff:
             if emp.device.user != request.user:
                 return Response({"error": "Ruxsat yo‘q"}, status=403)
 
@@ -108,7 +108,7 @@ class EmployeeCreateView(APIView):
 
         user = request.user
 
-        if user.is_superuser or user.is_staff:
+        if user.UserRoles.SUPERADMIN or user.is_staff:
             device_id = request.data.get("device_id")
             if not device_id:
                 return Response({"error": "device_id admin uchun majburiy"}, status=400)
@@ -172,7 +172,7 @@ class EmployeeUpdateView(APIView):
         if not emp:
             return Response({"error": "Topilmadi"}, status=404)
 
-        if not request.user.is_superuser and not request.user.is_staff:
+        if not request.user.UserRoles.SUPERADMIN and not request.user.is_staff:
             if emp.device.user != request.user:
                 return Response({"error": "Ruxsat yo‘q"}, status=403)
 
@@ -226,7 +226,7 @@ class EmployeeDeleteView(APIView):
         if not emp:
             return Response({"error": "Not found"}, status=404)
 
-        if not request.user.is_superuser and not request.user.is_staff:
+        if not request.user.UserRoles.SUPERADMIN and not request.user.is_staff:
             if emp.device.user != request.user:
                 return Response({"error": "Ruxsat yo‘q"}, status=403)
 

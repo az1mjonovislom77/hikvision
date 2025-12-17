@@ -21,7 +21,7 @@ class DailyAccessListView(APIView):
 
         user = request.user
 
-        if user.is_superuser or user.is_staff:
+        if user.UserRoles.SUPERADMIN or user.is_staff:
             employees = Employee.objects.all()
         else:
             employees = Employee.objects.filter(device__user=user)

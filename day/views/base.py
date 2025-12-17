@@ -12,7 +12,7 @@ class BaseUserModelViewSet(PartialPutMixin, viewsets.ModelViewSet):
     pagination_class = None
 
     def get_queryset(self):
-        if self.request.user.is_superuser or self.request.user.is_staff:
+        if self.request.user.UserRoles.SUPERADMIN or self.request.user.is_staff:
             return self.queryset
 
         return self.queryset.filter(user=self.request.user)
@@ -20,7 +20,7 @@ class BaseUserModelViewSet(PartialPutMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         requested = self.request
 
-        if requested.user.is_superuser or requested.user.is_staff:
+        if requested.user.UserRoles.SUPERADMIN or requested.user.is_staff:
             user_id = requested.data.get("user_id")
             if not user_id:
                 raise ValueError("user_id admin uchun majburiy")
