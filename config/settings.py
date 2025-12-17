@@ -48,7 +48,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3001",
     "http://localhost:3002",
     "http://localhost:3003",
-    "http://localhost:3004"
+    "http://localhost:3004",
+    "https://45.55.129.34/"
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -56,7 +57,8 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3001",
     "http://localhost:3002",
     "http://localhost:3003",
-    "http://localhost:3004"
+    "http://localhost:3004",
+    "https://45.55.129.34/"
 ]
 
 MIDDLEWARE = [
