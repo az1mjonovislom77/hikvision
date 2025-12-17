@@ -6,8 +6,8 @@ class EmployeeService:
 
     @staticmethod
     def sync_from_hikvision(device, hk_users):
-        device_emps = Employee.objects.filter(device=device)
-        db_ids = set(device_emps.values_list("employee_no", flat=True))
+        device_employees = Employee.objects.filter(device=device)
+        db_ids = set(device_employees.values_list("employee_no", flat=True))
         hk_ids = {u.get("employeeNo") for u in hk_users if u.get("employeeNo")}
         to_delete = db_ids - hk_ids
         Employee.objects.filter(device=device, employee_no__in=to_delete).delete()
@@ -39,8 +39,4 @@ class EmployeeService:
             if created:
                 added += 1
 
-        return {
-            "added": added,
-            "deleted": len(to_delete),
-            "device_ip": device.ip,
-        }
+        return {"added": added, "deleted": len(to_delete), "device_ip": device.ip, }

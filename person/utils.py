@@ -24,10 +24,10 @@ def download_face_from_url(url):
         if not device:
             return None
 
-        r = requests.get(url, auth=HTTPDigestAuth(device.username, device.password), timeout=10)
+        result = requests.get(url, auth=HTTPDigestAuth(device.username, device.password), timeout=10)
 
-        if r.status_code == 200:
-            return ContentFile(r.content)
+        if result.status_code == 200:
+            return ContentFile(result.content)
         return None
 
     except Exception:
@@ -49,9 +49,9 @@ def fix_hikvision_time(begin_dt, end_dt):
 
 
 def get_next_employee_no(device):
-    last_emp = Employee.objects.filter(device=device).order_by("-employee_no").first()
-    if last_emp and str(last_emp.employee_no).isdigit():
-        return str(int(last_emp.employee_no) + 1)
+    last_employee = Employee.objects.filter(device=device).order_by("-employee_no").first()
+    if last_employee and str(last_employee.employee_no).isdigit():
+        return str(int(last_employee.employee_no) + 1)
 
     return "1"
 
@@ -68,10 +68,9 @@ def get_first_last_events(emp_no, date_obj, label_in="Kirish", label_out="Chiqis
     first_entry = AccessEvent.objects.filter(
         employee_no=emp_no,
         raw_json__label=label_in,
-        time__date=date_obj
-    ).order_by("time").first()
+        time__date=date_obj).order_by("time").first()
 
-    last_exit = AccessEvent.objects.filter(employee_no=emp_no, raw_json__label=label_out, time__date=date_obj).order_by(
-        "-time").first()
+    last_exit = (AccessEvent.objects.filter(employee_no=emp_no, raw_json__label=label_out, time__date=date_obj)
+                 .order_by("-time").first())
 
     return first_entry, last_exit

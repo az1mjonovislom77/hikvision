@@ -24,9 +24,9 @@ class HikvisionService:
             }
         }
 
-        r = requests.post(url, json=payload, auth=HikvisionService._auth(device), timeout=10)
+        result = requests.post(url, json=payload, auth=HikvisionService._auth(device), timeout=10)
 
-        return r.json().get("UserInfoSearch", {}).get("UserInfo", [])
+        return result.json().get("UserInfoSearch", {}).get("UserInfo", [])
 
     @staticmethod
     def create_user(device, data):
