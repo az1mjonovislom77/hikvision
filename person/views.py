@@ -149,8 +149,9 @@ class EmployeeCreateView(APIView):
         })
 
 
-@extend_schema(tags=["Employee"])
+@extend_schema(tags=["Employee"], responses={200: EmployeeSerializer(many=True)})
 class EmployeeUpdateView(APIView):
+    serializers_class = EmployeeUpdateSerializer
     permission_classes = [IsAuthenticated]
 
     def put(self, request, employee_no):
