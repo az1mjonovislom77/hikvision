@@ -1,9 +1,10 @@
 from django.urls import path
 from .views import FullSyncEmployeesView, EmployeeCreateView, EmployeeUpdateView, EmployeeDeleteView, \
-    DailyAccessListView, DailyAccessExcelExport
+    DailyAccessListView, DailyAccessExcelExport, EmployeeDetailView
 
 urlpatterns = [
     path("sync-employees/", FullSyncEmployeesView.as_view(), name="sync-persons"),
+    path("sync-employees/<int:employee_id>/", EmployeeDetailView.as_view(), name="employee-detail"),
     path("create/", EmployeeCreateView.as_view(), name="person_create"),
     path("update/<int:employee_id>/", EmployeeUpdateView.as_view(), name="person-update"),
     path("delete/<int:employee_id>/", EmployeeDeleteView.as_view(), name="person-delete"),

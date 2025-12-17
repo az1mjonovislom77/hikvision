@@ -83,6 +83,24 @@ class FullSyncEmployeesView(APIView):
         return Response({"success": True, **total_stats, "employees": serializer.data})
 
 
+@extend_schema(tags=["Employee"], responses={200: EmployeeSerializer})
+class EmployeeDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = EmployeeSerializer
+
+    def get(self, request, employee_id):
+        emp = Employee.objects.select_related("device__user").filter(id=employee_id).first()
+        if not emp:
+            return Response({"error": "Topilmadi"}, status=404)
+
+        if not request.user.is_superuser and not request.user.is_staff:
+            if emp.device.user != request.user:
+                return Response({"error": "Ruxsat yo‘q"}, status=403)
+
+        serializer = EmployeeSerializer(emp, context={"request": request})
+        return Response(serializer.data)
+
+
 @extend_schema(tags=["Employee"])
 class EmployeeCreateView(APIView):
     permission_classes = [IsAuthenticated]
