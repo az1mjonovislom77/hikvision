@@ -9,7 +9,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
         model = Employee
         fields = ["id", "device", "employee_no", "name", "user_type", "employment", "department", "position", "shift",
                   "description", "phone_number", "salary", "break_time", "work_day", "branch", "fine", "day_off",
-                  "begin_time", "end_time", "door_right", "face_url", "local_face", "created_at"]
+                  "begin_time", "end_time", "door_right", "local_face", "created_at"]
 
     def get_local_face(self, obj):
         if obj.face_image:
