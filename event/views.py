@@ -32,25 +32,25 @@ class AccessEventList(ListAPIView):
         return queryset.filter(employee__in=employees)
 
 
-class RealTimeEventToTelegramAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        last_time = get_last_event_time()
-
-        try:
-            new_count = fetch_face_events(since=last_time)
-        except Exception as e:
-            return Response(
-                {"success": False, "error": str(e)},
-                status=500
-            )
-
-        if new_count:
-            set_last_event_time(timezone.now())
-            send_telegram(f"🚨 {new_count} ta YANGI EVENT aniqlandi")
-
-        return Response({
-            "success": True,
-            "new_events": new_count
-        })
+# class RealTimeEventToTelegramAPIView(APIView):
+#     permission_classes = [IsAuthenticated]
+#
+#     def get(self, request):
+#         last_time = get_last_event_time()
+#
+#         try:
+#             new_count = fetch_face_events(since=last_time)
+#         except Exception as e:
+#             return Response(
+#                 {"success": False, "error": str(e)},
+#                 status=500
+#             )
+#
+#         if new_count:
+#             set_last_event_time(timezone.now())
+#             send_telegram(f"🚨 {new_count} ta YANGI EVENT aniqlandi")
+#
+#         return Response({
+#             "success": True,
+#             "new_events": new_count
+#         })
