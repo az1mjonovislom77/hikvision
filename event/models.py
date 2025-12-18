@@ -15,6 +15,7 @@ class AccessEvent(models.Model):
     employee_no = models.CharField(max_length=50)
     picture_url = models.TextField()
     raw_json = models.JSONField()
+    sent_to_telegram = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['-time']
