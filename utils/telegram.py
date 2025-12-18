@@ -4,6 +4,7 @@ from decouple import config
 from requests.auth import HTTPDigestAuth
 
 BOT_TOKEN = config("BOT_TOKEN")
+print("BOT_TOKEN =", config("BOT_TOKEN", default="YOQ"))
 
 
 def download_image(url, device):
