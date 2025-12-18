@@ -155,11 +155,7 @@ class EmployeeCreateView(APIView):
             end_time=data["end_time"],
         )
 
-        return Response({
-            "status": "created",
-            "employee_no": employee_no,
-            "device": device.ip
-        })
+        return Response({"status": "created", "employee_no": employee_no, "device": device.ip})
 
 
 @extend_schema(tags=["Employee"])
