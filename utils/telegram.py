@@ -4,7 +4,6 @@ from decouple import config
 from requests.auth import HTTPDigestAuth
 
 BOT_TOKEN = config("BOT_TOKEN")
-CHAT_ID = config("CHAT_ID")
 
 
 def download_image(url, device):
@@ -19,16 +18,30 @@ def download_image(url, device):
     return None
 
 
-def send_telegram(text: str, image_bytes=None):
+def send_telegram(chat_id, text, image_bytes=None):
     if image_bytes:
         file_obj = BytesIO(image_bytes)
         file_obj.name = "event.jpg"
 
-        result = requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
-                               data={"chat_id": CHAT_ID, "caption": text, "parse_mode": "HTML", },
-                               files={"photo": file_obj}, timeout=15)
+        r = requests.post(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
+            data={
+                "chat_id": chat_id,
+                "caption": text,
+                "parse_mode": "HTML",
+            },
+            files={"photo": file_obj},
+            timeout=15,
+        )
     else:
-        result = requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-                               json={"chat_id": CHAT_ID, "text": text, "parse_mode": "HTML", }, timeout=5)
+        r = requests.post(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+            json={
+                "chat_id": chat_id,
+                "text": text,
+                "parse_mode": "HTML",
+            },
+            timeout=5,
+        )
 
-    result.raise_for_status()
+    r.raise_for_status()

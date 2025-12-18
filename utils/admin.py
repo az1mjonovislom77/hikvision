@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from utils.models import Devices, Branch, Department
+from utils.models import Devices, Branch, Department, TelegramChannel
 
 
 @admin.register(Devices)
@@ -16,3 +16,8 @@ class DepartmentAdmin(admin.ModelAdmin):
 @admin.register(Branch)
 class BranchAdmin(admin.ModelAdmin):
     list_display = ('id', 'name')
+
+
+@admin.register(TelegramChannel)
+class TelegramChannelAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'chat_id')

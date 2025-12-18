@@ -1,7 +1,8 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
-from utils.views.base import PartialPutMixin
+
+from user.views.user_views import PartialPutMixin
 
 User = get_user_model()
 

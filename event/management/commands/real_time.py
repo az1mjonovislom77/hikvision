@@ -3,6 +3,7 @@ import time
 from event.services.event_state import get_last_event_time, set_last_event_time
 from event.services.event_sync import fetch_face_events
 from event.models import AccessEvent
+from utils.models import TelegramChannel
 from utils.telegram import send_telegram, download_image
 
 
@@ -36,42 +37,37 @@ class Command(BaseCommand):
                     employee = event.employee
                     device = employee.device if employee else None
 
+                    if not employee or not device or not device.user:
+                        event.sent_to_telegram = True
+                        event.save(update_fields=["sent_to_telegram"])
+                        continue
+
                     raw = event.raw_json or {}
-                    label = raw.get("label", "")
-                    label_normalized = label.strip().lower()
 
-                    kirish_labels = {"kirish", "in", "entry", "enter"}
-                    chiqish_labels = {"chiqish", "out", "exit", "leave"}
-
-                    if label_normalized in kirish_labels:
-                        direction = "KIRISH"
-                    elif label_normalized in chiqish_labels:
-                        direction = "CHIQISH"
+                    label = raw.get("label", "").strip().lower()
+                    if label in {"kirish", "in", "entry", "enter"}:
+                        direction = "🚪 KIRISH"
+                    elif label in {"chiqish", "out", "exit", "leave"}:
+                        direction = "🚷 CHIQISH"
                     else:
                         direction = "NOMAʼLUM"
 
-                    name = employee.name if employee else "Nomaʼlum"
-                    emp_no = employee.employee_no if employee else "-"
-                    device_name = device.name if device else "Nomaʼlum"
-
                     msg = (
-                        f"🚪 <b>{direction}</b>\n\n"
-                        f"👤 <b>Ism:</b> {name}\n"
-                        f"🆔 <b>Employee №:</b> {emp_no}\n"
+                        f"<b>{direction}</b>\n\n"
+                        f"👤 <b>Ism:</b> {employee.name}\n"
+                        f"🆔 <b>Employee №:</b> {employee.employee_no}\n"
                         f"🕒 <b>Vaqt:</b> {event.time.strftime('%Y-%m-%d %H:%M:%S')}\n"
-                        f"📍 <b>Qurilma:</b> {device_name}"
+                        f"📍 <b>Qurilma:</b> {device.name}"
                     )
 
-                    picture_url = raw.get("pictureURL")
-
                     image_bytes = None
-                    if picture_url and device and device.username and device.password:
+                    picture_url = raw.get("pictureURL")
+                    if picture_url and device.username and device.password:
                         image_bytes = download_image(picture_url, device)
-                    if image_bytes:
-                        send_telegram(msg, image_bytes=image_bytes)
-                        print("TELEGRAM SENT WITH IMAGE")
-                    else:
-                        print("NO IMAGE → SKIPPED TELEGRAM")
+
+                    channels = TelegramChannel.objects.filter(user=device.user)
+
+                    for channel in channels: send_telegram(chat_id=channel.chat_id, text=msg, image_bytes=image_bytes)
 
                     event.sent_to_telegram = True
                     event.save(update_fields=["sent_to_telegram"])
