@@ -1,14 +1,11 @@
 import requests
 import time
-from urllib.parse import urlparse
 from requests.auth import HTTPDigestAuth
 from django.utils.dateparse import parse_datetime
 from event.models import AccessEvent
 from event.utils.events_name import major_name, minor_name
-from datetime import datetime
 from person.utils import UZ_TZ
-from person.models import Employee
-from utils.models import Devices
+from person.models import Employee, EmployeeHistory
 
 
 def fetch_face_events(devices, since=None):
@@ -42,11 +39,14 @@ def fetch_face_events(devices, since=None):
                     "%Y-%m-%d %H:%M:%S"
                 )
 
-            r = session.post(url, json=payload, timeout=15)
-            if r.status_code != 200:
+            try:
+                r = session.post(url, json=payload, timeout=15)
+                if r.status_code != 200:
+                    break
+                data = r.json()
+            except Exception:
                 break
 
-            data = r.json()
             acs = data.get("AcsEvent", {})
             events = acs.get("InfoList", []) or []
             status = acs.get("responseStatusStrg", "")
@@ -68,10 +68,14 @@ def fetch_face_events(devices, since=None):
                     continue
 
                 serial_no = ev.get("serialNo")
-                local_emp = ev.get("employeeNoString", "")
-                employee_obj = Employee.objects.filter(employee_no=local_emp, device=device).first()
+                local_emp_no = ev.get("employeeNoString", "")
 
-                obj, created = AccessEvent.objects.get_or_create(
+                label_name = (ev.get("labelName") or ev.get("label") or ev.get("name") or "")
+                employee_obj = None
+                if local_emp_no:
+                    employee_obj = Employee.objects.filter(employee_no=local_emp_no, device=device).first()
+
+                event_obj, created = AccessEvent.objects.get_or_create(
                     device=device,
                     serial_no=serial_no,
                     defaults={
@@ -81,14 +85,20 @@ def fetch_face_events(devices, since=None):
                         "minor": 75,
                         "major_name": major_name(5),
                         "minor_name": minor_name(75),
+                        "label_name": label_name,
                         "name": ev.get("name", ""),
-                        "employee_no": local_emp,
+                        "employee_no": local_emp_no,
                         "picture_url": ev.get("pictureURL") or ev.get("faceURL"),
                         "raw_json": ev,
                     }
                 )
 
-                if created:
+                if created and employee_obj:
+                    EmployeeHistory.objects.create(
+                        employee=employee_obj,
+                        event=event_obj,
+                        event_time=t
+                    )
                     saved += 1
 
             if status != "MORE" or not events:

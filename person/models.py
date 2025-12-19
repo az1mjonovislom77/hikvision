@@ -33,3 +33,18 @@ class Employee(models.Model):
 
     def __str__(self):
         return f"{self.employee_no} - {self.name}"
+
+
+class EmployeeHistory(models.Model):
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="histories")
+    event_time = models.DateTimeField()
+    event = models.ForeignKey("event.AccessEvent", on_delete=models.CASCADE, related_name="employee_histories")
+    created_at = models.DateTimeField(auto_now_add=True)
+    label_name = models.CharField(max_length=255, null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["employee"]), ]
+        ordering = ["-event_time"]
+
+    def __str__(self):
+        return f"{self.employee.name} - {self.event_time}"

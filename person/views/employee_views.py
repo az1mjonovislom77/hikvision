@@ -3,13 +3,16 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.permissions import IsAuthenticated
-from person.models import Employee
+from person.models import Employee, EmployeeHistory
 from user.models import User
 from utils.models import Devices
-from person.serializers import (EmployeeSerializer, EmployeeCreateSerializer, EmployeeUpdateSerializer)
+from person.serializers import (EmployeeSerializer, EmployeeCreateSerializer, EmployeeUpdateSerializer,
+                                EmployeeHistorySerializer)
 from person.utils import fix_hikvision_time
 from person.services.hikvision import HikvisionService
 from person.services.employee import EmployeeService
+from rest_framework.generics import ListAPIView
+from django.utils.timezone import localdate
 
 
 @extend_schema(
@@ -46,11 +49,7 @@ class EmployeeSyncView(APIView):
         if not devices.exists():
             return Response({"error": "Ushbu userga device biriktirilmagan"}, status=400)
 
-        total_stats = {
-            "synced_devices": 0,
-            "added": 0,
-            "deleted": 0,
-        }
+        total_stats = {"synced_devices": 0, "added": 0, "deleted": 0, }
 
         for device in devices:
             hk_users = HikvisionService.search_users(device)
@@ -241,6 +240,55 @@ class EmployeeDeleteView(APIView):
 
         emp.delete()
         return Response({"status": "deleted"})
+
+
+@extend_schema(
+    tags=["Employee"],
+    description="Employee uchun event history. Agar date berilmasa — bugungi sana olinadi.",
+    parameters=[
+        OpenApiParameter(
+            name="employee_id",
+            type=int,
+            required=True
+        ),
+        OpenApiParameter(
+            name="date",
+            type=int,
+            required=False,
+            description="Sana (YYYY-MM-DD). Berilmasa bugungi sana."
+        ),
+    ],
+    responses={200: EmployeeHistorySerializer(many=True)}
+)
+class EmployeeHistoryListView(ListAPIView):
+    serializer_class = EmployeeHistorySerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None  # pagination yo‘q
+
+    def list(self, request, *args, **kwargs):
+        if not request.query_params.get("employee_id"):
+            return Response(
+                {"error": "employee_id majburiy"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return super().list(request, *args, **kwargs)
+
+    def get_queryset(self):
+        user = self.request.user
+        employee_id = self.request.query_params.get("employee_id")
+        date = self.request.query_params.get("date")
+
+        if not date:
+            date = localdate()
+
+        qs = EmployeeHistory.objects.filter(employee_id=employee_id, event_time__date=date)
+
+        if not user.is_superuser and not user.is_staff:
+            user_devices = Devices.objects.filter(user=user)
+            if not Employee.objects.filter(id=employee_id, device__in=user_devices).exists():
+                return EmployeeHistory.objects.none()
+
+        return qs.order_by("-event_time")
 
 # class FaceCreateView(APIView):
 #

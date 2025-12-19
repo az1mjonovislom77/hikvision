@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from person.models import Employee
+from person.models import Employee, EmployeeHistory
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
@@ -39,3 +39,11 @@ class EmployeeUpdateSerializer(serializers.ModelSerializer):
                   "position", "shift", "description", "phone_number", "salary", "break_time", "work_day", "branch",
                   "fine", "day_off"]
         extra_kwargs = {"name": {"required": False}}
+
+
+class EmployeeHistorySerializer(serializers.ModelSerializer):
+    label_name = serializers.CharField(source="event.label_name", read_only=True)
+
+    class Meta:
+        model = EmployeeHistory
+        fields = ["id", "event_time", "label_name", ]

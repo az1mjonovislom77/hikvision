@@ -17,6 +17,7 @@ class AccessEvent(models.Model):
     raw_json = models.JSONField()
     sent_to_telegram = models.BooleanField(default=False)
     device = models.ForeignKey(Devices, on_delete=models.SET_NULL, null=True, blank=True, related_name="events")
+    label_name = models.CharField(max_length=255, null=True, blank=True)
 
     class Meta:
         unique_together = ("device", "serial_no")
