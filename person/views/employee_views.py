@@ -19,21 +19,18 @@ from person.services.employee import EmployeeService
             name="user_id",
             type=int,
             required=False,
-            description="Faqat superadmin uchun. Tanlangan userning device larini sync qiladi."
+            description="Faqat superadmin uchun. Tanlangan user device larini sync qiladi."
         )
     ],
-    responses={200: EmployeeSerializer(many=True)}
 )
-class FullSyncEmployeesView(APIView):
+class EmployeeSyncView(APIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = EmployeeSerializer
 
-    def get(self, request):
-
+    def post(self, request):
         user = request.user
 
         if user.UserRoles.SUPERADMIN or user.is_staff:
-            user_id = request.GET.get("user_id")
+            user_id = request.query_params.get("user_id")  # 🔥 MUHIM
 
             if not user_id:
                 return Response(
@@ -46,7 +43,6 @@ class FullSyncEmployeesView(APIView):
                 return Response({"error": "Bunday user topilmadi"}, status=404)
 
             devices = Devices.objects.filter(user=target_user)
-
         else:
             devices = Devices.objects.filter(user=user)
 
@@ -59,24 +55,53 @@ class FullSyncEmployeesView(APIView):
             "deleted": 0,
         }
 
-        employees_final = []
-
         for device in devices:
             hk_users = HikvisionService.search_users(device)
-
             stats = EmployeeService.sync_from_hikvision(device, hk_users)
 
             total_stats["synced_devices"] += 1
             total_stats["added"] += stats["added"]
             total_stats["deleted"] += stats["deleted"]
 
-            employees_final.extend(Employee.objects.filter(device=device))
+        return Response({"success": True, **total_stats})
 
-        employees_final = list(set(employees_final))
 
-        serializer = EmployeeSerializer(employees_final, many=True, context={"request": request})
+@extend_schema(
+    tags=["Employee"],
+    parameters=[
+        OpenApiParameter(
+            name="user_id",
+            type=int,
+            required=False,
+            description="Faqat superadmin uchun. Tanlangan user employee larini ko‘rish."
+        )
+    ],
+    responses={200: EmployeeSerializer(many=True)}
+)
+class EmployeeListView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = EmployeeSerializer
 
-        return Response({"success": True, **total_stats, "employees": serializer.data})
+    def get(self, request):
+        user = request.user
+
+        if user.UserRoles.SUPERADMIN or user.is_staff:
+            user_id = request.GET.get("user_id")
+            if not user_id:
+                return Response({"error": "user_id superadmin uchun majburiy"}, status=400)
+
+            target_user = User.objects.filter(id=user_id).first()
+            if not target_user:
+                return Response({"error": "Bunday user topilmadi"}, status=404)
+
+            employees = Employee.objects.filter(device__user=target_user)
+
+        else:
+            employees = Employee.objects.filter(device__user=user)
+
+        serializer = EmployeeSerializer(employees, many=True, context={"request": request})
+
+        return Response(serializer.data)
 
 
 @extend_schema(tags=["Employee"], responses={200: EmployeeSerializer})
