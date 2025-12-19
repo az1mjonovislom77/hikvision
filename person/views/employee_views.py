@@ -33,10 +33,7 @@ class EmployeeSyncView(APIView):
             user_id = request.query_params.get("user_id")
 
             if not user_id:
-                return Response(
-                    {"error": "user_id superadmin uchun majburiy"},
-                    status=400
-                )
+                return Response({"error": "user_id superadmin uchun majburiy"}, status=400)
 
             target_user = User.objects.filter(id=user_id).first()
             if not target_user:
@@ -134,7 +131,7 @@ class EmployeeCreateView(APIView):
 
         user = request.user
 
-        if user.UserRoles.SUPERADMIN or user.is_staff:
+        if user.role == User.UserRoles.SUPERADMIN or user.is_staff:
             device_id = request.data.get("device_id")
             if not device_id:
                 return Response({"error": "device_id admin uchun majburiy"}, status=400)
@@ -170,17 +167,9 @@ class EmployeeCreateView(APIView):
         if result.status_code != 200:
             return Response({"error": "Hikvision xatosi", "detail": result.text}, status=400)
 
-        Employee.objects.create(
-            device=device,
-            employee_no=employee_no,
-            name=data["name"],
-            user_type=data.get("user_type"),
-            door_right=data.get("door_right"),
-            begin_time=data["begin_time"],
-            end_time=data["end_time"],
-        )
+        employee = Employee.objects.create(**data, device=device, employee_no=employee_no)
 
-        return Response({"status": "created", "employee_no": employee_no, "device": device.ip})
+        return Response({"status": "created", "employee_no": employee_no, "id": employee.id, "device": device.ip})
 
 
 @extend_schema(tags=["Employee"])
@@ -253,10 +242,7 @@ class EmployeeDeleteView(APIView):
 
         result = HikvisionService.delete_user(emp.device, emp.employee_no)
         if result.status_code != 200:
-            return Response(
-                {"error": "Delete failed", "detail": result.text},
-                status=400
-            )
+            return Response({"error": "Delete failed", "detail": result.text}, status=400)
 
         emp.delete()
         return Response({"status": "deleted"})
