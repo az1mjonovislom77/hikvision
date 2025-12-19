@@ -11,12 +11,10 @@ from person.models import Employee
 from utils.models import Devices
 
 
-def fetch_face_events(since: datetime = None):
+def fetch_face_events(devices, since=None):
     saved = 0
-    devices = Devices.objects.all()
 
     for device in devices:
-
         url = f"http://{device.ip}/ISAPI/AccessControl/AcsEvent?format=json"
         headers = {"Content-Type": "application/json"}
 
@@ -42,15 +40,11 @@ def fetch_face_events(since: datetime = None):
             if since:
                 payload["AcsEventCond"]["startTime"] = since.strftime("%Y-%m-%d %H:%M:%S")
 
-            try:
-                r = session.post(url, json=payload, timeout=15)
-                if r.status_code != 200:
-                    break
-
-                data = r.json()
-            except:
+            r = session.post(url, json=payload, timeout=15)
+            if r.status_code != 200:
                 break
 
+            data = r.json()
             acs = data.get("AcsEvent", {})
             events = acs.get("InfoList", []) or []
             status = acs.get("responseStatusStrg", "")
@@ -59,7 +53,6 @@ def fetch_face_events(since: datetime = None):
                 search_id = acs["searchID"]
 
             for ev in events:
-
                 t = parse_datetime(ev.get("time"))
                 if not t:
                     continue
@@ -72,26 +65,17 @@ def fetch_face_events(since: datetime = None):
                 if since and t <= since:
                     continue
 
-                pic_url = ev.get("pictureURL") or ev.get("faceURL")
-
-                event_ip = None
-                if pic_url:
-                    parsed = urlparse(pic_url)
-                    event_ip = parsed.hostname
-
-                local_emp = ev.get("employeeNoString", "")
-
-                employee_obj = None
-                if event_ip and local_emp:
-                    employee_obj = Employee.objects.filter(
-                        employee_no=local_emp,
-                        device__ip=event_ip
-                    ).first()
-
-                if AccessEvent.objects.filter(serial_no=ev.get("serialNo"), time=t).exists():
+                if AccessEvent.objects.filter(
+                        device=device,
+                        serial_no=ev.get("serialNo")
+                ).exists():
                     continue
 
+                local_emp = ev.get("employeeNoString", "")
+                employee_obj = Employee.objects.filter(employee_no=local_emp, device=device).first()
+
                 AccessEvent.objects.create(
+                    device=device,
                     employee=employee_obj,
                     serial_no=ev.get("serialNo"),
                     time=t,
@@ -101,13 +85,12 @@ def fetch_face_events(since: datetime = None):
                     minor_name=minor_name(75),
                     name=ev.get("name", ""),
                     employee_no=local_emp,
-                    picture_url=pic_url,
+                    picture_url=ev.get("pictureURL") or ev.get("faceURL"),
                     raw_json=ev
                 )
-
                 saved += 1
 
-            if status != "MORE" or len(events) == 0:
+            if status != "MORE" or not events:
                 break
 
             offset += len(events)

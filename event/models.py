@@ -1,6 +1,6 @@
 from django.db import models
-
 from person.models import Employee
+from utils.models import Devices
 
 
 class AccessEvent(models.Model):
@@ -16,6 +16,7 @@ class AccessEvent(models.Model):
     picture_url = models.TextField()
     raw_json = models.JSONField()
     sent_to_telegram = models.BooleanField(default=False)
+    device = models.ForeignKey(Devices, on_delete=models.SET_NULL, null=True, blank=True, related_name="events")
 
     class Meta:
         ordering = ['-time']
