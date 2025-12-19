@@ -19,6 +19,7 @@ class AccessEvent(models.Model):
     device = models.ForeignKey(Devices, on_delete=models.SET_NULL, null=True, blank=True, related_name="events")
 
     class Meta:
+        unique_together = ("device", "serial_no")
         ordering = ['-time']
         indexes = [models.Index(fields=['-time']), models.Index(fields=['serial_no']),
                    models.Index(fields=['major', 'minor']), ]

@@ -33,12 +33,14 @@ def fetch_face_events(devices, since=None):
                     "searchResultPosition": offset,
                     "maxResults": limit,
                     "major": 5,
-                    "minor": 75
+                    "minor": 75,
                 }
             }
 
             if since:
-                payload["AcsEventCond"]["startTime"] = since.strftime("%Y-%m-%d %H:%M:%S")
+                payload["AcsEventCond"]["startTime"] = since.strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
 
             r = session.post(url, json=payload, timeout=15)
             if r.status_code != 200:
@@ -65,30 +67,29 @@ def fetch_face_events(devices, since=None):
                 if since and t <= since:
                     continue
 
-                if AccessEvent.objects.filter(
-                        device=device,
-                        serial_no=ev.get("serialNo")
-                ).exists():
-                    continue
-
+                serial_no = ev.get("serialNo")
                 local_emp = ev.get("employeeNoString", "")
                 employee_obj = Employee.objects.filter(employee_no=local_emp, device=device).first()
 
-                AccessEvent.objects.create(
+                obj, created = AccessEvent.objects.get_or_create(
                     device=device,
-                    employee=employee_obj,
-                    serial_no=ev.get("serialNo"),
-                    time=t,
-                    major=5,
-                    minor=75,
-                    major_name=major_name(5),
-                    minor_name=minor_name(75),
-                    name=ev.get("name", ""),
-                    employee_no=local_emp,
-                    picture_url=ev.get("pictureURL") or ev.get("faceURL"),
-                    raw_json=ev
+                    serial_no=serial_no,
+                    defaults={
+                        "employee": employee_obj,
+                        "time": t,
+                        "major": 5,
+                        "minor": 75,
+                        "major_name": major_name(5),
+                        "minor_name": minor_name(75),
+                        "name": ev.get("name", ""),
+                        "employee_no": local_emp,
+                        "picture_url": ev.get("pictureURL") or ev.get("faceURL"),
+                        "raw_json": ev,
+                    }
                 )
-                saved += 1
+
+                if created:
+                    saved += 1
 
             if status != "MORE" or not events:
                 break
