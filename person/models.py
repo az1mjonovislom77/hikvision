@@ -28,5 +28,8 @@ class Employee(models.Model):
     raw_json = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        unique_together = ("device", "employee_no")
+
     def __str__(self):
         return f"{self.employee_no} - {self.name}"

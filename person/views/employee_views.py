@@ -1,3 +1,4 @@
+import uuid
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
@@ -6,7 +7,7 @@ from person.models import Employee
 from user.models import User
 from utils.models import Devices
 from person.serializers import (EmployeeSerializer, EmployeeCreateSerializer, EmployeeUpdateSerializer)
-from person.utils import fix_hikvision_time, get_next_employee_no
+from person.utils import fix_hikvision_time
 from person.services.hikvision import HikvisionService
 from person.services.employee import EmployeeService
 
@@ -116,13 +117,12 @@ class EmployeeCreateView(APIView):
             device = Devices.objects.filter(id=device_id).first()
             if not device:
                 return Response({"error": "Device topilmadi"}, status=404)
-
         else:
             device = Devices.objects.filter(user=user).first()
             if not device:
                 return Response({"error": "Sizga biror device biriktirilmagan"}, status=400)
 
-        employee_no = get_next_employee_no(device)
+        employee_no = uuid.uuid4().hex[:16]
 
         begin, end = fix_hikvision_time(data["begin_time"], data["end_time"])
 

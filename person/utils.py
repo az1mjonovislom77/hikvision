@@ -48,14 +48,6 @@ def fix_hikvision_time(begin_dt, end_dt):
     return begin, end
 
 
-def get_next_employee_no(device):
-    last_employee = Employee.objects.filter(device=device).order_by("-employee_no").first()
-    if last_employee and str(last_employee.employee_no).isdigit():
-        return str(int(last_employee.employee_no) + 1)
-
-    return "1"
-
-
 def format_late(minutes):
     if minutes is None:
         return None
