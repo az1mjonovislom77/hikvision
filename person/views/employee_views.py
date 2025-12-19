@@ -182,7 +182,7 @@ class EmployeeUpdateView(APIView):
         if not emp:
             return Response({"error": "Topilmadi"}, status=404)
 
-        if not request.user.UserRoles.SUPERADMIN and not request.user.is_staff:
+        if not request.user.is_superuser and not request.user.is_staff:
             if emp.device.user != request.user:
                 return Response({"error": "Ruxsat yo‘q"}, status=403)
 
@@ -217,12 +217,7 @@ class EmployeeUpdateView(APIView):
         if result.status_code != 200:
             return Response({"error": "Update failed", "detail": result.text}, status=400)
 
-        emp.name = name
-        emp.user_type = user_type
-        emp.door_right = door_right
-        emp.begin_time = begin
-        emp.end_time = end
-        emp.save()
+        serializer.save()
 
         return Response({"status": "updated"})
 
@@ -236,7 +231,7 @@ class EmployeeDeleteView(APIView):
         if not emp:
             return Response({"error": "Not found"}, status=404)
 
-        if not request.user.UserRoles.SUPERADMIN and not request.user.is_staff:
+        if not request.user.is_superuser and not request.user.is_staff:
             if emp.device.user != request.user:
                 return Response({"error": "Ruxsat yo‘q"}, status=403)
 
