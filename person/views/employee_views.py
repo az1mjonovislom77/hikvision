@@ -182,7 +182,7 @@ class EmployeeUpdateView(APIView):
         if not emp:
             return Response({"error": "Topilmadi"}, status=404)
 
-        if not request.user.is_superuser and not request.user.is_staff:
+        if not request.user.UserRoles.SUPERADMIN and not request.user.is_staff:
             if emp.device.user != request.user:
                 return Response({"error": "Ruxsat yo‘q"}, status=403)
 
