@@ -60,6 +60,7 @@ class EventSyncView(APIView):
         return Response({"success": True, "added": added})
 
 
+@extend_schema(tags=["Event"])
 class AccessEventListView(ListAPIView):
     serializer_class = AccessEventSerializer
     permission_classes = [IsAuthenticated]
