@@ -1,13 +1,12 @@
 from django.core.management.base import BaseCommand
 import time
 from django.utils import timezone
-
 from event.services.event_state import get_last_event_time, set_last_event_time
 from event.services.event_sync import fetch_face_events
 from event.models import AccessEvent
 from utils.models import TelegramChannel
 from utils.telegram import send_telegram, download_image
-from person.models import Device
+from utils.models import Devices
 
 
 class Command(BaseCommand):
@@ -24,7 +23,7 @@ class Command(BaseCommand):
 
         while True:
             try:
-                devices = Device.objects.all()
+                devices = Devices.objects.all()
                 fetch_face_events(devices=devices, since=last_time)
 
                 events = (
@@ -46,10 +45,10 @@ class Command(BaseCommand):
                     raw = event.raw_json or {}
 
                     label = (
-                        raw.get("labelName")
-                        or raw.get("label")
-                        or raw.get("name")
-                        or ""
+                            raw.get("labelName")
+                            or raw.get("label")
+                            or raw.get("name")
+                            or ""
                     ).strip().lower()
 
                     if label in {"kirish", "in", "entry", "enter"}:
