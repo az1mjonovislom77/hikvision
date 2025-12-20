@@ -7,7 +7,7 @@ from utils.models import Devices
 from event.models import AccessEvent
 from person.models import Employee
 
-UZ_TZ = pytz.timezone("Asia/Shanghai")
+UZ_TZ = pytz.timezone("Asia/Tashkent")
 
 
 def download_face_from_url(url):
