@@ -284,7 +284,7 @@ class EmployeeHistoryListView(ListAPIView):
 
         qs = EmployeeHistory.objects.filter(employee_id=employee_id, event_time__date=date)
 
-        if not user.is_superuser and not user.is_staff:
+        if not user.role == User.UserRoles.SUPERADMIN and not user.is_staff:
             user_devices = Devices.objects.filter(user=user)
             if not Employee.objects.filter(id=employee_id, device__in=user_devices).exists():
                 return EmployeeHistory.objects.none()
