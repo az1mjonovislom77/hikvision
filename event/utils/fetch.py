@@ -13,17 +13,16 @@ def fetch_face_events(devices, since=None):
 
     for device in devices:
         url = f"http://{device.ip}/ISAPI/AccessControl/AcsEvent?format=json"
-        headers = {"Content-Type": "application/json"}
+
+        session = requests.Session()
+        session.auth = HTTPDigestAuth(device.username, device.password)
+        session.headers.update({"Content-Type": "application/json"})
 
         search_id = "0"
         offset = 0
         limit = 50
 
         while True:
-            session = requests.Session()
-            session.auth = HTTPDigestAuth(device.username, device.password)
-            session.headers.update(headers)
-
             payload = {
                 "AcsEventCond": {
                     "searchID": search_id,
@@ -68,18 +67,22 @@ def fetch_face_events(devices, since=None):
                     continue
 
                 serial_no = ev.get("serialNo")
-                local_emp_no = ev.get("employeeNoString", "")
+                employee_no = ev.get("employeeNoString", "")
 
                 label_name = (ev.get("labelName") or ev.get("label") or ev.get("name") or "")
-                employee_obj = None
-                if local_emp_no:
-                    employee_obj = Employee.objects.filter(employee_no=local_emp_no, device=device).first()
+
+                employee = None
+                if employee_no:
+                    employee = Employee.objects.filter(
+                        employee_no=employee_no,
+                        device=device
+                    ).first()
 
                 event_obj, created = AccessEvent.objects.get_or_create(
                     device=device,
                     serial_no=serial_no,
                     defaults={
-                        "employee": employee_obj,
+                        "employee": employee,
                         "time": t,
                         "major": 5,
                         "minor": 75,
@@ -87,18 +90,14 @@ def fetch_face_events(devices, since=None):
                         "minor_name": minor_name(75),
                         "label_name": label_name,
                         "name": ev.get("name", ""),
-                        "employee_no": local_emp_no,
+                        "employee_no": employee_no,
                         "picture_url": ev.get("pictureURL") or ev.get("faceURL"),
                         "raw_json": ev,
                     }
                 )
 
-                if created and employee_obj:
-                    EmployeeHistory.objects.create(
-                        employee=employee_obj,
-                        event=event_obj,
-                        event_time=t
-                    )
+                if created and employee:
+                    EmployeeHistory.objects.create(employee=employee, event=event_obj, event_time=t)
                     saved += 1
 
             if status != "MORE" or not events:
