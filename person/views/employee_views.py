@@ -254,7 +254,7 @@ class EmployeeDeleteView(APIView):
         ),
         OpenApiParameter(
             name="date",
-            type=int,
+            type=str,
             required=False,
             description="Sana (YYYY-MM-DD). Berilmasa bugungi sana."
         ),
