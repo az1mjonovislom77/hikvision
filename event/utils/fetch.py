@@ -46,12 +46,12 @@ def fetch_face_events(devices, since=None):
             except Exception:
                 break
 
-            acs = data.get("AcsEvent", {})
-            events = acs.get("InfoList", []) or []
-            status = acs.get("responseStatusStrg", "")
+            access = data.get("AcsEvent", {})
+            events = access.get("InfoList", []) or []
+            status = access.get("responseStatusStrg", "")
 
-            if acs.get("searchID") and acs["searchID"] != "0":
-                search_id = acs["searchID"]
+            if access.get("searchID") and access["searchID"] != "0":
+                search_id = access["searchID"]
 
             for ev in events:
                 t = parse_datetime(ev.get("time"))
@@ -73,10 +73,7 @@ def fetch_face_events(devices, since=None):
 
                 employee = None
                 if employee_no:
-                    employee = Employee.objects.filter(
-                        employee_no=employee_no,
-                        device=device
-                    ).first()
+                    employee = Employee.objects.filter(employee_no=employee_no, device=device).first()
 
                 event_obj, created = AccessEvent.objects.get_or_create(
                     device=device,

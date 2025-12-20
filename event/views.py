@@ -38,7 +38,7 @@ class EventSyncView(APIView):
     def post(self, request):
         user = request.user
 
-        if user.is_superuser or user.is_staff:
+        if user.role == User.UserRoles.SUPERADMIN or user.is_staff:
             user_id = request.query_params.get("user_id")
             if not user_id:
                 return Response({"error": "user_id majburiy"}, status=400)

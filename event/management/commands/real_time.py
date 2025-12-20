@@ -26,12 +26,8 @@ class Command(BaseCommand):
                 devices = Devices.objects.all()
                 fetch_face_events(devices=devices, since=last_time)
 
-                events = (
-                    AccessEvent.objects
-                    .filter(time__gt=last_time, sent_to_telegram=False)
-                    .select_related("employee", "device", "device__user")
-                    .order_by("time")
-                )
+                events = (AccessEvent.objects.filter(time__gt=last_time, sent_to_telegram=False)
+                          .select_related("employee", "device", "device__user").order_by("time"))
 
                 for event in events:
                     employee = event.employee
@@ -44,12 +40,7 @@ class Command(BaseCommand):
 
                     raw = event.raw_json or {}
 
-                    label = (
-                            raw.get("labelName")
-                            or raw.get("label")
-                            or raw.get("name")
-                            or ""
-                    ).strip().lower()
+                    label = (raw.get("labelName") or raw.get("label") or raw.get("name") or "").strip().lower()
 
                     if label in {"kirish", "in", "entry", "enter"}:
                         direction = "🚪 KIRISH"
@@ -74,11 +65,7 @@ class Command(BaseCommand):
 
                     channels = TelegramChannel.objects.filter(user=device.user)
                     for channel in channels:
-                        send_telegram(
-                            chat_id=channel.chat_id,
-                            text=msg,
-                            image_bytes=image_bytes
-                        )
+                        send_telegram(chat_id=channel.chat_id, text=msg, image_bytes=image_bytes)
 
                     event.sent_to_telegram = True
                     event.save(update_fields=["sent_to_telegram"])
