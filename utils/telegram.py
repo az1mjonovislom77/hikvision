@@ -1,7 +1,10 @@
+import logging
 import requests
 from io import BytesIO
 from decouple import config
 from requests.auth import HTTPDigestAuth
+
+logger = logging.getLogger(__name__)
 
 BOT_TOKEN = config("BOT_TOKEN")
 BASE_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
@@ -16,46 +19,12 @@ def download_image(url, device):
         )
         if r.status_code == 200 and r.content:
             return r.content
-    except Exception as e:
-        print("DOWNLOAD ERROR:", e)
+    except Exception:
+        logger.exception("DOWNLOAD IMAGE ERROR")
     return None
-def resolve_chat_id(chat_id_raw):
-
-    if not chat_id_raw:
-        return None
-
-    chat_id_raw = chat_id_raw.strip()
-
-
-    if chat_id_raw.lstrip("-").isdigit():
-        return chat_id_raw
-
-    # t.me/username → @username
-    if "t.me/" in chat_id_raw:
-        chat_id_raw = "@" + chat_id_raw.split("t.me/")[-1]
-
-    if not chat_id_raw.startswith("@"):
-        chat_id_raw = "@" + chat_id_raw
-
-    # Telegram API orqali tekshirish
-    r = requests.get(
-        f"{BASE_URL}/getChat",
-        params={"chat_id": chat_id_raw},
-        timeout=10
-    )
-
-    r.raise_for_status()
-    data = r.json()
-
-    return str(data["result"]["id"])
 
 
 def send_telegram(chat_id, text, image_bytes=None):
-    chat_id = resolve_chat_id(chat_id)
-
-    if not chat_id:
-        raise ValueError("CHAT_ID ANIQLANMADI")
-
     if image_bytes:
         file_obj = BytesIO(image_bytes)
         file_obj.name = "event.jpg"
@@ -81,4 +50,5 @@ def send_telegram(chat_id, text, image_bytes=None):
             timeout=10
         )
 
+    logger.info(f"Telegram response: {r.text}")
     r.raise_for_status()
