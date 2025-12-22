@@ -5,7 +5,6 @@ from django.core.files.base import ContentFile
 from requests.auth import HTTPDigestAuth
 from utils.models import Devices
 from event.models import AccessEvent
-from person.models import Employee
 
 UZ_TZ = pytz.timezone("Asia/Tashkent")
 

@@ -24,12 +24,7 @@ class CustomPagination(PageNumberPagination):
 @extend_schema(
     tags=["Event"],
     parameters=[
-        OpenApiParameter(
-            name="user_id",
-            type=int,
-            required=False,
-            description="Faqat superadmin uchun. Qaysi user device eventlari sync qilinadi."
-        )
+        OpenApiParameter(name="user_id", type=int, required=False, description="Faqat superadmin uchun")
     ]
 )
 class EventSyncView(APIView):

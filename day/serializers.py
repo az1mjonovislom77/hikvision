@@ -1,5 +1,4 @@
 from rest_framework import serializers
-
 from day.models import DayOff, WorkDay, Shift, BreakTime
 
 

@@ -1,5 +1,4 @@
 from django.contrib import admin
-
 from day.models import DayOff, WorkDay, Shift, BreakTime
 
 

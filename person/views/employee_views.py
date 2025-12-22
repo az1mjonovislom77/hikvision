@@ -19,12 +19,7 @@ from rest_framework import status
 @extend_schema(
     tags=["Employee"],
     parameters=[
-        OpenApiParameter(
-            name="user_id",
-            type=int,
-            required=False,
-            description="Faqat superadmin uchun. Tanlangan user device larini sync qiladi."
-        )
+        OpenApiParameter(name="user_id", type=int, required=False, description="Faqat superadmin uchun")
     ],
 )
 class EmployeeSyncView(APIView):
@@ -66,14 +61,8 @@ class EmployeeSyncView(APIView):
 @extend_schema(
     tags=["Employee"],
     parameters=[
-        OpenApiParameter(
-            name="user_id",
-            type=int,
-            required=False,
-            description="Faqat superadmin uchun. Tanlangan user employee larini ko‘rish."
-        )
-    ],
-    responses={200: EmployeeSerializer(many=True)}
+        OpenApiParameter(name="user_id", type=int, required=False, description="Faqat superadmin uchun")
+    ], responses={200: EmployeeSerializer(many=True)}
 )
 class EmployeeListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -245,21 +234,10 @@ class EmployeeDeleteView(APIView):
 
 @extend_schema(
     tags=["Employee"],
-    description="Employee uchun event history. Agar date berilmasa — bugungi sana olinadi.",
     parameters=[
-        OpenApiParameter(
-            name="employee_id",
-            type=int,
-            required=True
-        ),
-        OpenApiParameter(
-            name="date",
-            type=str,
-            required=False,
-            description="Sana (YYYY-MM-DD). Berilmasa bugungi sana."
-        ),
-    ],
-    responses={200: EmployeeHistorySerializer(many=True)}
+        OpenApiParameter(name="employee_id", type=int, required=True),
+        OpenApiParameter(name="date", type=str, required=False, description="Sana (YYYY-MM-DD)."),
+    ], responses={200: EmployeeHistorySerializer(many=True)}
 )
 class EmployeeHistoryListView(ListAPIView):
     serializer_class = EmployeeHistorySerializer
@@ -268,10 +246,7 @@ class EmployeeHistoryListView(ListAPIView):
 
     def list(self, request, *args, **kwargs):
         if not request.query_params.get("employee_id"):
-            return Response(
-                {"error": "employee_id majburiy"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "employee_id majburiy"}, status=status.HTTP_400_BAD_REQUEST)
         return super().list(request, *args, **kwargs)
 
     def get_queryset(self):

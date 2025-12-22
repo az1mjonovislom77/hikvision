@@ -1,5 +1,5 @@
-from django.core.management.base import BaseCommand
 import time
+from django.core.management.base import BaseCommand
 from django.utils import timezone
 from event.services.event_state import get_last_event_time, set_last_event_time
 from event.services.event_sync import fetch_face_events
