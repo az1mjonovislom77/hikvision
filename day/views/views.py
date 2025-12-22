@@ -1,7 +1,7 @@
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from day.models import DayOff, WorkDay, Shift, BreakTime
 from day.serializers import DayOffSerializer, WorkDaySerializer, ShiftSerializer, BreakTimeSerializer
-from day.views.base import BaseUserModelViewSet
+from utils.views.base import BaseUserViewSet
 
 
 @extend_schema(
@@ -15,7 +15,7 @@ from day.views.base import BaseUserModelViewSet
         )
     ]
 )
-class DayOffViewSet(BaseUserModelViewSet):
+class DayOffViewSet(BaseUserViewSet):
     queryset = DayOff.objects.all()
     serializer_class = DayOffSerializer
 
@@ -31,7 +31,7 @@ class DayOffViewSet(BaseUserModelViewSet):
         )
     ]
 )
-class WorkDayViewSet(BaseUserModelViewSet):
+class WorkDayViewSet(BaseUserViewSet):
     queryset = WorkDay.objects.all()
     serializer_class = WorkDaySerializer
 
@@ -47,7 +47,7 @@ class WorkDayViewSet(BaseUserModelViewSet):
         )
     ]
 )
-class ShiftViewSet(BaseUserModelViewSet):
+class ShiftViewSet(BaseUserViewSet):
     queryset = Shift.objects.all()
     serializer_class = ShiftSerializer
 
@@ -63,6 +63,6 @@ class ShiftViewSet(BaseUserModelViewSet):
         )
     ]
 )
-class BreakTimeViewSet(BaseUserModelViewSet):
+class BreakTimeViewSet(BaseUserViewSet):
     queryset = BreakTime.objects.all()
     serializer_class = BreakTimeSerializer
