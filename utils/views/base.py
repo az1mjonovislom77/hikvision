@@ -13,19 +13,30 @@ class PartialPutMixin:
 
 
 class BaseUserViewSet(PartialPutMixin, viewsets.ModelViewSet):
+    http_method_names = ["get", "post", "put", "delete"]
     permission_classes = [IsAuthenticated]
     pagination_class = None
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff or user.UserRoles.SUPERADMIN:
-            return self.queryset
-        return self.queryset.filter(user=user)
+        queryset = self.queryset
+
+        if user.is_staff or user.role == User.UserRoles.SUPERADMIN:
+            user_id = self.request.query_params.get("user_id")
+
+            if user_id:
+                if not User.objects.filter(id=user_id).exists():
+                    raise ValidationError({"user_id": "Bunday user mavjud emas"})
+                return queryset.filter(user_id=user_id)
+
+            return queryset
+
+        return queryset.filter(user=user)
 
     def perform_create(self, serializer):
         user = self.request.user
 
-        if user.is_staff or user.UserRoles.SUPERADMIN:
+        if user.is_staff or user.role == User.UserRoles.SUPERADMIN:
             user_id = self.request.data.get("user_id")
             if not user_id:
                 raise ValidationError({"user_id": "superadmin uchun majburiy"})

@@ -1,5 +1,6 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 
 from user.views.user_views import PartialPutMixin
@@ -13,23 +14,34 @@ class BaseUserModelViewSet(PartialPutMixin, viewsets.ModelViewSet):
     pagination_class = None
 
     def get_queryset(self):
-        if self.request.user.UserRoles.SUPERADMIN or self.request.user.is_staff:
-            return self.queryset
+        user = self.request.user
+        queryset = self.queryset
 
-        return self.queryset.filter(user=self.request.user)
+        if user.is_staff or user.role == User.UserRoles.SUPERADMIN:
+            user_id = self.request.query_params.get("user_id")
+
+            if user_id:
+                if not User.objects.filter(id=user_id).exists():
+                    raise ValidationError({"user_id": "Bunday user mavjud emas"})
+                return queryset.filter(user_id=user_id)
+
+            return queryset
+
+        return queryset.filter(user=user)
 
     def perform_create(self, serializer):
-        requested = self.request
+        user = self.request.user
 
-        if requested.user.UserRoles.SUPERADMIN or requested.user.is_staff:
-            user_id = requested.data.get("user_id")
+        if user.is_staff or user.role == User.UserRoles.SUPERADMIN:
+            user_id = self.request.data.get("user_id")
+
             if not user_id:
-                raise ValueError("user_id admin uchun majburiy")
+                raise ValidationError({"user_id": "user_id admin uchun majburiy"})
 
-            user = User.objects.filter(id=user_id).first()
-            if not user:
-                raise ValueError("Bunday user_id mavjud emas")
+            target_user = User.objects.filter(id=user_id).first()
+            if not target_user:
+                raise ValidationError({"user_id": "Bunday user mavjud emas"})
 
-            return serializer.save(user=user)
-
-        return serializer.save(user=requested.user)
+            serializer.save(user=target_user)
+        else:
+            serializer.save(user=user)
