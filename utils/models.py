@@ -50,6 +50,7 @@ class TelegramChannel(models.Model):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     name = models.CharField(max_length=200)
     chat_id = models.CharField(max_length=200)
+    resolve_id = models.CharField(max_length=200, blank=True, null=True)
 
     def __str__(self):
         return self.name
