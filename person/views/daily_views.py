@@ -45,6 +45,7 @@ class DailyAccessListView(APIView):
                     late_minutes = int((first.time - shift_start).total_seconds() / 60)
 
             results.append({
+                "employee_id": emp.employee.id,
                 "employee_no": emp.employee_no,
                 "name": emp.name,
                 "kirish": first.time.astimezone(UZ_TZ) if first else None,
