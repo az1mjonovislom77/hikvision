@@ -39,9 +39,9 @@ class WorkDay(models.Model):
         return self.name
 
 
-class Shift(models.Model):
+class BreakTime(models.Model):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    name = models.CharField(max_length=250, null=True, blank=True)
+    name = models.CharField(max_length=250)
     start_time = models.TimeField()
     end_time = models.TimeField()
 
@@ -49,9 +49,10 @@ class Shift(models.Model):
         return self.name
 
 
-class BreakTime(models.Model):
+class Shift(models.Model):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    name = models.CharField(max_length=250)
+    break_time = models.ForeignKey(BreakTime, on_delete=models.SET_NULL, null=True, blank=True)
+    name = models.CharField(max_length=250, null=True, blank=True)
     start_time = models.TimeField()
     end_time = models.TimeField()
 
