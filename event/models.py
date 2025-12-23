@@ -6,9 +6,9 @@ from utils.models import Devices
 class AccessEvent(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True)
     serial_no = models.CharField(max_length=100, db_index=True)
-    time = models.DateTimeField()
-    major = models.IntegerField()
-    minor = models.IntegerField()
+    time = models.DateTimeField(null=True, blank=True)
+    major = models.IntegerField(null=True, blank=True)
+    minor = models.IntegerField(null=True, blank=True)
     major_name = models.CharField(max_length=100)
     minor_name = models.CharField(max_length=100)
     name = models.CharField(max_length=100)
