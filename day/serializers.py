@@ -34,10 +34,16 @@ class WorkDayCreateSerializer(serializers.ModelSerializer):
         fields = ['name', 'days']
 
 
-class BreakTimeSerializer(serializers.ModelSerializer):
+class BreakTimeGetSerializer(serializers.ModelSerializer):
     class Meta:
         model = BreakTime
         fields = "__all__"
+
+
+class BreakTimeCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WorkDay
+        fields = ['name', 'days']
 
 
 class ShiftGetSerializer(serializers.ModelSerializer):
