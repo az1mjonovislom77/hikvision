@@ -25,16 +25,10 @@ def sync_channels_from_updates():
 
         logger.info(f"📡 Update from channel: {title} ({chat_id})")
 
-        # 🔑 TITLE ORQALI MATCH QILAMIZ
-        channel = TelegramChannel.objects.filter(
-            name=title,
-            resolved_id__isnull=True
-        ).first()
+        channel = TelegramChannel.objects.filter(name=title, resolved_id__isnull=True).first()
 
         if channel:
             channel.resolved_id = chat_id
             channel.save(update_fields=["resolved_id"])
 
-            logger.info(
-                f"✅ Channel resolved: {channel.name} → {chat_id}"
-            )
+            logger.info(f"✅ Channel resolved: {channel.name} → {chat_id}")
