@@ -8,10 +8,16 @@ class DevicesSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class DepartmentSerializer(serializers.ModelSerializer):
+class DepartmentGetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Department
         fields = '__all__'
+
+
+class DepartmentCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
+        fields = ['name', ]
 
 
 class BranchGetSerializer(serializers.ModelSerializer):
