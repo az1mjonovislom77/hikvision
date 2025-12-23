@@ -76,10 +76,18 @@ class Command(BaseCommand):
                     if picture_url and device.username and device.password:
                         image_bytes = download_image(picture_url, device)
 
+                    logger.error("🧪 BEFORE TELEGRAM SEND")
+                    logger.error(f"device.user = {device.user_id}")
+
+                    all_channels = TelegramChannel.objects.all()
+                    logger.error(f"ALL channels count = {all_channels.count()}")
+
                     channels = TelegramChannel.objects.filter(
                         user=device.user,
                         resolved_id__isnull=False
                     )
+
+                    logger.error(f"FILTERED channels count = {channels.count()}")
 
                     for channel in channels:
                         try:
