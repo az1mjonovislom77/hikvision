@@ -14,10 +14,16 @@ class DepartmentSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class BranchSerializer(serializers.ModelSerializer):
+class BranchGetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Branch
-        fields = '__all__'
+        fields = ['user', 'name', 'created_at']
+
+
+class BranchCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Branch
+        fields = ['name', ]
 
 
 class TelegramChannelSerializer(serializers.ModelSerializer):

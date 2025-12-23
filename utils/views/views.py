@@ -1,6 +1,7 @@
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from utils.models import Devices, Department, Branch, TelegramChannel
-from utils.serializers import DevicesSerializer, DepartmentSerializer, BranchSerializer, TelegramChannelSerializer
+from utils.serializers import DevicesSerializer, DepartmentSerializer, TelegramChannelSerializer, \
+    BranchGetSerializer, BranchCreateSerializer
 from utils.views.base import BaseUserViewSet
 
 
@@ -49,7 +50,11 @@ class DepartmentViewSet(BaseUserViewSet):
 )
 class BranchViewSet(BaseUserViewSet):
     queryset = Branch.objects.all()
-    serializer_class = BranchSerializer
+
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return BranchCreateSerializer
+        return BranchGetSerializer
 
 
 @extend_schema(
