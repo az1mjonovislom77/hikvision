@@ -27,10 +27,8 @@ class Command(BaseCommand):
 
         while True:
             try:
-                # 🔑 1. Avval kanal chat_id larni avtomatik aniqlaymiz
                 sync_channels_from_updates()
 
-                # 2. Eventlarni tortib olish
                 devices = Devices.objects.all()
                 fetch_face_events(devices=devices, since=last_time)
 
