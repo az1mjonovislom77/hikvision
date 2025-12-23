@@ -2,16 +2,36 @@ from rest_framework import serializers
 from day.models import DayOff, WorkDay, Shift, BreakTime
 
 
-class DayOffSerializer(serializers.ModelSerializer):
+class DayOffGetSerializer(serializers.ModelSerializer):
+    days = serializers.ListField(child=serializers.ChoiceField(choices=DayOff.WEEK_DAYS))
+
     class Meta:
         model = DayOff
         fields = "__all__"
 
 
-class WorkDaySerializer(serializers.ModelSerializer):
+class DayOffCreateSerializer(serializers.ModelSerializer):
+    days = serializers.ListField(child=serializers.ChoiceField(choices=DayOff.WEEK_DAYS))
+
+    class Meta:
+        model = DayOff
+        fields = ['name', 'days']
+
+
+class WorkDayGetSerializer(serializers.ModelSerializer):
+    days = serializers.ListField(child=serializers.ChoiceField(choices=WorkDay.WEEK_DAYS))
+
     class Meta:
         model = WorkDay
         fields = "__all__"
+
+
+class WorkDayCreateSerializer(serializers.ModelSerializer):
+    days = serializers.ListField(child=serializers.ChoiceField(choices=WorkDay.WEEK_DAYS))
+
+    class Meta:
+        model = WorkDay
+        fields = ['name', 'days']
 
 
 class ShiftSerializer(serializers.ModelSerializer):

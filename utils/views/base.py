@@ -37,7 +37,7 @@ class BaseUserViewSet(PartialPutMixin, viewsets.ModelViewSet):
         user = self.request.user
 
         if user.is_staff or user.role == User.UserRoles.SUPERADMIN:
-            user_id = self.request.data.get("user_id")
+            user_id = self.request.query_params.get("user_id")
             if not user_id:
                 raise ValidationError({"user_id": "superadmin uchun majburiy"})
             target_user = User.objects.filter(id=user_id).first()
