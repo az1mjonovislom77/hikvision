@@ -42,8 +42,8 @@ class BreakTimeGetSerializer(serializers.ModelSerializer):
 
 class BreakTimeCreateSerializer(serializers.ModelSerializer):
     class Meta:
-        model = WorkDay
-        fields = ['name', 'days']
+        model = BreakTime
+        fields = ['name', 'start_time', 'end_time']
 
 
 class ShiftGetSerializer(serializers.ModelSerializer):
