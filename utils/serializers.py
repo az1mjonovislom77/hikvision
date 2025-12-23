@@ -23,7 +23,7 @@ class DepartmentCreateSerializer(serializers.ModelSerializer):
 class BranchGetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Branch
-        fields = ['user', 'name', 'created_at']
+        fields = '__all__'
 
 
 class BranchCreateSerializer(serializers.ModelSerializer):
