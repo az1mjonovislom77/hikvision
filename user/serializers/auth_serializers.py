@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from user.models import User
 from user.services.auth_service import AuthService
+from utils.models import Subscription
+from django.utils import timezone
 
 
 class SignInSerializer(serializers.Serializer):
@@ -21,6 +23,25 @@ class LogoutSerializer(serializers.Serializer):
 
 
 class MeSerializer(serializers.ModelSerializer):
+    subscription = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ("id", "full_name", "phone_number", "role", "is_active")
+        fields = ("id", "full_name", "phone_number", "role", "is_active", "subscription")
+
+    def get_subscription(self, user):
+        subscription = Subscription.objects.filter(user=user, is_active=True,
+                                                   end_date__gt=timezone.now()).select_related("plan").first()
+
+        if not subscription:
+            return None
+
+        return {
+            "plan_name": subscription.plan.name,
+            "plan_type": subscription.plan.plan_type,
+            "billing_cycle": subscription.plan.billing_cycle,
+            "is_paid": subscription.is_paid,
+            "is_active": subscription.is_active,
+            "start_date": subscription.start_date,
+            "end_date": subscription.end_date,
+        }

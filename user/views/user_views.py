@@ -16,8 +16,9 @@ class UserViewSet(PartialPutMixin, viewsets.ModelViewSet):
     queryset = User.objects.all()
     permission_classes = [IsAuthenticated]
     http_method_names = ["get", "post", "put", "delete"]
+    pagination_class = None
 
     def get_serializer_class(self):
-        if self.action == "retrieve":
+        if self.action == ["retrieve"]:
             return UserDetailSerializer
         return UserCreateSerializer
