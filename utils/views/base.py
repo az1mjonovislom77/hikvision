@@ -16,8 +16,6 @@ class BaseUserViewSet(PartialPutMixin, viewsets.ModelViewSet):
     http_method_names = ["get", "post", "put", "delete"]
     permission_classes = [IsAuthenticated]
     pagination_class = None
-    create_serializer_class = None
-    retrieve_serializer_class = None
 
     def get_queryset(self):
         user = self.request.user
@@ -34,11 +32,6 @@ class BaseUserViewSet(PartialPutMixin, viewsets.ModelViewSet):
             return queryset
 
         return queryset.filter(user=user)
-
-    def get_serializer_class(self):
-        if self.action in ('create', 'update', 'partial_update'):
-            return self.create_serializer_class
-        return self.retrieve_serializer_class
 
     def perform_create(self, serializer):
         user = self.request.user
