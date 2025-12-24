@@ -19,6 +19,7 @@ class Employee(models.Model):
     work_day = models.ForeignKey(WorkDay, on_delete=models.SET_NULL, null=True, blank=True)
     branch = models.ForeignKey(Branch, on_delete=models.SET_NULL, null=True, blank=True)
     fine = models.FloatField(default=0)
+    is_fine = models.BooleanField(default=True)
     day_off = models.ForeignKey(DayOff, on_delete=models.SET_NULL, null=True, blank=True)
     begin_time = models.DateTimeField(null=True, blank=True)
     end_time = models.DateTimeField(null=True, blank=True)
