@@ -57,8 +57,11 @@ class PlanViewSet(viewsets.ModelViewSet):
 @user_extend_schema("Subscription")
 class SubscriptionViewSet(BaseUserViewSet):
     queryset = Subscription.objects.select_related("plan")
-    create_serializer_class = SubscriptionCreateSerializer
-    retrieve_serializer_class = SubscriptionDetailSerializer
+
+    def get_serializer_class(self):
+        if self.action in ('create', 'update', 'partial_update'):
+            return SubscriptionCreateSerializer
+        return SubscriptionDetailSerializer
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
