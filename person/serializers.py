@@ -8,7 +8,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
         fields = ["id", "device", "employee_no", "name", "user_type", "employment", "department", "position", "shift",
-                  "description", "phone_number", "salary", "break_time", "work_day", "branch", "fine", "day_off",
+                  "description", "phone_number", "salary", "work_day", "branch", "fine", "day_off",
                   "begin_time", "end_time", "door_right", "face_url", "local_face", "created_at"]
 
     def get_local_face(self, obj):
@@ -28,7 +28,7 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
         fields = ["device", "name", "user_type", "begin_time", "end_time", "door_right", "employment", "department",
-                  "position", "shift", "description", "phone_number", "salary", "break_time", "work_day", "branch",
+                  "position", "shift", "description", "phone_number", "salary", "work_day", "branch",
                   "fine", "day_off"]
 
 
@@ -36,7 +36,7 @@ class EmployeeUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
         fields = ["device", "name", "user_type", "begin_time", "end_time", "door_right", "employment", "department",
-                  "position", "shift", "description", "phone_number", "salary", "break_time", "work_day", "branch",
+                  "position", "shift", "description", "phone_number", "salary", "work_day", "branch",
                   "fine", "day_off"]
         extra_kwargs = {"name": {"required": False}}
 

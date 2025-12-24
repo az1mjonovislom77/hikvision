@@ -2,18 +2,15 @@ from rest_framework.generics import ListAPIView
 from rest_framework.pagination import PageNumberPagination
 from event.models import AccessEvent
 from event.serializers import AccessEventSerializer
-from event.services.event_state import get_last_event_time, set_last_event_time
 from event.services.event_sync import EventSyncService
-from event.utils.fetch import fetch_face_events
 from person.models import Employee
 from user.models import User
 from utils.models import Devices
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.utils import timezone
-from utils.telegram import send_telegram
+from utils.schema import user_extend_schema
 
 
 class CustomPagination(PageNumberPagination):
@@ -21,12 +18,7 @@ class CustomPagination(PageNumberPagination):
     page_size_query_param = None
 
 
-@extend_schema(
-    tags=["Event"],
-    parameters=[
-        OpenApiParameter(name="user_id", type=int, required=False, description="Faqat superadmin uchun")
-    ]
-)
+@user_extend_schema("Event")
 class EventSyncView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -70,21 +62,3 @@ class AccessEventListView(ListAPIView):
         employees = Employee.objects.filter(device__in=devices)
 
         return qs.filter(employee__in=employees)
-
-
-class RealTimeEventToTelegramAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        last_time = get_last_event_time()
-
-        try:
-            new_count = fetch_face_events(since=last_time)
-        except Exception as e:
-            return Response({"success": False, "error": str(e)}, status=500)
-
-        if new_count:
-            set_last_event_time(timezone.now())
-            send_telegram(f"🚨 {new_count} ta YANGI EVENT aniqlandi")
-
-        return Response({"success": True, "new_events": new_count})

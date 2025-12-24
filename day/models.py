@@ -3,15 +3,6 @@ from user.models import User
 
 
 class DayOff(models.Model):
-    WEEK_DAYS = [
-        ('mon', 'Dushanba'),
-        ('tue', 'Seshanba'),
-        ('wed', 'Chorshanba'),
-        ('thu', 'Payshanba'),
-        ('fri', 'Juma'),
-        ('sat', 'Shanba'),
-        ('sun', 'Yakshanba'),
-    ]
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     name = models.CharField(max_length=250)
     days = models.JSONField(default=list)
@@ -21,16 +12,6 @@ class DayOff(models.Model):
 
 
 class WorkDay(models.Model):
-    WEEK_DAYS = [
-        ('mon', 'Dushanba'),
-        ('tue', 'Seshanba'),
-        ('wed', 'Chorshanba'),
-        ('thu', 'Payshanba'),
-        ('fri', 'Juma'),
-        ('sat', 'Shanba'),
-        ('sun', 'Yakshanba'),
-    ]
-
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     name = models.CharField(max_length=250)
     days = models.JSONField(default=list)

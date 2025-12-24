@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from day.views.views import DayOffViewSet, WorkDayViewSet, ShiftViewSet, BreakTimeViewSet
+from day.views import DayOffViewSet, WorkDayViewSet, ShiftViewSet, BreakTimeViewSet
 
 router = DefaultRouter()
 router.register('day_off', DayOffViewSet)
