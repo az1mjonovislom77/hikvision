@@ -4,12 +4,13 @@ from utils.serializers import DevicesSerializer, TelegramChannelSerializer, \
     BranchGetSerializer, BranchCreateSerializer, DepartmentCreateSerializer, DepartmentGetSerializer, \
     PlanSerializer, SubscriptionCreateSerializer, SubscriptionDetailSerializer
 from utils.views.base import BaseUserViewSet, User
-from rest_framework import generics, permissions
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta
 from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework import viewsets
+from rest_framework.permissions import AllowAny
 
 
 @user_extend_schema("Devices")
@@ -44,11 +45,12 @@ class TelegramChannelViewSet(BaseUserViewSet):
     serializer_class = TelegramChannelSerializer
 
 
-@extend_schema(tags=["Subscription"])
-class PlanListView(generics.ListAPIView):
+@extend_schema(tags=["Plan"])
+class PlanViewSet(viewsets.ModelViewSet):
+    http_method_names = ["get", "post", "put", "delete"]
     queryset = Plan.objects.all()
     serializer_class = PlanSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [AllowAny]
     pagination_class = None
 
 
