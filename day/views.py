@@ -1,7 +1,7 @@
 from day.models import DayOff, WorkDay, Shift, BreakTime
 from day.serializers.serializers import DayOffCreateSerializer, DayOffGetSerializer, WorkDayCreateSerializer, \
     WorkDayGetSerializer, ShiftCreateSerializer, ShiftGetSerializer, BreakTimeCreateSerializer, BreakTimeGetSerializer
-from utils.schema import user_extend_schema
+from utils.utils.schema import user_extend_schema
 from utils.views.base import BaseUserViewSet
 
 

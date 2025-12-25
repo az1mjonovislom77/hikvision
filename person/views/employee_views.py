@@ -14,7 +14,7 @@ from person.services.employee import EmployeeService
 from rest_framework.generics import ListAPIView
 from django.utils.timezone import localdate
 from rest_framework import status
-from utils.schema import user_extend_schema
+from utils.utils.schema import user_extend_schema
 
 
 @user_extend_schema("Employee")

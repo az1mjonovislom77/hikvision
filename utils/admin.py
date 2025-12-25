@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from utils.models import Devices, Branch, Department, TelegramChannel, Plan, Subscription
+from utils.models import Devices, Branch, Department, TelegramChannel, Plan, Subscription, Notification
 
 
 @admin.register(Devices)
@@ -31,3 +31,8 @@ class PlanAdmin(admin.ModelAdmin):
 @admin.register(Subscription)
 class SubscriptionAdmin(admin.ModelAdmin):
     list_display = ('id', 'plan', 'is_paid')
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'text')

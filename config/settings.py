@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from datetime import timedelta
 from decouple import config, Csv
+from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -227,6 +228,6 @@ LOGGING = {
     },
     "root": {
         "handlers": ["console"],
-        "level": "INFO",   # MUHIM
+        "level": "INFO",
     },
 }

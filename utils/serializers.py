@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from utils.models import Devices, Department, Branch, TelegramChannel, Plan, Subscription
+from utils.models import Devices, Department, Branch, TelegramChannel, Plan, Subscription, Notification
 
 
 class DevicesSerializer(serializers.ModelSerializer):
@@ -63,3 +63,14 @@ class SubscriptionDetailSerializer(serializers.ModelSerializer):
     def get_plan(self, obj):
         return {"id": obj.plan.id, "name": obj.plan.name, "plan_type": obj.plan.plan_type,
                 "billing_cycle": obj.plan.billing_cycle, "price": obj.plan.price, }
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ("id", "text", "created_at")
+
+
+class AdminNotificationSerializer(serializers.Serializer):
+    user_ids = serializers.ListField(child=serializers.IntegerField(), required=False)
+    text = serializers.CharField()

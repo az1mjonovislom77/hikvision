@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from utils.constants import WEEK_DAYS
+from utils.utils.constants import WEEK_DAYS
 
 
 class WeekDaysField(serializers.ListField):

@@ -1,5 +1,4 @@
 from django.db import models
-from django.utils import timezone
 from user.models import User
 
 
@@ -82,13 +81,13 @@ class Subscription(models.Model):
         return f"{self.user} - {self.plan}"
 
 
-class Notifications(models.Model):
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+class Notification(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
     text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.text
+        return f"{self.user} - {self.text}"
 
 
 class TelegramChannel(models.Model):

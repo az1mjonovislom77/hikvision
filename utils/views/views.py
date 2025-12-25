@@ -1,8 +1,9 @@
-from utils.models import Devices, Department, Branch, TelegramChannel, Subscription, Plan
-from utils.schema import user_extend_schema
+from utils.models import Devices, Department, Branch, TelegramChannel, Subscription, Plan, Notification
+from utils.utils.schema import user_extend_schema
 from utils.serializers import DevicesSerializer, TelegramChannelSerializer, \
     BranchGetSerializer, BranchCreateSerializer, DepartmentCreateSerializer, DepartmentGetSerializer, \
-    PlanSerializer, SubscriptionCreateSerializer, SubscriptionDetailSerializer
+    PlanSerializer, SubscriptionCreateSerializer, SubscriptionDetailSerializer, NotificationSerializer, \
+    AdminNotificationSerializer
 from utils.views.base import BaseUserViewSet, User
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta
@@ -10,7 +11,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import viewsets
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
 
 @user_extend_schema("Devices")
@@ -85,3 +86,36 @@ class SubscriptionViewSet(BaseUserViewSet):
         start_date = timezone.now()
         end_date = start_date + relativedelta(months=plan.duration_months)
         serializer.save(user=target_user, start_date=start_date, end_date=end_date, is_active=True, is_paid=True)
+
+
+@extend_schema(tags=["Notification"])
+class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = Notification.objects.all()
+    pagination_class = None
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user).order_by("-created_at")
+
+
+@extend_schema(tags=["Notification"])
+class AdminNotificationViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = AdminNotificationSerializer
+
+    def create(self, request):
+        user_ids = request.data.get("user_ids")
+        text = request.data.get("text")
+
+        if not text:
+            return Response({"text": "Majburiy"}, status=400)
+
+        if user_ids:
+            users = User.objects.filter(id__in=user_ids)
+        else:
+            users = User.objects.all()
+
+        Notification.objects.bulk_create([Notification(user=u, text=text) for u in users])
+
+        return Response({"detail": "Notification yuborildi"}, status=201)
