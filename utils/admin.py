@@ -30,7 +30,7 @@ class PlanAdmin(admin.ModelAdmin):
 
 @admin.register(Subscription)
 class SubscriptionAdmin(admin.ModelAdmin):
-    list_display = ('id', 'plan', 'is_paid')
+    list_display = ('id', 'plan', 'is_paid', 'is_active')
 
 
 @admin.register(Notification)
