@@ -39,12 +39,14 @@ class Plan(models.Model):
         HALF_YEARLY = "half_yearly", "6 Months"
         YEARLY = "yearly", "12 Months"
 
-    name = models.CharField(max_length=50)
+    title = models.CharField(max_length=50)
     plan_type = models.CharField(max_length=20, choices=PlanType.choices)
     billing_cycle = models.CharField(max_length=20, choices=CycleChoice.choices, null=False, blank=False)
     price = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(max_length=200, null=True, blank=True)
     duration_months = models.PositiveIntegerField(editable=False)
-    description = models.TextField(null=True, blank=True)
+    description = models.TextField(null=True, blank=True, max_length=500)
+    content = models.TextField(null=True, blank=True, max_length=500)
 
     def save(self, *args, **kwargs):
         self.duration_months = {

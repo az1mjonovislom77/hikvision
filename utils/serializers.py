@@ -39,7 +39,8 @@ class TelegramChannelSerializer(BaseReadSerializer):
 class PlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = Plan
-        fields = ["id", "name", "plan_type", "billing_cycle", "duration_months", "price", "description"]
+        fields = ["id", "title", "plan_type", "billing_cycle", "duration_months", "price", "description", "currency",
+                  "content"]
         read_only_fields = ["id", "duration_months"]
 
 

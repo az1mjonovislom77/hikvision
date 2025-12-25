@@ -25,7 +25,7 @@ class TelegramChannelAdmin(admin.ModelAdmin):
 
 @admin.register(Plan)
 class PlanAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'price')
+    list_display = ('id', 'title', 'price')
 
 
 @admin.register(Subscription)
