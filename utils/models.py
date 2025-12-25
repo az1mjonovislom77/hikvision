@@ -1,40 +1,30 @@
 from django.db import models
 from user.models import User
+from utils.base.model_base import TimeStampedModel, OwnedNamedModel
 
 
-class Devices(models.Model):
+class Devices(TimeStampedModel):
     class Status(models.TextChoices):
-        ACTIVE = "active",
-        INACTIVE = "inactive",
+        ACTIVE = "active", "active"
+        INACTIVE = "inactive", "inactive"
 
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     name = models.CharField(max_length=100)
     ip = models.CharField(max_length=150, null=True, blank=True)
     username = models.CharField(max_length=150, null=True, blank=True)
     password = models.CharField(max_length=150, null=True, blank=True)
-    status = models.CharField(choices=Status.choices, max_length=100)
-    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=100, choices=Status.choices)
 
     def __str__(self):
         return self.name
 
 
-class Department(models.Model):
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    name = models.CharField(max_length=200)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.name
+class Department(OwnedNamedModel):
+    pass
 
 
-class Branch(models.Model):
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    name = models.CharField(max_length=200)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.name
+class Branch(OwnedNamedModel):
+    pass
 
 
 class Plan(models.Model):
@@ -50,7 +40,7 @@ class Plan(models.Model):
 
     name = models.CharField(max_length=50)
     plan_type = models.CharField(max_length=20, choices=PlanType.choices)
-    billing_cycle = models.CharField(max_length=20, choices=CycleChoice.choices, null=False, blank=False, )
+    billing_cycle = models.CharField(max_length=20, choices=CycleChoice.choices, null=False, blank=False)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     duration_months = models.PositiveIntegerField(editable=False)
 
@@ -67,7 +57,7 @@ class Plan(models.Model):
         return f"{self.name} ({self.duration_months} months)"
 
 
-class Subscription(models.Model):
+class Subscription(TimeStampedModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="subscriptions")
     plan = models.ForeignKey(Plan, on_delete=models.CASCADE)
     start_date = models.DateTimeField(null=True, blank=True)
@@ -75,16 +65,13 @@ class Subscription(models.Model):
     is_active = models.BooleanField(default=False)
     is_paid = models.BooleanField(default=False)
 
-    created_at = models.DateTimeField(auto_now_add=True)
-
     def __str__(self):
         return f"{self.user} - {self.plan}"
 
 
-class Notification(models.Model):
+class Notification(TimeStampedModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
     text = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.user} - {self.text}"
@@ -94,7 +81,7 @@ class TelegramChannel(models.Model):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     name = models.CharField(max_length=200)
     chat_id = models.CharField(max_length=200)
-    resolved_id = models.CharField(max_length=200, blank=True, null=True)
+    resolved_id = models.CharField(max_length=200, null=True, blank=True)
 
     def __str__(self):
         return self.name

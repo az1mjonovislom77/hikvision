@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from utils.views.views import DevicesViewSet, DepartmentViewSet, BranchViewSet, TelegramChannelViewSet, \
+from utils.views import DevicesViewSet, DepartmentViewSet, BranchViewSet, TelegramChannelViewSet, \
     SubscriptionViewSet, PlanViewSet, NotificationViewSet, AdminNotificationViewSet
 
 router = DefaultRouter()

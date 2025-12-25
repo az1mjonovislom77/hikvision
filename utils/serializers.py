@@ -1,41 +1,39 @@
 from rest_framework import serializers
+
+from utils.base.serializers_base import BaseReadSerializer
 from utils.models import Devices, Department, Branch, TelegramChannel, Plan, Subscription, Notification
 
 
-class DevicesSerializer(serializers.ModelSerializer):
-    class Meta:
+class DevicesSerializer(BaseReadSerializer):
+    class Meta(BaseReadSerializer.Meta):
         model = Devices
-        fields = '__all__'
 
 
-class DepartmentGetSerializer(serializers.ModelSerializer):
-    class Meta:
+class DepartmentGetSerializer(BaseReadSerializer):
+    class Meta(BaseReadSerializer.Meta):
         model = Department
-        fields = '__all__'
 
 
 class DepartmentCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Department
-        fields = ['name', ]
+        fields = ["name"]
 
 
-class BranchGetSerializer(serializers.ModelSerializer):
-    class Meta:
+class BranchGetSerializer(BaseReadSerializer):
+    class Meta(BaseReadSerializer.Meta):
         model = Branch
-        fields = '__all__'
 
 
 class BranchCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Branch
-        fields = ['name', ]
+        fields = ["name"]
 
 
-class TelegramChannelSerializer(serializers.ModelSerializer):
-    class Meta:
+class TelegramChannelSerializer(BaseReadSerializer):
+    class Meta(BaseReadSerializer.Meta):
         model = TelegramChannel
-        fields = '__all__'
 
 
 class PlanSerializer(serializers.ModelSerializer):
@@ -61,14 +59,18 @@ class SubscriptionDetailSerializer(serializers.ModelSerializer):
         fields = ["id", "plan", "start_date", "end_date", "is_active", ]
 
     def get_plan(self, obj):
-        return {"id": obj.plan.id, "name": obj.plan.name, "plan_type": obj.plan.plan_type,
-                "billing_cycle": obj.plan.billing_cycle, "price": obj.plan.price, }
+        return {"id": obj.plan.id,
+                "name": obj.plan.name,
+                "plan_type": obj.plan.plan_type,
+                "billing_cycle": obj.plan.billing_cycle,
+                "price": obj.plan.price
+                }
 
 
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
-        fields = ("id", "user", "text", "created_at")
+        fields = ["id", "user", "text", "created_at"]
 
 
 class AdminNotificationSerializer(serializers.Serializer):

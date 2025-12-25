@@ -1,21 +1,21 @@
 from django.contrib import admin
-
+from utils.base.admin_base import NameOnlyAdmin
 from utils.models import Devices, Branch, Department, TelegramChannel, Plan, Subscription, Notification
 
 
 @admin.register(Devices)
-class DevicesAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name')
+class DevicesAdmin(NameOnlyAdmin):
+    pass
 
 
 @admin.register(Department)
-class DepartmentAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name')
+class DepartmentAdmin(NameOnlyAdmin):
+    pass
 
 
 @admin.register(Branch)
-class BranchAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name')
+class BranchAdmin(NameOnlyAdmin):
+    pass
 
 
 @admin.register(TelegramChannel)
