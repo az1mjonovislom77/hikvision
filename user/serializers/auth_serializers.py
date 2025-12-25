@@ -37,7 +37,7 @@ class MeSerializer(serializers.ModelSerializer):
             return None
 
         return {
-            "plan_name": subscription.plan.name,
+            "plan_title": subscription.plan.title,
             "plan_type": subscription.plan.plan_type,
             "billing_cycle": subscription.plan.billing_cycle,
             "is_paid": subscription.is_paid,
