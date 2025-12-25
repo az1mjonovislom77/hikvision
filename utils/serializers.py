@@ -61,7 +61,7 @@ class SubscriptionDetailSerializer(serializers.ModelSerializer):
 
     def get_plan(self, obj):
         return {"id": obj.plan.id,
-                "name": obj.plan.name,
+                "title": obj.plan.title,
                 "plan_type": obj.plan.plan_type,
                 "billing_cycle": obj.plan.billing_cycle,
                 "price": obj.plan.price
