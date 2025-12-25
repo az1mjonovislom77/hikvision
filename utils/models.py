@@ -58,7 +58,7 @@ class Plan(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.name} ({self.duration_months} months)"
+        return f"{self.title} ({self.duration_months} months)"
 
 
 class Subscription(TimeStampedModel):
