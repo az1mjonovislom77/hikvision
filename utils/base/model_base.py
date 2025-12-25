@@ -1,5 +1,7 @@
 from django.db import models
 
+from user.models import User
+
 
 class TimeStampedModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
