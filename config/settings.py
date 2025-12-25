@@ -2,13 +2,12 @@ import os
 from pathlib import Path
 from datetime import timedelta
 from decouple import config, Csv
-from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEY')
 
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = config('DEBUG', default=False, cast=bool)
 ENVIRON = config('ENVIRON', default='local')
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*', cast=Csv())
