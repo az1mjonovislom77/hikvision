@@ -29,8 +29,9 @@ class Branch(OwnedNamedModel):
 
 class Plan(models.Model):
     class PlanType(models.TextChoices):
-        STANDARD = "standard", "Standard"
-        PREMIUM = "premium", "Premium"
+        FREE = "free", "Free"
+        GO = "go", "Go"
+        PLUS = "plus", "Plus"
 
     class CycleChoice(models.TextChoices):
         MONTHLY = "monthly", "1 Month"
