@@ -1,5 +1,4 @@
-from utils.base.serializers_base import ReadWriteSerializerMixin
-from utils.base.views_base import BaseUserViewSet, User
+from utils.base.views_base import BaseUserViewSet, User, ReadWriteSerializerMixin
 from utils.models import Devices, Department, Branch, TelegramChannel, Subscription, Plan, Notification
 from utils.services.notifications import NotificationService
 from utils.services.subscription import SubscriptionService

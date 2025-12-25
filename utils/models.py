@@ -44,6 +44,7 @@ class Plan(models.Model):
     billing_cycle = models.CharField(max_length=20, choices=CycleChoice.choices, null=False, blank=False)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     duration_months = models.PositiveIntegerField(editable=False)
+    description = models.TextField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
         self.duration_months = {

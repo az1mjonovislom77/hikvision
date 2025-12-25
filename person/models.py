@@ -1,9 +1,10 @@
 from django.db import models
 from day.models import Shift, BreakTime, WorkDay, DayOff
+from utils.base.model_base import TimeStampedModel
 from utils.models import Department, Branch, Devices
 
 
-class Employee(models.Model):
+class Employee(TimeStampedModel):
     device = models.ForeignKey(Devices, on_delete=models.SET_NULL, null=True, blank=True)
     employee_no = models.CharField(max_length=50)
     name = models.CharField(max_length=200)
@@ -27,7 +28,6 @@ class Employee(models.Model):
     face_url = models.CharField(max_length=500, null=True, blank=True)
     face_image = models.ImageField(upload_to="faces/", null=True, blank=True)
     raw_json = models.JSONField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ("device", "employee_no")
@@ -36,11 +36,10 @@ class Employee(models.Model):
         return f"{self.employee_no} - {self.name}"
 
 
-class EmployeeHistory(models.Model):
+class EmployeeHistory(TimeStampedModel):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="histories")
     event_time = models.DateTimeField()
     event = models.ForeignKey("event.AccessEvent", on_delete=models.CASCADE, related_name="employee_histories")
-    created_at = models.DateTimeField(auto_now_add=True)
     label_name = models.CharField(max_length=255, null=True, blank=True)
 
     class Meta:

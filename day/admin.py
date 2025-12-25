@@ -1,22 +1,23 @@
 from django.contrib import admin
 from day.models import DayOff, WorkDay, Shift, BreakTime
+from utils.base.admin_base import NameOnlyAdmin
 
 
 @admin.register(DayOff)
-class DayOffAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name')
+class DayOffAdmin(NameOnlyAdmin):
+    pass
 
 
 @admin.register(WorkDay)
-class WorkDayAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name')
+class WorkDayAdmin(NameOnlyAdmin):
+    pass
 
 
 @admin.register(Shift)
-class ShiftAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name')
+class ShiftAdmin(NameOnlyAdmin):
+    pass
 
 
 @admin.register(BreakTime)
-class BreakTimeAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name')
+class BreakTimeAdmin(NameOnlyAdmin):
+    pass

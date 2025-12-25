@@ -46,3 +46,14 @@ class BaseUserViewSet(PartialPutMixin, viewsets.ModelViewSet):
             serializer.save(user=target_user)
         else:
             serializer.save(user=user)
+
+
+class ReadWriteSerializerMixin:
+    write_actions = {"create", "update", "partial_update"}
+    write_serializer = None
+    read_serializer = None
+
+    def get_serializer_class(self):
+        if self.action in self.write_actions:
+            return self.write_serializer or self.serializer_class
+        return self.read_serializer or self.serializer_class

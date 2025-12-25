@@ -1,18 +1,15 @@
 from day.models import DayOff, WorkDay, Shift, BreakTime
 from day.serializers.serializers import DayOffCreateSerializer, DayOffGetSerializer, WorkDayCreateSerializer, \
     WorkDayGetSerializer, ShiftCreateSerializer, ShiftGetSerializer, BreakTimeCreateSerializer, BreakTimeGetSerializer
-from utils.base.views_base import BaseUserViewSet
+from utils.base.views_base import BaseUserViewSet, ReadWriteSerializerMixin
 from utils.utils.schema import user_extend_schema
 
 
 @user_extend_schema("DayOff")
-class DayOffViewSet(BaseUserViewSet):
+class DayOffViewSet(ReadWriteSerializerMixin, BaseUserViewSet):
     queryset = DayOff.objects.all()
-
-    def get_serializer_class(self):
-        if self.action in ('create', 'update', 'partial_update'):
-            return DayOffCreateSerializer
-        return DayOffGetSerializer
+    write_serializer = DayOffCreateSerializer
+    read_serializer = DayOffGetSerializer
 
 
 @user_extend_schema("WorkDay")
