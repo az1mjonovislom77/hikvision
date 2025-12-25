@@ -96,7 +96,12 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     pagination_class = None
 
     def get_queryset(self):
-        return Notification.objects.filter(user=self.request.user).order_by("-created_at")
+        user = self.request.user
+
+        if user.is_staff or user.role == User.UserRoles.SUPERADMIN:
+            return self.queryset.select_related("user").order_by("-created_at")
+
+        return self.queryset.filter(user=user).order_by("-created_at")
 
 
 @extend_schema(tags=["Notification"])

@@ -68,7 +68,7 @@ class SubscriptionDetailSerializer(serializers.ModelSerializer):
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
-        fields = ("id", "text", "created_at")
+        fields = ("id", "user", "text", "created_at")
 
 
 class AdminNotificationSerializer(serializers.Serializer):
