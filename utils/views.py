@@ -90,6 +90,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         return self.queryset.filter(user=user).order_by("-created_at")
 
 
+@extend_schema(tags=["Notification"])
 class AdminNotificationViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = AdminNotificationSerializer
