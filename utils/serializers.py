@@ -54,10 +54,11 @@ class SubscriptionCreateSerializer(serializers.ModelSerializer):
 
 class SubscriptionDetailSerializer(serializers.ModelSerializer):
     plan = serializers.SerializerMethodField()
+    remaining_days = serializers.SerializerMethodField()
 
     class Meta:
         model = Subscription
-        fields = ["id", "plan", "start_date", "end_date", "is_active", ]
+        fields = ["id", "plan", "start_date", "end_date", "is_active", "remaining_days"]
 
     def get_plan(self, obj):
         return {"id": obj.plan.id,
@@ -66,6 +67,9 @@ class SubscriptionDetailSerializer(serializers.ModelSerializer):
                 "billing_cycle": obj.plan.billing_cycle,
                 "price": obj.plan.price
                 }
+
+    def get_remaining_days(self, obj):
+        return obj.remaining_days
 
 
 class NotificationSerializer(serializers.ModelSerializer):

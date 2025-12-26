@@ -1,6 +1,7 @@
 from django.db import models
 from user.models import User
 from utils.base.model_base import TimeStampedModel, OwnedNamedModel
+from django.utils import timezone
 
 
 class Devices(TimeStampedModel):
@@ -68,6 +69,11 @@ class Subscription(TimeStampedModel):
     end_date = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=False)
     is_paid = models.BooleanField(default=False)
+
+    @property
+    def remaining_days(self):
+        delta = self.end_date - timezone.now()
+        return max(delta.days, 0)
 
     def __str__(self):
         return f"{self.user} - {self.plan}"
