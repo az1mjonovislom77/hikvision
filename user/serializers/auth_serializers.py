@@ -44,4 +44,5 @@ class MeSerializer(serializers.ModelSerializer):
             "is_active": subscription.is_active,
             "start_date": subscription.start_date,
             "end_date": subscription.end_date,
+            "remaining_days": subscription.remaining_days
         }
