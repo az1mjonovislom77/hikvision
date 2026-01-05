@@ -173,8 +173,6 @@ class MonthlyAttendanceReportView(APIView):
             total_overtime = 0
             total_undertime = 0
 
-            days_data = []
-
             for day in (start_date + timedelta(days=i)
                         for i in range((end_date - start_date).days + 1)):
 
@@ -186,7 +184,6 @@ class MonthlyAttendanceReportView(APIView):
                 is_day_off = emp.day_off and day.isoformat() in (emp.day_off.days or [])
 
                 if not is_workday or is_day_off:
-                    days_data.append({"date": day, "type": "day_off"})
                     continue
 
                 attendance = AttendanceDaily.objects.filter(employee=emp, date=day).first()
@@ -194,35 +191,16 @@ class MonthlyAttendanceReportView(APIView):
 
                 if not events.exists():
                     if attendance and attendance.status == "szk":
-                        shift_min = int((datetime.combine(day, emp.shift.end_time) -
-                                         datetime.combine(day, emp.shift.start_time)).total_seconds() / 60)
+                        shift_min = int(
+                            (datetime.combine(day, emp.shift.end_time) -
+                             datetime.combine(day, emp.shift.start_time)).total_seconds() / 60
+                        )
                         hour_salary = day_salary / 8
                         minute_salary = hour_salary / 60
                         penalty_amount = round(shift_min * minute_salary, 2)
 
                         total_penalty += penalty_amount
                         total_undertime += shift_min
-
-                        days_data.append({
-                            "date": day,
-                            "type": "absent_szk",
-                            "status": "szk",
-                            "worked": "0:00",
-                            "shift": minutes_to_hm(shift_min),
-                            "difference": minutes_to_hm(shift_min),
-                            "bonus": 0,
-                            "penalty": penalty_amount,
-                        })
-                    else:
-                        days_data.append({
-                            "date": day,
-                            "type": "absent_sbk",
-                            "status": "sbk",
-                            "worked": "0:00",
-                            "difference": "0:00",
-                            "bonus": 0,
-                            "penalty": 0,
-                        })
                     continue
 
                 first_in = events.earliest("time").time()
@@ -251,17 +229,6 @@ class MonthlyAttendanceReportView(APIView):
                     total_penalty += abs(money)
                     total_undertime += abs(diff)
 
-                days_data.append({
-                    "date": day,
-                    "type": "work_day",
-                    "worked": minutes_to_hm(worked_min),
-                    "shift": minutes_to_hm(shift_min),
-                    "difference": minutes_to_hm(abs(diff)),
-                    "difference_minutes": diff,
-                    "bonus": money if diff > 0 else 0,
-                    "penalty": abs(money) if diff < 0 else 0,
-                })
-
             reports.append({
                 "employee_id": emp.id,
                 "employee_name": emp.name,
@@ -272,7 +239,6 @@ class MonthlyAttendanceReportView(APIView):
                 "total_bonus": round(total_bonus, 2),
                 "total_penalty": round(total_penalty, 2),
                 "net_adjustment": round(total_bonus - total_penalty, 2),
-                "daily_work_summary": days_data
             })
 
         return Response({
