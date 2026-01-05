@@ -99,7 +99,7 @@ class AbsentEmployeesView(APIView):
                 "example": {
                     "employee_id": 5,
                     "date": "2025-02-03",
-                    "status": "absent_excused",
+                    "status": "sbk",
                     "comment": "Kasallik varaqasi"
                 }
             }
@@ -173,6 +173,11 @@ class MonthlyAttendanceReportView(APIView):
             total_overtime = 0
             total_undertime = 0
 
+            sbk_count = 0
+            szk_count = 0
+
+            details = []
+
             for day in (start_date + timedelta(days=i)
                         for i in range((end_date - start_date).days + 1)):
 
@@ -191,16 +196,42 @@ class MonthlyAttendanceReportView(APIView):
 
                 if not events.exists():
                     if attendance and attendance.status == "szk":
+                        szk_count += 1
+
                         shift_min = int(
                             (datetime.combine(day, emp.shift.end_time) -
-                             datetime.combine(day, emp.shift.start_time)).total_seconds() / 60
+                             datetime.combine(day, emp.shift.start_time)
+                             ).total_seconds() / 60
                         )
+
                         hour_salary = day_salary / 8
                         minute_salary = hour_salary / 60
                         penalty_amount = round(shift_min * minute_salary, 2)
 
                         total_penalty += penalty_amount
                         total_undertime += shift_min
+
+                        details.append({
+                            "date": day,
+                            "status": "szk",
+                            "status_label": "Sababsiz kelmadi",
+                            "worked": "0:00",
+                            "difference": minutes_to_hm(shift_min),
+                            "penalty": penalty_amount
+                        })
+
+                    elif attendance and attendance.status == "sbk":
+                        sbk_count += 1
+
+                        details.append({
+                            "date": day,
+                            "status": "sbk",
+                            "status_label": "Sababli kelmadi",
+                            "worked": "0:00",
+                            "difference": "0:00",
+                            "penalty": 0
+                        })
+
                     continue
 
                 first_in = events.earliest("time").time()
@@ -208,12 +239,14 @@ class MonthlyAttendanceReportView(APIView):
 
                 worked_min = int(
                     (datetime.combine(day, last_out) -
-                     datetime.combine(day, first_in)).total_seconds() / 60
+                     datetime.combine(day, first_in)
+                     ).total_seconds() / 60
                 )
 
                 shift_min = int(
                     (datetime.combine(day, emp.shift.end_time) -
-                     datetime.combine(day, emp.shift.start_time)).total_seconds() / 60
+                     datetime.combine(day, emp.shift.start_time)
+                     ).total_seconds() / 60
                 )
 
                 diff = worked_min - shift_min
@@ -234,11 +267,15 @@ class MonthlyAttendanceReportView(APIView):
                 "employee_name": emp.name,
                 "year": year,
                 "month": month,
+                "sbk_count": sbk_count,
+                "szk_count": szk_count,
                 "total_overtime": minutes_to_hm(total_overtime),
                 "total_undertime": minutes_to_hm(total_undertime),
                 "total_bonus": round(total_bonus, 2),
                 "total_penalty": round(total_penalty, 2),
                 "net_adjustment": round(total_bonus - total_penalty, 2),
+
+                "details": details
             })
 
         return Response({
