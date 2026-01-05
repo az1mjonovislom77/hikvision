@@ -1,11 +1,14 @@
-from datetime import date
+from datetime import date, datetime
 from calendar import monthrange
+from django.utils.timezone import make_aware, now
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from attendance.models import AttendanceDaily
+from event.models import AccessEvent
 from person.models import Employee
 from drf_spectacular.utils import extend_schema, OpenApiParameter
+from rest_framework import status
 
 
 class AbsentEmployeesView(APIView):
@@ -17,25 +20,57 @@ class AbsentEmployeesView(APIView):
             OpenApiParameter(
                 name="date",
                 type=str,
-                location=OpenApiParameter.QUERY,
                 description="Kun (YYYY-MM-DD). Kiritilmasa — bugungi kun olinadi",
                 required=False,
-            ),
+            )
         ]
     )
     def get(self, request):
         q_date = request.GET.get("date")
         target_date = date.fromisoformat(q_date) if q_date else date.today()
 
-        records = AttendanceDaily.objects.filter(date=target_date).exclude(status="present")
+        current_dt = now()
+
+        employees = Employee.objects.filter(device__user=request.user).distinct()
+
+        for emp in employees:
+
+            if not emp.shift or not emp.shift.start_time or not emp.shift.end_time:
+                continue
+
+            if emp.work_day and not emp.work_day.is_working_day(target_date):
+                continue
+
+            shift_end = make_aware(datetime.combine(target_date, emp.shift.end_time))
+
+            if current_dt < shift_end:
+                continue
+
+            has_event = AccessEvent.objects.filter(employee=emp, time__date=target_date, major=5).exists()
+
+            if has_event:
+                continue
+
+            AttendanceDaily.objects.get_or_create(
+                employee=emp,
+                date=target_date,
+                defaults={
+                    "status": "szk",
+                    "comment": "Auto: ish kuni, smena tugadi, kirish eventi yo‘q"
+                }
+            )
+
+        records = AttendanceDaily.objects.filter(date=target_date, status__in=["sbk", "szk"])
 
         result = [
             {
                 "employee_id": r.employee.id,
                 "employee_name": r.employee.name,
+                "status": r.status,
                 "status_label": r.get_status_display(),
                 "comment": r.comment,
-                "date": r.date,
+                "fine": r.fine_amount,
+                "date": r.date
             }
             for r in records
         ]
@@ -44,6 +79,50 @@ class AbsentEmployeesView(APIView):
             "date": target_date,
             "total": len(result),
             "employees": result
+        })
+
+    @extend_schema(
+        tags=['Attendance'],
+        request={
+            "application/json": {
+                "example": {
+                    "employee_id": 5,
+                    "date": "2025-02-03",
+                    "status": "sbk",
+                    "comment": "Kasallik varaqasi"
+                }
+            }
+        }
+    )
+    def post(self, request):
+        employee_id = request.data.get("employee_id")
+        q_date = request.data.get("date")
+        status_value = request.data.get("status")
+        comment = request.data.get("comment")
+
+        if not (employee_id and q_date and status_value):
+            return Response({"detail": "employee_id, date va status majburiy"}, status=status.HTTP_400_BAD_REQUEST)
+
+        target_date = date.fromisoformat(q_date)
+        employee = Employee.objects.get(id=employee_id)
+
+        obj, created = AttendanceDaily.objects.update_or_create(
+            employee=employee,
+            date=target_date,
+            defaults={
+                "status": status_value,
+                "comment": comment
+            }
+        )
+
+        return Response({
+            "created": created,
+            "employee_id": employee.id,
+            "employee_name": employee.name,
+            "date": obj.date,
+            "status": obj.status,
+            "status_label": obj.get_status_display(),
+            "fine_amount": obj.fine_amount
         })
 
 
@@ -56,21 +135,18 @@ class MonthlyAttendanceReportView(APIView):
             OpenApiParameter(
                 name="employee_id",
                 type=int,
-                location=OpenApiParameter.QUERY,
                 required=False,
                 description="Faqat bitta xodim uchun",
             ),
             OpenApiParameter(
                 name="year",
                 type=int,
-                location=OpenApiParameter.QUERY,
                 required=True,
                 description="Hisobot yili (masalan 2025)",
             ),
             OpenApiParameter(
                 name="month",
                 type=int,
-                location=OpenApiParameter.QUERY,
                 required=True,
                 description="Hisobot oyi (1–12)",
             ),

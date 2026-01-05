@@ -5,14 +5,13 @@ from person.models import Employee
 
 class AttendanceDaily(models.Model):
     STATUS_CHOICES = (
-        ("present", "Ishda"),
-        ("absent_excused", "Sababli kelmadi"),
-        ("absent_unexcused", "Sababsiz kelmadi"),
+        ("sbk", "Sababli kelmadi"),
+        ("szk", "Sababsiz kelmadi"),
     )
 
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     date = models.DateField()
-    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="present")
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES)
     comment = models.CharField(max_length=255, null=True, blank=True)
 
     class Meta:
