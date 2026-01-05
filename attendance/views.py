@@ -4,7 +4,7 @@ from django.utils.timezone import make_aware, now
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import status
 from attendance.models import AttendanceDaily
 from event.models import AccessEvent
@@ -20,7 +20,17 @@ def minutes_to_hm(m):
 class AbsentEmployeesView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(tags=['Attendance'])
+    @extend_schema(
+        tags=['Attendance'],
+        parameters=[
+            OpenApiParameter(
+                name="date",
+                type=str,
+                description="Kun (YYYY-MM-DD). Kiritilmasa — bugungi kun olinadi",
+                required=False,
+            )
+        ]
+    )
     def get(self, request):
         q_date = request.GET.get("date")
         target_date = date.fromisoformat(q_date) if q_date else date.today()
@@ -82,7 +92,19 @@ class AbsentEmployeesView(APIView):
             ]
         })
 
-    @extend_schema(tags=['Attendance'])
+    @extend_schema(
+        tags=['Attendance'],
+        request={
+            "application/json": {
+                "example": {
+                    "employee_id": 5,
+                    "date": "2025-02-03",
+                    "status": "absent_excused",
+                    "comment": "Kasallik varaqasi"
+                }
+            }
+        }
+    )
     def post(self, request):
         employee_id = request.data.get("employee_id")
         q_date = request.data.get("date")
@@ -121,7 +143,10 @@ class AbsentEmployeesView(APIView):
 class MonthlyAttendanceReportView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(tags=['Attendance'])
+    @extend_schema(tags=['Attendance'], parameters=[
+        OpenApiParameter(name="employee_id", type=int, required=False, description="Faqat bitta xodim uchun", ),
+        OpenApiParameter(name="year", type=int, required=True, description="Hisobot yili (masalan 2025)", ),
+        OpenApiParameter(name="month", type=int, required=True, description="Hisobot oyi (1–12)", ), ], )
     def get(self, request):
         year = int(request.GET.get("year"))
         month = int(request.GET.get("month"))
