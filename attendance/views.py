@@ -183,8 +183,8 @@ class MonthlyAttendanceReportView(APIView):
                 "month": month,
 
                 "present": records.filter(status="present").count(),
-                "absent_excused": records.filter(status="absent_excused").count(),
-                "absent_unexcused": records.filter(status="absent_unexcused").count(),
+                "sbk": records.filter(status="sbk").count(),
+                "szk": records.filter(status="szk").count(),
 
                 "total_fine": round(sum(r.fine_amount for r in records if r.fine_amount), 2),
 
