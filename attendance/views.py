@@ -181,8 +181,6 @@ class MonthlyAttendanceReportView(APIView):
                 "employee_name": emp.name,
                 "year": year,
                 "month": month,
-
-                "present": records.filter(status="present").count(),
                 "sbk": records.filter(status="sbk").count(),
                 "szk": records.filter(status="szk").count(),
 
