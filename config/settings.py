@@ -28,7 +28,8 @@ LOCAL_APPS = [
     'event.apps.EventConfig',
     'person',
     'day',
-    'utils'
+    'utils',
+    'attendance'
 ]
 
 THIRD_PARTY_APPS = [
