@@ -10,6 +10,8 @@ from person.models import Employee
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import status
 
+from utils.utils.constants import WEEKDAY_CODE_MAP
+
 
 class AbsentEmployeesView(APIView):
     permission_classes = [IsAuthenticated]
@@ -38,7 +40,12 @@ class AbsentEmployeesView(APIView):
             if not emp.shift or not emp.shift.start_time or not emp.shift.end_time:
                 continue
 
-            if emp.work_day and not emp.work_day.is_working_day(target_date):
+            if not emp.work_day:
+                continue
+
+            day_code = WEEKDAY_CODE_MAP[target_date.weekday()]
+
+            if not getattr(emp.work_day, day_code, False):
                 continue
 
             shift_end = make_aware(datetime.combine(target_date, emp.shift.end_time))
@@ -46,7 +53,7 @@ class AbsentEmployeesView(APIView):
             if current_dt < shift_end:
                 continue
 
-            has_event = AccessEvent.objects.filter(employee=emp, time__date=target_date, major=5).exists()
+            has_event = AccessEvent.objects.filter(employee=emp, time__date=target_date, major=5, minor=75).exists()
 
             if has_event:
                 continue
