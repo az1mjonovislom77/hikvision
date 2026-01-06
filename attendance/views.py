@@ -275,8 +275,7 @@ class MonthlyAttendanceReportView(APIView):
 
                 diff = worked_min - shift_min
 
-                hour_salary = day_salary / shift_min
-                minute_salary = hour_salary / 60
+                minute_salary = day_salary / shift_min
                 money = round(diff * minute_salary, 2)
 
                 if diff > 0:
