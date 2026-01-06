@@ -207,21 +207,21 @@ class MonthlyAttendanceReportView(APIView):
 
                     if attendance:
 
-                        if attendance.status == "szk":
+                        if attendance and attendance.status == "szk":
                             szk_count += 1
-                            penalty_amount = round(shift_min * minute_salary, 2)
+
+                            penalty_amount = round(day_salary, 2)
 
                             total_penalty += penalty_amount
-                            total_undertime += shift_min
-
                             details.append({
                                 "date": day,
                                 "status": "szk",
                                 "status_label": "Sababsiz kelmadi",
                                 "worked": "0:00",
-                                "difference": minutes_to_hm(shift_min),
+                                "difference": "0:00",
                                 "penalty": penalty_amount
                             })
+
 
                         elif attendance.status == "sbk":
                             sbk_count += 1
