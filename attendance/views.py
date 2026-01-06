@@ -286,9 +286,10 @@ class MonthlyAttendanceReportView(APIView):
                 "szk_count": szk_count,
                 "total_overtime": minutes_to_hm(total_overtime),
                 "total_undertime": minutes_to_hm(total_undertime),
-                "total_bonus": round(total_bonus, 2),
-                "total_penalty": round(total_penalty, 2),
+                "total_bonus": int(round(total_bonus)),
+                "total_penalty": int(round(total_penalty)),
                 "net_adjustment": int(round(abs(total_bonus - total_penalty))),
+
                 "details": details
             })
 
