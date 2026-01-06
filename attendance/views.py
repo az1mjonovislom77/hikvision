@@ -207,10 +207,15 @@ class MonthlyAttendanceReportView(APIView):
 
                     if attendance:
 
-                        if attendance and attendance.status == "szk":
+                        if attendance.status == "szk":
                             szk_count += 1
 
                             penalty_amount = round(day_salary, 2)
+
+                            if total_penalty + penalty_amount > emp.salary:
+                                penalty_amount = emp.salary - total_penalty
+                                if penalty_amount < 0:
+                                    penalty_amount = 0
 
                             total_penalty += penalty_amount
                             details.append({
@@ -221,7 +226,6 @@ class MonthlyAttendanceReportView(APIView):
                                 "difference": "0:00",
                                 "penalty": penalty_amount
                             })
-
 
                         elif attendance.status == "sbk":
                             sbk_count += 1
