@@ -288,8 +288,7 @@ class MonthlyAttendanceReportView(APIView):
                 "total_undertime": minutes_to_hm(total_undertime),
                 "total_bonus": round(total_bonus, 2),
                 "total_penalty": round(total_penalty, 2),
-                "net_adjustment": round(total_bonus - total_penalty, 2),
-
+                "net_adjustment": int(round(abs(total_bonus - total_penalty))),
                 "details": details
             })
 
