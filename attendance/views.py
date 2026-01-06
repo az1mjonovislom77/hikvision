@@ -144,10 +144,9 @@ class MonthlyAttendanceReportView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(tags=['Attendance'], parameters=[
-        OpenApiParameter(name="employee_id", type=int, required=False, description="Faqat bitta xodim uchun"),
-        OpenApiParameter(name="year", type=int, required=True, description="Hisobot yili (masalan 2025)"),
-        OpenApiParameter(name="month", type=int, required=True, description="Hisobot oyi (1–12)"),
-    ])
+        OpenApiParameter(name="employee_id", type=int, required=False, description="Faqat bitta xodim uchun", ),
+        OpenApiParameter(name="year", type=int, required=True, description="Hisobot yili (masalan 2025)", ),
+        OpenApiParameter(name="month", type=int, required=True, description="Hisobot oyi (1–12)", ), ], )
     def get(self, request):
         year = int(request.GET.get("year"))
         month = int(request.GET.get("month"))
@@ -230,7 +229,7 @@ class MonthlyAttendanceReportView(APIView):
 
                     else:
                         szk_count += 1
-                        penalty_amount = int(round(day_salary))
+                        penalty_amount = round(day_salary, 2)
 
                         if total_penalty + penalty_amount > emp.salary:
                             penalty_amount = emp.salary - total_penalty
@@ -269,7 +268,7 @@ class MonthlyAttendanceReportView(APIView):
 
                 diff = worked_min - shift_min
 
-                minute_salary = day_salary / shift_min if shift_min else 0
+                minute_salary = day_salary / shift_min
                 money = round(diff * minute_salary, 2)
 
                 if diff > 0:
