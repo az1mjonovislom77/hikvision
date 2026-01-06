@@ -144,9 +144,10 @@ class MonthlyAttendanceReportView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(tags=['Attendance'], parameters=[
-        OpenApiParameter(name="employee_id", type=int, required=False, description="Faqat bitta xodim uchun", ),
-        OpenApiParameter(name="year", type=int, required=True, description="Hisobot yili (masalan 2025)", ),
-        OpenApiParameter(name="month", type=int, required=True, description="Hisobot oyi (1–12)", ), ], )
+        OpenApiParameter(name="employee_id", type=int, required=False, description="Faqat bitta xodim uchun"),
+        OpenApiParameter(name="year", type=int, required=True, description="Hisobot yili (masalan 2025)"),
+        OpenApiParameter(name="month", type=int, required=True, description="Hisobot oyi (1–12)"),
+    ])
     def get(self, request):
         year = int(request.GET.get("year"))
         month = int(request.GET.get("month"))
@@ -172,10 +173,9 @@ class MonthlyAttendanceReportView(APIView):
             total_penalty = 0
             total_overtime = 0
             total_undertime = 0
-
+            worked_minutes = 0
             sbk_count = 0
             szk_count = 0
-
             details = []
 
             for day in (start_date + timedelta(days=i)
@@ -230,7 +230,7 @@ class MonthlyAttendanceReportView(APIView):
 
                     else:
                         szk_count += 1
-                        penalty_amount = round(day_salary, 2)
+                        penalty_amount = int(round(day_salary))
 
                         if total_penalty + penalty_amount > emp.salary:
                             penalty_amount = emp.salary - total_penalty
@@ -259,6 +259,8 @@ class MonthlyAttendanceReportView(APIView):
                      ).total_seconds() / 60
                 )
 
+                worked_minutes += worked_min
+
                 shift_min = int(
                     (datetime.combine(day, emp.shift.end_time) -
                      datetime.combine(day, emp.shift.start_time)
@@ -267,7 +269,7 @@ class MonthlyAttendanceReportView(APIView):
 
                 diff = worked_min - shift_min
 
-                minute_salary = day_salary / shift_min
+                minute_salary = day_salary / shift_min if shift_min else 0
                 money = round(diff * minute_salary, 2)
 
                 if diff > 0:
@@ -284,6 +286,7 @@ class MonthlyAttendanceReportView(APIView):
                 "month": month,
                 "sbk_count": sbk_count,
                 "szk_count": szk_count,
+                "worked_time": minutes_to_hm(worked_minutes),
                 "total_overtime": minutes_to_hm(total_overtime),
                 "total_undertime": minutes_to_hm(total_undertime),
                 "total_bonus": int(round(total_bonus)),
