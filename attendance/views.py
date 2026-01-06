@@ -217,6 +217,7 @@ class MonthlyAttendanceReportView(APIView):
                                 if penalty_amount < 0:
                                     penalty_amount = 0
 
+
                             total_penalty += penalty_amount
                             details.append({
                                 "date": day,
@@ -274,7 +275,7 @@ class MonthlyAttendanceReportView(APIView):
 
                 diff = worked_min - shift_min
 
-                hour_salary = day_salary / 8
+                hour_salary = day_salary / shift_min
                 minute_salary = hour_salary / 60
                 money = round(diff * minute_salary, 2)
 
