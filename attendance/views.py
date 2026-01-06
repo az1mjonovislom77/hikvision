@@ -199,7 +199,7 @@ class MonthlyAttendanceReportView(APIView):
 
                         if attendance.status == "szk":
                             szk_count += 1
-                            penalty_amount = int(round(abs(day_salary)))
+                            penalty_amount = round(day_salary, 2)
 
                             if total_penalty + penalty_amount > emp.salary:
                                 penalty_amount = emp.salary - total_penalty
