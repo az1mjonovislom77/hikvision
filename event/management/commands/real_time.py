@@ -50,11 +50,13 @@ class Command(BaseCommand):
                         else "🚷 CHIQISH" if label in {"chiqish", "out", "exit", "leave"} else "❓ NOMAʼLUM"
                     )
 
+                    local_time = timezone.localtime(event.time)
+
                     msg = (
                         f"<b>{direction}</b>\n\n"
                         f"👤 <b>Ism:</b> {employee.name}\n"
                         f"🆔 <b>Employee №:</b> {employee.employee_no}\n"
-                        f"🕒 <b>Vaqt:</b> {event.time:%Y-%m-%d %H:%M:%S}\n"
+                        f"🕒 <b>Vaqt:</b> {local_time:%Y-%m-%d %H:%M:%S}\n"
                         f"📍 <b>Qurilma:</b> {device.name}"
                     )
 
