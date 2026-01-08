@@ -43,7 +43,7 @@ class AbsentEmployeesView(APIView):
                 "date": target_date,
                 "total": 0,
                 "employees": [],
-                "message": "Kelajak sana — tekshirilmadi"
+                "message": "Hali kelmagan sana"
             })
 
         employees = Employee.objects.filter(device__user=request.user).distinct()
