@@ -35,7 +35,17 @@ class AbsentEmployeesView(APIView):
         q_date = request.GET.get("date")
         target_date = date.fromisoformat(q_date) if q_date else date.today()
 
+        today = date.today()
         current_dt = now()
+
+        if target_date > today:
+            return Response({
+                "date": target_date,
+                "total": 0,
+                "employees": [],
+                "message": "Kelajak sana — tekshirilmadi"
+            })
+
         employees = Employee.objects.filter(device__user=request.user).distinct()
 
         for emp in employees:
@@ -47,7 +57,6 @@ class AbsentEmployeesView(APIView):
                 continue
 
             day_code = WEEKDAY_CODE_MAP[target_date.weekday()]
-
             is_workday = day_code in emp.work_day.days
             is_day_off = emp.day_off and target_date.isoformat() in (emp.day_off.days or [])
 
@@ -56,7 +65,7 @@ class AbsentEmployeesView(APIView):
 
             shift_end = make_aware(datetime.combine(target_date, emp.shift.end_time))
 
-            if current_dt < shift_end:
+            if target_date == today and current_dt < shift_end:
                 continue
 
             has_event = AccessEvent.objects.filter(employee=emp, time__date=target_date, major=5, minor=75).exists()
@@ -112,10 +121,7 @@ class AbsentEmployeesView(APIView):
         comment = request.data.get("comment")
 
         if not (employee_id and q_date and status_value):
-            return Response(
-                {"detail": "employee_id, date va status majburiy"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"detail": "employee_id, date va status majburiy"}, status=status.HTTP_400_BAD_REQUEST)
 
         target_date = date.fromisoformat(q_date)
         employee = Employee.objects.get(id=employee_id)
@@ -144,9 +150,10 @@ class MonthlyAttendanceReportView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(tags=['Attendance'], parameters=[
-        OpenApiParameter(name="employee_id", type=int, required=False, description="Faqat bitta xodim uchun", ),
-        OpenApiParameter(name="year", type=int, required=True, description="Hisobot yili (masalan 2025)", ),
-        OpenApiParameter(name="month", type=int, required=True, description="Hisobot oyi (1–12)", ), ], )
+        OpenApiParameter(name="employee_id", type=int, required=False, description="Faqat bitta xodim uchun"),
+        OpenApiParameter(name="year", type=int, required=True, description="Hisobot yili"),
+        OpenApiParameter(name="month", type=int, required=True, description="Hisobot oyi"),
+    ])
     def get(self, request):
         year = int(request.GET.get("year"))
         month = int(request.GET.get("month"))
@@ -154,6 +161,9 @@ class MonthlyAttendanceReportView(APIView):
 
         start_date = date(year, month, 1)
         end_date = date(year, month, monthrange(year, month)[1])
+
+        today = date.today()
+        current_dt = now()
 
         employees = (
             Employee.objects.filter(id=employee_id)
@@ -180,6 +190,9 @@ class MonthlyAttendanceReportView(APIView):
             for day in (start_date + timedelta(days=i)
                         for i in range((end_date - start_date).days + 1)):
 
+                if day > today:
+                    continue
+
                 if not emp.shift or not emp.work_day:
                     continue
 
@@ -190,58 +203,39 @@ class MonthlyAttendanceReportView(APIView):
                 if not is_workday or is_day_off:
                     continue
 
+                shift_end = make_aware(datetime.combine(day, emp.shift.end_time))
+                if day == today and current_dt < shift_end:
+                    continue
+
                 attendance = AttendanceDaily.objects.filter(employee=emp, date=day).first()
                 events = AccessEvent.objects.filter(employee=emp, time__date=day)
 
                 if not events.exists():
 
-                    if attendance:
-
-                        if attendance.status == "szk":
-                            szk_count += 1
-                            penalty_amount = round(day_salary, 2)
-
-                            if total_penalty + penalty_amount > emp.salary:
-                                penalty_amount = emp.salary - total_penalty
-                                if penalty_amount < 0:
-                                    penalty_amount = 0
-
-                            total_penalty += penalty_amount
-                            details.append({
-                                "date": day,
-                                "status": "szk",
-                                "status_label": "Sababsiz kelmadi",
-                                "worked": "0:00",
-                                "difference": "0:00",
-                                "penalty": penalty_amount
-                            })
-
-                        elif attendance.status == "sbk":
-                            sbk_count += 1
-                            details.append({
-                                "date": day,
-                                "status": "sbk",
-                                "status_label": "Sababli kelmadi",
-                                "worked": "0:00",
-                                "difference": "0:00",
-                                "penalty": 0
-                            })
+                    if attendance and attendance.status == "sbk":
+                        sbk_count += 1
+                        details.append({
+                            "date": day,
+                            "status": "sbk",
+                            "status_label": "Sababli kelmadi",
+                            "worked": "0:00",
+                            "difference": "0:00",
+                            "penalty": 0
+                        })
 
                     else:
                         szk_count += 1
                         penalty_amount = round(day_salary, 2)
 
                         if total_penalty + penalty_amount > emp.salary:
-                            penalty_amount = emp.salary - total_penalty
-                            if penalty_amount < 0:
-                                penalty_amount = 0
+                            penalty_amount = max(0, emp.salary - total_penalty)
 
                         total_penalty += penalty_amount
 
                         details.append({
                             "date": day,
                             "status": "szk",
-                            "status_label": "Sababsiz kelmadi (auto)",
+                            "status_label": "Sababsiz kelmadi",
                             "worked": "0:00",
                             "difference": "0:00",
                             "penalty": penalty_amount
@@ -253,10 +247,7 @@ class MonthlyAttendanceReportView(APIView):
                 last_out = events.latest("time").time()
 
                 worked_min = int(
-                    (datetime.combine(day, last_out) -
-                     datetime.combine(day, first_in)
-                     ).total_seconds() / 60
-                )
+                    (datetime.combine(day, last_out) - datetime.combine(day, first_in)).total_seconds() / 60)
 
                 worked_minutes += worked_min
 
@@ -267,7 +258,6 @@ class MonthlyAttendanceReportView(APIView):
                 )
 
                 diff = worked_min - shift_min
-
                 minute_salary = day_salary / shift_min
                 money = round(diff * minute_salary, 2)
 
@@ -291,7 +281,6 @@ class MonthlyAttendanceReportView(APIView):
                 "total_bonus": int(round(total_bonus)),
                 "total_penalty": int(round(total_penalty)),
                 "net_adjustment": int(round(abs(total_bonus - total_penalty))),
-
                 "details": details
             })
 
