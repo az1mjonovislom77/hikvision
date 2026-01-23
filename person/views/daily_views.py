@@ -1,4 +1,5 @@
 import openpyxl
+from io import BytesIO
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
@@ -89,7 +90,11 @@ class DailyAccessExcelExport(APIView):
 
             ws.append([emp.employee_no, emp.name, kirish, chiqish, late_text, shift_start])
 
-        response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        response = HttpResponse(output.getvalue(),
+                                content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         response["Content-Disposition"] = f'attachment; filename="daily_{date_obj}.xlsx"'
-        wb.save(response)
         return response

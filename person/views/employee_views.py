@@ -233,7 +233,7 @@ class EmployeeDeleteView(APIView):
 class EmployeeHistoryListView(ListAPIView):
     serializer_class = EmployeeHistorySerializer
     permission_classes = [IsAuthenticated]
-    pagination_class = None  # pagination yo‘q
+    pagination_class = None
 
     def list(self, request, *args, **kwargs):
         if not request.query_params.get("employee_id"):

@@ -45,10 +45,8 @@ class Command(BaseCommand):
                     raw = event.raw_json or {}
                     label = (raw.get("labelName") or raw.get("label") or raw.get("name") or "").strip().lower()
 
-                    direction = (
-                        "🚪 KIRISH" if label in {"kirish", "in", "entry", "enter"}
-                        else "🚷 CHIQISH" if label in {"chiqish", "out", "exit", "leave"} else "❓ NOMAʼLUM"
-                    )
+                    direction = ("🚪 KIRISH" if label in {"kirish", "in", "entry", "enter"}
+                                 else "🚷 CHIQISH" if label in {"chiqish", "out", "exit", "leave"} else "❓ NOMAʼLUM")
 
                     local_time = timezone.localtime(event.time)
 
