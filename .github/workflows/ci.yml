@@ -25,9 +25,17 @@ jobs:
           pip install -r requirements.txt
 
       - name: Django check
+        env:
+          SECRET_KEY: "dummy-secret-key-for-ci"
+          DEBUG: "True"
         run: |
           python manage.py check
+      
 
       - name: Check migrations
+        env:
+          SECRET_KEY: "dummy-secret-key-for-ci"
+          DEBUG: "True"
         run: |
           python manage.py makemigrations --check --dry-run
+      
