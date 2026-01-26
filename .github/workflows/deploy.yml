@@ -2,7 +2,7 @@ name: Deploy Django to VPS
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
 
 jobs:
   deploy:
@@ -19,7 +19,9 @@ jobs:
             set -e
 
             cd ${{ secrets.PROJECT_PATH }}
-
+            
+            git config --global --add safe.directory /home/hikvision
+            
             echo "📥 Pulling latest code..."
             git pull origin main
 
