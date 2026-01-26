@@ -22,7 +22,6 @@ def sync_channels_from_updates():
         chat = message.get("chat")
         chat_id = str(chat["id"])
         title = chat.get("title")
-
         logger.info(f"📡 Update from channel: {title} ({chat_id})")
 
         channel = TelegramChannel.objects.filter(name=title, resolved_id__isnull=True).first()
