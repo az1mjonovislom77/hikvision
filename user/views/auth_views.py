@@ -5,6 +5,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from drf_spectacular.utils import extend_schema
 from user.serializers.auth_serializers import SignInSerializer, LogoutSerializer, MeSerializer
 from user.services.token_service import UserTokenService
+from utils.utils.rate_limit import reset_login_rate_limit, check_login_rate_limit, get_client_ip
 
 
 @extend_schema(tags=["Auth"])
@@ -14,6 +15,13 @@ class SignInAPIView(APIView):
     serializer_class = SignInSerializer
 
     def post(self, request):
+        ip = get_client_ip(request)
+        phone = request.data.get("phone_number", "unknown")
+
+        if not check_login_rate_limit(ip, phone):
+            return Response({"detail": "Too many login attempts. Try again later."},
+                            status=status.HTTP_429_TOO_MANY_REQUESTS)
+
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
@@ -30,6 +38,8 @@ class SignInAPIView(APIView):
         )
 
         UserTokenService.set_refresh_cookie(response, tokens["refresh"])
+
+        reset_login_rate_limit(ip, phone)
 
         return response
 

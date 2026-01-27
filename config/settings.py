@@ -219,6 +219,16 @@ JAZZMIN_SETTINGS = {
     "show_ui_builder": True,
 }
 
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
+
 STATIC_ROOT = 'staticfiles'
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
