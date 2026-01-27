@@ -49,9 +49,7 @@ class DailyAccessListView(APIView):
 
                 raw_late = first_minutes - shift_minutes
 
-                approved_late = emp.shift.approved_late_min or 0
-
-                if raw_late > approved_late:
+                if raw_late > 15:
                     late_minutes = raw_late
                     stats["late"] += 1
 
