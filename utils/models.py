@@ -25,7 +25,7 @@ class Department(OwnedNamedModel):
 
 
 class Branch(OwnedNamedModel):
-    pass
+    device = models.ForeignKey(Devices, on_delete=models.SET_NULL, null=True, blank=True)
 
 
 class Plan(models.Model):

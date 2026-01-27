@@ -1,3 +1,5 @@
+from urllib import request
+
 from utils.base.views_base import BaseUserViewSet, User, ReadWriteSerializerMixin
 from utils.models import Devices, Department, Branch, TelegramChannel, Subscription, Plan, Notification
 from utils.services.notifications import NotificationService

@@ -28,7 +28,7 @@ class BranchGetSerializer(BaseReadSerializer):
 class BranchCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Branch
-        fields = ["name"]
+        fields = ["name", "device"]
 
 
 class TelegramChannelSerializer(BaseReadSerializer):
