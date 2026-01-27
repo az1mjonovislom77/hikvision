@@ -249,8 +249,18 @@ class MonthlyAttendanceReportView(APIView):
                 first_in = first_event.time.time()
                 last_out = last_event.time.time()
 
+                shift_start_dt = datetime.combine(day, emp.shift.start_time)
+                first_in_dt = datetime.combine(day, first_in)
+
+                late_minutes = int((first_in_dt - shift_start_dt).total_seconds() / 60)
+
+                if late_minutes <= 15:
+                    late_minutes = 0
+
                 worked_min = int(
                     (datetime.combine(day, last_out) - datetime.combine(day, first_in)).total_seconds() / 60)
+
+                worked_min -= late_minutes
 
                 worked_minutes += worked_min
 
