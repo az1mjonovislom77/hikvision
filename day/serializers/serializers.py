@@ -56,4 +56,4 @@ class ShiftGetSerializer(serializers.ModelSerializer):
 class ShiftCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Shift
-        fields = ['break_time', 'name', 'start_time', 'end_time']
+        fields = ['break_time', 'name', 'start_time', 'end_time', 'approved_late_min']
