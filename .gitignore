@@ -27,18 +27,3 @@ settings_local.py # Or any other file containing local/sensitive settings
 .idea/
 .vscode/
 Thumbs.db
-
-# ---- Django local-only migrations (DO NOT PUSH) ----
-**/migrations/0*.py
-**/migrations/1*.py
-**/migrations/2*.py
-**/migrations/3*.py
-**/migrations/4*.py
-**/migrations/5*.py
-**/migrations/6*.py
-**/migrations/7*.py
-**/migrations/8*.py
-**/migrations/9*.py
-
-# keep __init__.py
-!**/migrations/__init__.py
