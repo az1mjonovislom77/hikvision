@@ -8,7 +8,6 @@ from django.http import HttpResponse
 from django.utils.timezone import now, make_aware
 from django.utils.dateparse import parse_date
 from datetime import datetime
-from day.models import Shift
 from person.models import Employee
 from person.utils import get_first_last_events, format_late, UZ_TZ
 
@@ -50,7 +49,9 @@ class DailyAccessListView(APIView):
 
                 raw_late = first_minutes - shift_minutes
 
-                if raw_late > Shift.approved_late_min:
+                approved_late = emp.shift.approved_late_min or 0
+
+                if raw_late > approved_late:
                     late_minutes = raw_late
                     stats["late"] += 1
 
