@@ -254,7 +254,7 @@ class MonthlyAttendanceReportView(APIView):
 
                 late_minutes = int((first_in_dt - shift_start_dt).total_seconds() / 60)
 
-                if late_minutes <= 15:
+                if late_minutes <= 7:
                     late_minutes = 0
 
                 worked_min = int(
