@@ -243,8 +243,11 @@ class MonthlyAttendanceReportView(APIView):
 
                     continue
 
-                first_in = events.earliest("time").time()
-                last_out = events.latest("time").time()
+                first_event = events.earliest("time")
+                last_event = events.latest("time")
+
+                first_in = first_event.time.time()
+                last_out = last_event.time.time()
 
                 worked_min = int(
                     (datetime.combine(day, last_out) - datetime.combine(day, first_in)).total_seconds() / 60)
