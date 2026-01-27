@@ -50,6 +50,7 @@ class DailyAccessListView(APIView):
                 raw_late = first_minutes - shift_minutes
 
                 if raw_late > 15:
+
                     late_minutes = raw_late
                     stats["late"] += 1
 
