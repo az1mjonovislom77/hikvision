@@ -19,3 +19,4 @@ class Shift(OwnedNamedModel):
     break_time = models.ForeignKey(BreakTime, on_delete=models.SET_NULL, null=True, blank=True)
     start_time = models.TimeField()
     end_time = models.TimeField()
+    approved_late_min = models.TimeField(null=True, blank=True)
