@@ -10,14 +10,22 @@ from django.utils.dateparse import parse_date
 from datetime import datetime
 from person.models import Employee
 from person.utils import get_first_last_events, format_late, UZ_TZ
+from utils.models import Branch
 
 
-@extend_schema(tags=["Employee"], parameters=[OpenApiParameter(name="date", type=str)])
+@extend_schema(
+    tags=["Employee"],
+    parameters=[
+        OpenApiParameter(name="date", type=str),
+        OpenApiParameter(name="branch_id", type=int),
+    ]
+)
 class DailyAccessListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         date_str = request.GET.get("date")
+        branch_id = request.GET.get("branch_id")
         date_obj = parse_date(date_str) if date_str else now().date()
 
         user = request.user
@@ -25,7 +33,17 @@ class DailyAccessListView(APIView):
         if user.UserRoles.SUPERADMIN or user.is_staff:
             employees = Employee.objects.all()
         else:
-            employees = Employee.objects.filter(device__user=user)
+            branches = Branch.objects.filter(user=user).order_by("id")
+
+            if branch_id:
+                branch = branches.filter(id=branch_id).first()
+            else:
+                branch = branches.first()
+
+            if not branch:
+                employees = Employee.objects.none()
+            else:
+                employees = Employee.objects.filter(device=branch.device)
 
         results = []
         stats = {"total": employees.count(), "came": 0, "late": 0, "absent": 0}
