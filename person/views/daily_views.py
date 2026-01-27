@@ -41,10 +41,13 @@ class DailyAccessListView(APIView):
             late_minutes = 0
 
             if emp.shift and first:
-                first_time = first.time.astimezone(UZ_TZ)
-                shift_start = make_aware(datetime.combine(date_obj, emp.shift.start_time), UZ_TZ)
+                shift_start_time = emp.shift.start_time
+                first_time = first.time.astimezone(UZ_TZ).time()
 
-                raw_late = int((first_time - shift_start).total_seconds() / 60)
+                shift_minutes = shift_start_time.hour * 60 + shift_start_time.minute
+                first_minutes = first_time.hour * 60 + first_time.minute
+
+                raw_late = first_minutes - shift_minutes
 
                 if raw_late > 15:
                     late_minutes = raw_late
