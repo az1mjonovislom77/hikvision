@@ -41,9 +41,12 @@ class DailyAccessListView(APIView):
             late_minutes = 0
             if emp.shift and first:
                 shift_start = make_aware(datetime.combine(date_obj, emp.shift.start_time), UZ_TZ)
-                if first.time > shift_start:
+
+                raw_late = int((first.time - shift_start).total_seconds() / 60)
+
+                if raw_late > 15:
+                    late_minutes = raw_late
                     stats["late"] += 1
-                    late_minutes = int((first.time - shift_start).total_seconds() / 60)
 
             results.append({
                 "employee_id": emp.id,
@@ -55,7 +58,11 @@ class DailyAccessListView(APIView):
                 "face": request.build_absolute_uri(emp.face_image.url) if emp.face_image else None
             })
 
-        return Response({"date": str(date_obj), "employees": results, "stats": stats})
+        return Response({
+            "date": str(date_obj),
+            "employees": results,
+            "stats": stats
+        })
 
 
 @extend_schema(tags=["DailyExel"], parameters=[OpenApiParameter(name="date", type=str)])
