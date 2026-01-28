@@ -10,6 +10,7 @@ from attendance.models import AttendanceDaily
 from event.models import AccessEvent
 from person.models import Employee
 from attendance.utils import count_workdays_in_month
+from utils.models import Branch
 from utils.utils.constants import WEEKDAY_CODE_MAP
 
 
@@ -28,11 +29,22 @@ class AbsentEmployeesView(APIView):
                 type=str,
                 description="Kun (YYYY-MM-DD). Kiritilmasa — bugungi kun olinadi",
                 required=False,
+            ),
+            OpenApiParameter(
+                name="branch_id",
+                type=int,
+                description="Branch ID (majburiy)",
+                required=True,
             )
         ]
     )
     def get(self, request):
         q_date = request.GET.get("date")
+        branch_id = request.GET.get("branch_id")
+
+        if not branch_id:
+            return Response({"error": "branch_id majburiy"}, status=400)
+
         target_date = date.fromisoformat(q_date) if q_date else date.today()
 
         today = date.today()
@@ -46,7 +58,12 @@ class AbsentEmployeesView(APIView):
                 "message": "Hali kelmagan sana"
             })
 
-        employees = Employee.objects.filter(device__user=request.user).distinct()
+        branch = Branch.objects.filter(id=branch_id, user=request.user).first()
+
+        if not branch:
+            return Response({"error": "Branch topilmadi yoki sizga tegishli emas"}, status=400)
+
+        employees = Employee.objects.filter(device=branch.device).distinct()
 
         for emp in employees:
 
@@ -82,7 +99,7 @@ class AbsentEmployeesView(APIView):
                 }
             )
 
-        records = AttendanceDaily.objects.filter(date=target_date, status__in=["sbk", "szk"])
+        records = AttendanceDaily.objects.filter(date=target_date, tatus__in=["sbk", "szk"])
 
         return Response({
             "date": target_date,
