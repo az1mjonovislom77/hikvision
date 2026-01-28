@@ -166,12 +166,20 @@ class AbsentEmployeesView(APIView):
 class MonthlyAttendanceReportView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(tags=['Attendance'], parameters=[
-        OpenApiParameter(name="employee_id", type=int, required=False, description="Faqat bitta xodim uchun"),
-        OpenApiParameter(name="year", type=int, required=True, description="Hisobot yili"),
-        OpenApiParameter(name="month", type=int, required=True, description="Hisobot oyi"),
-    ])
+    @extend_schema(
+        tags=['Attendance'],
+        parameters=[
+            OpenApiParameter(name="branch_id", type=int, required=True, description="Branch ID (majburiy)"),
+            OpenApiParameter(name="employee_id", type=int, required=False, description="Faqat bitta xodim uchun"),
+            OpenApiParameter(name="year", type=int, required=True, description="Hisobot yili"),
+            OpenApiParameter(name="month", type=int, required=True, description="Hisobot oyi"),
+        ]
+    )
     def get(self, request):
+        branch_id = request.GET.get("branch_id")
+        if not branch_id:
+            return Response({"error": "branch_id majburiy"}, status=400)
+
         year = int(request.GET.get("year"))
         month = int(request.GET.get("month"))
         employee_id = request.GET.get("employee_id")
@@ -182,11 +190,17 @@ class MonthlyAttendanceReportView(APIView):
         today = date.today()
         current_dt = now()
 
-        employees = (
-            Employee.objects.filter(id=employee_id)
-            if employee_id else
-            Employee.objects.filter(device__user=request.user).distinct()
-        )
+        branch = Branch.objects.filter(id=branch_id, user=request.user).first()
+
+        if not branch:
+            return Response(
+                {"error": "Branch topilmadi yoki sizga tegishli emas"},
+                status=400
+            )
+
+        employees = (Employee.objects.filter(id=employee_id, device=branch.device)
+                     if employee_id else
+                     Employee.objects.filter(device=branch.device).distinct())
 
         reports = []
 
@@ -239,7 +253,6 @@ class MonthlyAttendanceReportView(APIView):
                             "difference": "0:00",
                             "penalty": 0
                         })
-
                     else:
                         szk_count += 1
                         penalty_amount = round(day_salary, 2)
@@ -270,7 +283,6 @@ class MonthlyAttendanceReportView(APIView):
                 first_in_dt = datetime.combine(day, first_in)
 
                 late_minutes = int((first_in_dt - shift_start_dt).total_seconds() / 60)
-
                 approved_late = emp.shift.approved_late_min or 0
 
                 if late_minutes <= approved_late:
@@ -280,7 +292,6 @@ class MonthlyAttendanceReportView(APIView):
                     (datetime.combine(day, last_out) - datetime.combine(day, first_in)).total_seconds() / 60)
 
                 worked_min -= late_minutes
-
                 worked_minutes += worked_min
 
                 shift_min = int(
