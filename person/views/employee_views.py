@@ -74,9 +74,14 @@ class EmployeeListView(APIView):
 
     def get(self, request):
         user = request.user
+        branch_id = request.query_params.get("branch_id")
+
+        if not branch_id:
+            return Response({"error": "branch_id majburiy"}, status=400)
 
         if user.role == User.UserRoles.SUPERADMIN or user.is_staff:
-            user_id = request.GET.get("user_id")
+            user_id = request.query_params.get("user_id")
+
             if not user_id:
                 return Response({"error": "user_id superadmin uchun majburiy"}, status=400)
 
@@ -84,10 +89,15 @@ class EmployeeListView(APIView):
             if not target_user:
                 return Response({"error": "Bunday user topilmadi"}, status=404)
 
-            employees = Employee.objects.filter(device__user=target_user)
+            branch = Branch.objects.filter(id=branch_id, user=target_user).first()
 
         else:
-            employees = Employee.objects.filter(device__user=user)
+            branch = Branch.objects.filter(id=branch_id, user=user).first()
+
+        if not branch:
+            return Response({"error": "Branch topilmadi yoki sizga tegishli emas"}, status=400)
+
+        employees = Employee.objects.filter(device=branch.device)
 
         serializer = EmployeeSerializer(employees, many=True, context={"request": request})
 
