@@ -5,7 +5,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.permissions import IsAuthenticated
 from person.models import Employee, EmployeeHistory
 from user.models import User
-from utils.models import Devices
+from utils.models import Devices, Branch
 from person.serializers import (EmployeeSerializer, EmployeeCreateSerializer, EmployeeUpdateSerializer,
                                 EmployeeHistorySerializer)
 from person.utils import fix_hikvision_time
@@ -23,6 +23,10 @@ class EmployeeSyncView(APIView):
 
     def post(self, request):
         user = request.user
+        branch_id = request.query_params.get("branch_id")
+
+        if not branch_id:
+            return Response({"error": "branch_id majburiy"}, status=400)
 
         if user.role == User.UserRoles.SUPERADMIN or user.is_staff:
             user_id = request.query_params.get("user_id")
@@ -34,14 +38,23 @@ class EmployeeSyncView(APIView):
             if not target_user:
                 return Response({"error": "Bunday user topilmadi"}, status=404)
 
-            devices = Devices.objects.filter(user=target_user)
+            branch = Branch.objects.filter(id=branch_id, user=target_user).first()
         else:
-            devices = Devices.objects.filter(user=user)
+            branch = Branch.objects.filter(id=branch_id, user=user).first()
+
+        if not branch:
+            return Response({"error": "Branch topilmadi yoki sizga tegishli emas"}, status=400)
+
+        devices = Devices.objects.filter(id=branch.device_id)
 
         if not devices.exists():
-            return Response({"error": "Ushbu userga device biriktirilmagan"}, status=400)
+            return Response({"error": "Ushbu branch uchun device topilmadi"}, status=400)
 
-        total_stats = {"synced_devices": 0, "added": 0, "deleted": 0, }
+        total_stats = {
+            "synced_devices": 0,
+            "added": 0,
+            "deleted": 0,
+        }
 
         for device in devices:
             hk_users = HikvisionService.search_users(device)
