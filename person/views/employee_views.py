@@ -191,19 +191,9 @@ class EmployeeUpdateView(APIView):
         if not emp:
             return Response({"error": "Topilmadi"}, status=404)
 
-        user = request.user
-        device_id = request.data.get("device_id")
-
-        if not device_id:
-            return Response({"error": "device_id majburiy"}, status=400)
-
-        if user.role == User.UserRoles.SUPERADMIN or user.is_staff:
-            device = Devices.objects.filter(id=device_id).first()
-        else:
-            device = Devices.objects.filter(id=device_id, user=user).first()
-
-        if not device:
-            return Response({"error": "Device topilmadi yoki sizga tegishli emas"}, status=403)
+        if not request.user.UserRoles.SUPERADMIN and not request.user.is_staff:
+            if emp.device.user != request.user:
+                return Response({"error": "Ruxsat yo‘q"}, status=403)
 
         serializer = EmployeeUpdateSerializer(emp, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -232,11 +222,11 @@ class EmployeeUpdateView(APIView):
             }
         }
 
-        result = HikvisionService.update_user(device, payload)
+        result = HikvisionService.update_user(emp.device, payload)
         if result.status_code != 200:
             return Response({"error": "Update failed", "detail": result.text}, status=400)
 
-        serializer.save(device=device)
+        serializer.save()
 
         return Response({"status": "updated"})
 

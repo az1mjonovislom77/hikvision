@@ -28,16 +28,14 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
         fields = ["device", "name", "user_type", "begin_time", "end_time", "door_right", "employment", "department",
-                  "position", "shift", "description", "phone_number", "salary", "work_day", "branch",
-                  "fine", "day_off"]
+                  "position", "shift", "description", "phone_number", "salary", "work_day", "fine", "day_off"]
 
 
 class EmployeeUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
         fields = ["device", "name", "user_type", "begin_time", "end_time", "door_right", "employment", "department",
-                  "position", "shift", "description", "phone_number", "salary", "work_day", "branch",
-                  "fine", "day_off"]
+                  "position", "shift", "description", "phone_number", "salary", "work_day", "fine", "day_off"]
         extra_kwargs = {"name": {"required": False}}
 
 
