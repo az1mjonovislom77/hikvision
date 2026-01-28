@@ -99,7 +99,7 @@ class AbsentEmployeesView(APIView):
                 }
             )
 
-        records = AttendanceDaily.objects.filter(date=target_date, tatus__in=["sbk", "szk"])
+        records = AttendanceDaily.objects.filter(date=target_date, status__in=["sbk", "szk"])
 
         return Response({
             "date": target_date,
