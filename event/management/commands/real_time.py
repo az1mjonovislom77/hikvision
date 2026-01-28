@@ -64,7 +64,7 @@ class Command(BaseCommand):
                     if picture_url and device.username and device.password:
                         image_bytes = download_image(picture_url, device)
 
-                    channels = TelegramChannel.objects.filter(user=device.user, resolved_id__isnull=False)
+                    channels = TelegramChannel.objects.filter(device=device, resolved_id__isnull=False)
 
                     for channel in channels:
                         try:
