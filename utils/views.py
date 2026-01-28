@@ -7,11 +7,11 @@ from utils.serializers import DevicesSerializer, TelegramChannelSerializer, \
     BranchGetSerializer, BranchCreateSerializer, DepartmentCreateSerializer, DepartmentGetSerializer, \
     PlanSerializer, SubscriptionCreateSerializer, SubscriptionDetailSerializer, NotificationSerializer, \
     AdminNotificationSerializer
-from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 
 @user_extend_schema("Devices")
@@ -34,7 +34,11 @@ class BranchViewSet(ReadWriteSerializerMixin, BaseUserViewSet):
     read_serializer = BranchGetSerializer
 
 
-@user_extend_schema("TelegramChannel")
+@extend_schema(tags=['TelegramChannel'],
+               parameters=[
+                   OpenApiParameter(name="branch_id", type=int, description="Branch ID (majburiy)", required=True),
+                   OpenApiParameter(name="user_id", type=int, required=False, description="Faqat superadmin uchun")
+               ])
 class TelegramChannelViewSet(BaseUserViewSet):
     queryset = TelegramChannel.objects.all()
     serializer_class = TelegramChannelSerializer

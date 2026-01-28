@@ -14,10 +14,13 @@ from person.services.employee import EmployeeService
 from rest_framework.generics import ListAPIView
 from django.utils.timezone import localdate
 from rest_framework import status
-from utils.utils.schema import user_extend_schema
 
 
-@user_extend_schema("Employee")
+@extend_schema(tags=['Employee'],
+               parameters=[
+                   OpenApiParameter(name="branch_id", type=int, description="Branch ID (majburiy)", required=True),
+                   OpenApiParameter(name="user_id", type=int, required=False, description="Faqat superadmin uchun")
+               ])
 class EmployeeSyncView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -67,7 +70,11 @@ class EmployeeSyncView(APIView):
         return Response({"success": True, **total_stats})
 
 
-@user_extend_schema("Employee")
+@extend_schema(tags=['Employee'],
+               parameters=[
+                   OpenApiParameter(name="branch_id", type=int, description="Branch ID (majburiy)", required=True),
+                   OpenApiParameter(name="user_id", type=int, required=False, description="Faqat superadmin uchun")
+               ])
 class EmployeeListView(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = EmployeeSerializer
