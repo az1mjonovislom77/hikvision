@@ -33,8 +33,7 @@ class SignInAPIView(APIView):
                 "success": True,
                 "message": "User logged in successfully",
                 "data": {"access": tokens["access"]}
-            },
-            status=status.HTTP_200_OK
+            }, status=status.HTTP_200_OK
         )
 
         UserTokenService.set_refresh_cookie(response, tokens["refresh"])
@@ -53,20 +52,14 @@ class RefreshTokenAPIView(APIView):
         refresh_token = request.COOKIES.get(UserTokenService.COOKIE_NAME)
 
         if not refresh_token:
-            return Response(
-                {"detail": "Refresh token not found"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"detail": "Refresh token not found"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             access = str(UserTokenService.get_tokens_for_user_from_refresh(refresh_token))
             return Response({"access": access})
 
         except Exception:
-            return Response(
-                {"detail": "Invalid or expired refresh token"},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
+            return Response({"detail": "Invalid or expired refresh token"}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 @extend_schema(tags=["Auth"])

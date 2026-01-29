@@ -30,17 +30,17 @@ class DailyAccessListView(APIView):
 
         user = request.user
 
-        if user.UserRoles.SUPERADMIN or user.is_staff:
+        if user.is_staff or user.role == user.UserRoles.SUPERADMIN:
             employees = Employee.objects.all()
         else:
-            branches = Branch.objects.filter(user=user).order_by("id")
+            branch_qs = Branch.objects.filter(user=user)
 
             if branch_id:
-                branch = branches.filter(id=branch_id).first()
-            else:
-                branch = branches.first()
+                branch_qs = branch_qs.filter(id=branch_id)
 
-            if not branch:
+            branch = branch_qs.select_related("device").first()
+
+            if not branch or not branch.device:
                 employees = Employee.objects.none()
             else:
                 employees = Employee.objects.filter(device=branch.device)

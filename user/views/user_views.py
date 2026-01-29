@@ -2,13 +2,8 @@ from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema
 from user.models import User
-from user.serializers.user_serializers import (UserCreateSerializer, UserDetailSerializer)
-
-
-class PartialPutMixin:
-    def update(self, request, *args, **kwargs):
-        kwargs['partial'] = True
-        return super().update(request, *args, **kwargs)
+from user.serializers.user_serializers import UserCreateSerializer, UserDetailSerializer
+from utils.base.views_base import PartialPutMixin
 
 
 @extend_schema(tags=["User"])
