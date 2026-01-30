@@ -75,7 +75,7 @@ class DailyAccessListView(APIView):
             results.append({
                 "employee_id": emp.id,
                 "employee_no": emp.employee_no,
-                "position": emp.employee_position,
+                "position": emp.position,
                 "name": emp.name,
                 "kirish": first.time.astimezone(UZ_TZ) if first else None,
                 "chiqish": last.time.astimezone(UZ_TZ) if last else None,
