@@ -64,12 +64,15 @@ def get_day_range(date_obj):
 
 
 def get_first_last_events(emp_no, date_obj, label_in="Kirish", label_out="Chiqish"):
-    first_entry = AccessEvent.objects.filter(
-        employee_no=emp_no,
-        raw_json__label=label_in,
-        time__date=date_obj).order_by("time").first()
+    start = make_aware(datetime.combine(date_obj, time.min))
+    end = make_aware(datetime.combine(date_obj, time.max))
 
-    last_exit = (AccessEvent.objects.filter(employee_no=emp_no, raw_json__label=label_out, time__date=date_obj)
-                 .order_by("-time").first())
+    qs = AccessEvent.objects.filter(
+        employee_no=emp_no,
+        time__range=(start, end)
+    )
+
+    first_entry = qs.filter(raw_json__label=label_in).order_by("time").first()
+    last_exit = qs.filter(raw_json__label=label_out).order_by("-time").first()
 
     return first_entry, last_exit
