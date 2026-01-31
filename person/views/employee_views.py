@@ -15,6 +15,7 @@ from rest_framework.generics import ListAPIView
 from rest_framework import status
 from datetime import datetime, time
 from django.utils.timezone import localdate, make_aware
+from django.utils.dateparse import parse_date
 
 
 @extend_schema(tags=['Employee'],
@@ -273,9 +274,11 @@ class EmployeeHistoryListView(ListAPIView):
     def get_queryset(self):
         user = self.request.user
         employee_id = self.request.query_params.get("employee_id")
-        date = self.request.query_params.get("date")
+        date_str = self.request.query_params.get("date")
 
-        if not date:
+        if date_str:
+            date = parse_date(date_str)  # 👈 MUHIM JOY
+        else:
             date = localdate()
 
         start = make_aware(datetime.combine(date, time.min))
