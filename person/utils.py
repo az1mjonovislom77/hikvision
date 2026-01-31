@@ -63,7 +63,7 @@ def get_day_range(date_obj):
     return start, end
 
 
-def get_first_last_events(emp_no, date_obj, label_in="Kirish", label_out="Chiqish"):
+def get_first_last_events(emp_no, date_obj):
     start = make_aware(datetime.combine(date_obj, time.min))
     end = make_aware(datetime.combine(date_obj, time.max))
 
@@ -72,7 +72,12 @@ def get_first_last_events(emp_no, date_obj, label_in="Kirish", label_out="Chiqis
         time__range=(start, end)
     )
 
-    first_entry = qs.filter(raw_json__label=label_in).order_by("time").first()
-    last_exit = qs.filter(raw_json__label=label_out).order_by("-time").first()
+    first_entry = qs.filter(
+        label_name__in=["KIRISH", "checkIn"]
+    ).order_by("time").first()
+
+    last_exit = qs.filter(
+        label_name__in=["CHIQISH", "checkOut"]
+    ).order_by("-time").first()
 
     return first_entry, last_exit
