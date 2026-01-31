@@ -50,7 +50,7 @@ class DailyAccessListView(APIView):
         stats = {"total": employees.count(), "came": 0, "late": 0, "absent": 0}
 
         for emp in employees:
-            first, last, _ = get_first_last_events(emp.employee_no, date_obj)
+            first, last = get_first_last_events(emp.employee_no, date_obj)
 
             if first:
                 stats["came"] += 1
