@@ -5,6 +5,8 @@ from django.core.files.base import ContentFile
 from requests.auth import HTTPDigestAuth
 from utils.models import Devices
 from event.models import AccessEvent
+from datetime import datetime, time
+from django.utils.timezone import make_aware
 
 UZ_TZ = pytz.timezone("Asia/Tashkent")
 
@@ -56,12 +58,15 @@ def format_late(minutes):
 
 
 def get_first_last_events(emp_no, date_obj, label_in="Kirish", label_out="Chiqish"):
-    first_entry = AccessEvent.objects.filter(
-        employee_no=emp_no,
-        raw_json__label=label_in,
-        time__date=date_obj).order_by("time").first()
+    start = make_aware(datetime.combine(date_obj, time.min))
+    end = make_aware(datetime.combine(date_obj, time.max))
 
-    last_exit = (AccessEvent.objects.filter(employee_no=emp_no, raw_json__label=label_out, time__date=date_obj)
-                 .order_by("-time").first())
+    qs = AccessEvent.objects.filter(
+        employee_no=emp_no,
+        time__range=(start, end)
+    ).order_by("time")
+
+    first_entry = qs.filter(raw_json__label=label_in).first()
+    last_exit = qs.filter(raw_json__label=label_out).last()
 
     return first_entry, last_exit
