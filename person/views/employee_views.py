@@ -3,6 +3,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.permissions import IsAuthenticated
+
+from event.models import AccessEvent
 from person.models import Employee, EmployeeHistory
 from user.models import User
 from utils.models import Devices, Branch
@@ -276,10 +278,7 @@ class EmployeeHistoryListView(ListAPIView):
         employee_id = self.request.query_params.get("employee_id")
         date_str = self.request.query_params.get("date")
 
-        if date_str:
-            date = parse_date(date_str)  # 👈 MUHIM JOY
-        else:
-            date = localdate()
+        date = parse_date(date_str) if date_str else localdate()
 
         start = make_aware(datetime.combine(date, time.min))
         end = make_aware(datetime.combine(date, time.max))
@@ -289,6 +288,31 @@ class EmployeeHistoryListView(ListAPIView):
             event_time__range=(start, end)
         )
 
+        # 🔥 AGAR HISTORY YO‘Q BO‘LSA → ACCESS EVENT’DAN YARATAMIZ
+        if not qs.exists():
+            employee = Employee.objects.filter(id=employee_id).first()
+            if employee:
+                events = AccessEvent.objects.filter(
+                    employee_no=employee.employee_no,
+                    time__range=(start, end)
+                )
+
+                for ev in events:
+                    EmployeeHistory.objects.get_or_create(
+                        employee=employee,
+                        event=ev,
+                        defaults={
+                            "event_time": ev.time,
+                            "label_name": ev.label_name,
+                        }
+                    )
+
+                qs = EmployeeHistory.objects.filter(
+                    employee_id=employee_id,
+                    event_time__range=(start, end)
+                )
+
+        # 🔒 permission qismi o‘sha-o‘sha
         if not user.role == User.UserRoles.SUPERADMIN and not user.is_staff:
             user_devices = Devices.objects.filter(user=user)
             if not Employee.objects.filter(id=employee_id, device__in=user_devices).exists():
