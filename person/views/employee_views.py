@@ -12,8 +12,9 @@ from person.utils import fix_hikvision_time
 from person.services.hikvision import HikvisionService
 from person.services.employee import EmployeeService
 from rest_framework.generics import ListAPIView
-from django.utils.timezone import localdate
 from rest_framework import status
+from datetime import datetime, time
+from django.utils.timezone import localdate, make_aware
 
 
 @extend_schema(tags=['Employee'],
@@ -277,7 +278,13 @@ class EmployeeHistoryListView(ListAPIView):
         if not date:
             date = localdate()
 
-        qs = EmployeeHistory.objects.filter(employee_id=employee_id, event_time__date=date)
+        start = make_aware(datetime.combine(date, time.min))
+        end = make_aware(datetime.combine(date, time.max))
+
+        qs = EmployeeHistory.objects.filter(
+            employee_id=employee_id,
+            event_time__range=(start, end)
+        )
 
         if not user.role == User.UserRoles.SUPERADMIN and not user.is_staff:
             user_devices = Devices.objects.filter(user=user)

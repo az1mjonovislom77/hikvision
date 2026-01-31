@@ -57,16 +57,19 @@ def format_late(minutes):
     return f"{hours}:{mins:02d}"
 
 
-def get_first_last_events(emp_no, date_obj, label_in="Kirish", label_out="Chiqish"):
+def get_day_range(date_obj):
     start = make_aware(datetime.combine(date_obj, time.min))
     end = make_aware(datetime.combine(date_obj, time.max))
+    return start, end
 
-    qs = AccessEvent.objects.filter(
+
+def get_first_last_events(emp_no, date_obj, label_in="Kirish", label_out="Chiqish"):
+    first_entry = AccessEvent.objects.filter(
         employee_no=emp_no,
-        time__range=(start, end)
-    ).order_by("time")
+        raw_json__label=label_in,
+        time__date=date_obj).order_by("time").first()
 
-    first_entry = qs.filter(raw_json__label=label_in).first()
-    last_exit = qs.filter(raw_json__label=label_out).last()
+    last_exit = (AccessEvent.objects.filter(employee_no=emp_no, raw_json__label=label_out, time__date=date_obj)
+                 .order_by("-time").first())
 
     return first_entry, last_exit

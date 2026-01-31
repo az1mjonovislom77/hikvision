@@ -5,12 +5,13 @@ from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.permissions import IsAuthenticated
 from django.http import HttpResponse
-from django.utils.timezone import now, make_aware
+from django.utils.timezone import now, make_aware, localtime
 from django.utils.dateparse import parse_date
-from datetime import datetime
 from person.models import Employee
 from person.utils import get_first_last_events, format_late, UZ_TZ
 from utils.models import Branch
+from datetime import datetime
+from django.utils.timezone import localdate
 
 
 @extend_schema(
@@ -26,7 +27,8 @@ class DailyAccessListView(APIView):
     def get(self, request):
         date_str = request.GET.get("date")
         branch_id = request.GET.get("branch_id")
-        date_obj = parse_date(date_str) if date_str else now().date()
+
+        date_obj = parse_date(date_str) if date_str else localdate()
 
         user = request.user
 
@@ -34,22 +36,21 @@ class DailyAccessListView(APIView):
             employees = Employee.objects.all()
         else:
             branch_qs = Branch.objects.filter(user=user)
-
             if branch_id:
                 branch_qs = branch_qs.filter(id=branch_id)
 
             branch = branch_qs.select_related("device").first()
-
-            if not branch or not branch.device:
-                employees = Employee.objects.none()
-            else:
-                employees = Employee.objects.filter(device=branch.device)
+            employees = (
+                Employee.objects.filter(device=branch.device)
+                if branch and branch.device
+                else Employee.objects.none()
+            )
 
         results = []
         stats = {"total": employees.count(), "came": 0, "late": 0, "absent": 0}
 
         for emp in employees:
-            first, last = get_first_last_events(emp.employee_no, date_obj)
+            first, last, _ = get_first_last_events(emp.employee_no, date_obj)
 
             if first:
                 stats["came"] += 1
@@ -57,30 +58,29 @@ class DailyAccessListView(APIView):
                 stats["absent"] += 1
 
             late_minutes = 0
-
             if emp.shift and first:
-                shift_start_time = emp.shift.start_time
-                first_time = first.time.astimezone(UZ_TZ).time()
+                shift_start = emp.shift.start_time
+                first_time = localtime(first.time).time()
 
-                shift_minutes = shift_start_time.hour * 60 + shift_start_time.minute
+                shift_minutes = shift_start.hour * 60 + shift_start.minute
                 first_minutes = first_time.hour * 60 + first_time.minute
 
                 raw_late = first_minutes - shift_minutes
-                approved_late = emp.shift.approved_late_min or 0
+                approved = emp.shift.approved_late_min or 0
 
-                if raw_late > approved_late:
+                if raw_late > approved:
                     late_minutes = raw_late
                     stats["late"] += 1
 
             results.append({
                 "employee_id": emp.id,
                 "employee_no": emp.employee_no,
-                "position": emp.position,
                 "name": emp.name,
-                "kirish": first.time.astimezone(UZ_TZ) if first else None,
-                "chiqish": last.time.astimezone(UZ_TZ) if last else None,
+                "position": emp.position,
+                "kirish": localtime(first.time) if first else None,
+                "chiqish": localtime(last.time) if last else None,
                 "late": format_late(late_minutes),
-                "face": request.build_absolute_uri(emp.face_image.url) if emp.face_image else None
+                "face": request.build_absolute_uri(emp.face_image.url) if emp.face_image else None,
             })
 
         return Response({"date": str(date_obj), "employees": results, "stats": stats})
