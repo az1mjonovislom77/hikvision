@@ -54,7 +54,9 @@ CORS_ALLOWED_ORIGINS = [
     "https://45.55.129.34",
     "https://faceidproject.vercel.app",
     "https://hikvision.ugku.uz",
-    "https://185.191.141.213"
+    "https://185.191.141.213",
+    "https://api.timepro.uz",
+    "https://timepro.uz"
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -66,7 +68,9 @@ CSRF_TRUSTED_ORIGINS = [
     "https://45.55.129.34",
     "https://faceidproject.vercel.app",
     "https://hikvision.ugku.uz",
-    "https://185.191.141.213"
+    "https://185.191.141.213",
+    "https://api.timepro.uz",
+    "https://timepro.uz"
 ]
 
 MIDDLEWARE = [
