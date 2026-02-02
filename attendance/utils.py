@@ -1,6 +1,5 @@
 import calendar
 from datetime import date
-
 from utils.utils.constants import WEEKDAY_CODE_MAP
 
 

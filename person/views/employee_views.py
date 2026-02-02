@@ -288,7 +288,6 @@ class EmployeeHistoryListView(ListAPIView):
             event_time__range=(start, end)
         )
 
-        # 🔥 AGAR HISTORY YO‘Q BO‘LSA → ACCESS EVENT’DAN YARATAMIZ
         if not qs.exists():
             employee = Employee.objects.filter(id=employee_id).first()
             if employee:
@@ -307,12 +306,8 @@ class EmployeeHistoryListView(ListAPIView):
                         }
                     )
 
-                qs = EmployeeHistory.objects.filter(
-                    employee_id=employee_id,
-                    event_time__range=(start, end)
-                )
+                qs = EmployeeHistory.objects.filter(employee_id=employee_id, event_time__range=(start, end))
 
-        # 🔒 permission qismi o‘sha-o‘sha
         if not user.role == User.UserRoles.SUPERADMIN and not user.is_staff:
             user_devices = Devices.objects.filter(user=user)
             if not Employee.objects.filter(id=employee_id, device__in=user_devices).exists():

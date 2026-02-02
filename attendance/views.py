@@ -193,10 +193,7 @@ class MonthlyAttendanceReportView(APIView):
         branch = Branch.objects.filter(id=branch_id, user=request.user).first()
 
         if not branch:
-            return Response(
-                {"error": "Branch topilmadi yoki sizga tegishli emas"},
-                status=400
-            )
+            return Response({"error": "Branch topilmadi yoki sizga tegishli emas"}, status=400)
 
         employees = (Employee.objects.filter(id=employee_id, device=branch.device)
                      if employee_id else
