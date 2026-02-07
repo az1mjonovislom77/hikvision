@@ -34,9 +34,7 @@ def fetch_face_events(devices, since=None):
             }
 
             if since:
-                payload["AcsEventCond"]["startTime"] = since.strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
+                payload["AcsEventCond"]["startTime"] = since.strftime("%Y-%m-%d %H:%M:%S")
 
             try:
                 r = session.post(url, json=payload, timeout=15)

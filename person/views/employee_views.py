@@ -3,13 +3,12 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.permissions import IsAuthenticated
-
 from event.models import AccessEvent
 from person.models import Employee, EmployeeHistory
 from user.models import User
 from utils.models import Devices, Branch
-from person.serializers import (EmployeeSerializer, EmployeeCreateSerializer, EmployeeUpdateSerializer,
-                                EmployeeHistorySerializer)
+from person.serializers import EmployeeSerializer, EmployeeCreateSerializer, EmployeeUpdateSerializer, \
+    EmployeeHistorySerializer
 from person.utils import fix_hikvision_time
 from person.services.hikvision import HikvisionService
 from person.services.employee import EmployeeService

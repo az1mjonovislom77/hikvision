@@ -3,8 +3,8 @@ import logging
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from event.services.event_state import get_last_event_time, set_last_event_time
-from event.services.event_sync import fetch_face_events
 from event.models import AccessEvent
+from event.utils.wrappers import fetch
 from utils.models import TelegramChannel, Devices
 from utils.telegram.telegram import download_image, send_telegram
 from utils.telegram.telegram_updates import sync_channels_from_updates
@@ -28,7 +28,7 @@ class Command(BaseCommand):
                 sync_channels_from_updates()
 
                 devices = Devices.objects.all()
-                fetch_face_events(devices=devices, since=last_time)
+                fetch(devices=devices, since=last_time)
 
                 events = (AccessEvent.objects.filter(time__gt=last_time, sent_to_telegram=False)
                           .select_related("employee", "device", "device__user").order_by("time"))
