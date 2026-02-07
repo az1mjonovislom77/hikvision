@@ -1,22 +1,23 @@
 import uuid
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, OpenApiParameter
-from rest_framework.permissions import IsAuthenticated
-from event.models import AccessEvent
-from person.models import Employee, EmployeeHistory
 from user.models import User
-from utils.models import Devices, Branch
-from person.serializers import EmployeeSerializer, EmployeeCreateSerializer, EmployeeUpdateSerializer, \
-    EmployeeHistorySerializer
-from person.utils import fix_hikvision_time
-from person.services.hikvision import HikvisionService
-from person.services.employee import EmployeeService
-from rest_framework.generics import ListAPIView
 from rest_framework import status
 from datetime import datetime, time
-from django.utils.timezone import localdate, make_aware
+from event.models import AccessEvent
+from rest_framework.views import APIView
+from utils.models import Devices, Branch
+from person.utils import fix_hikvision_time
+from rest_framework.response import Response
 from django.utils.dateparse import parse_date
+from rest_framework.generics import ListAPIView
+from person.models import Employee, EmployeeHistory
+from person.services.employee import EmployeeService
+from person.services.hikvision import HikvisionService
+from rest_framework.permissions import IsAuthenticated
+from django.utils.timezone import localdate, make_aware
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+from person.serializers import EmployeeSerializer, EmployeeCreateSerializer, EmployeeUpdateSerializer, \
+    EmployeeHistorySerializer
+
 
 
 @extend_schema(tags=['Employee'],

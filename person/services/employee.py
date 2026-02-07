@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 from person.models import Employee
 from person.utils import download_face_from_url
 
@@ -13,6 +15,7 @@ class EmployeeService:
         Employee.objects.filter(device=device, employee_no__in=to_delete).delete()
 
         added = 0
+        download_tasks = []
 
         for u in hk_users:
             emp_no = u.get("employeeNo")
@@ -31,12 +34,33 @@ class EmployeeService:
                 }
             )
 
-            if u.get("faceURL"):
-                img = download_face_from_url(u["faceURL"])
-                if img:
-                    emp_obj.face_image.save(f"{device.ip}_{emp_no}.jpg", img, save=True)
-
             if created:
                 added += 1
 
-        return {"added": added, "deleted": len(to_delete), "device_ip": device.ip, }
+            face_url = u.get("faceURL")
+            if face_url:
+                download_tasks.append((emp_obj, face_url))
+
+        def worker(face_url):
+            return download_face_from_url(face_url)
+
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            future_map = {
+                executor.submit(worker, face_url): emp_obj
+                for emp_obj, face_url in download_tasks
+            }
+
+            for future in as_completed(future_map):
+                emp_obj = future_map[future]
+                try:
+                    img = future.result()
+                    if img:
+                        emp_obj.face_image.save(f"{device.ip}_{emp_obj.employee_no}.jpg", img, save=True, )
+                except Exception:
+                    pass
+
+        return {
+            "added": added,
+            "deleted": len(to_delete),
+            "device_ip": device.ip,
+        }
