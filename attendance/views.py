@@ -1,21 +1,17 @@
-from datetime import date, datetime, timedelta
 from calendar import monthrange
-from django.utils.timezone import make_aware, now
+from utils.models import Branch
+from rest_framework import status
+from person.models import Employee
+from event.models import AccessEvent
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from attendance.models import AttendanceDaily
+from datetime import date, datetime, timedelta
+from django.utils.timezone import make_aware, now
+from utils.utils.constants import WEEKDAY_CODE_MAP
+from attendance.utils import count_workdays_in_month, minutes_to_hm
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema, OpenApiParameter
-from rest_framework import status
-from attendance.models import AttendanceDaily
-from event.models import AccessEvent
-from person.models import Employee
-from attendance.utils import count_workdays_in_month
-from utils.models import Branch
-from utils.utils.constants import WEEKDAY_CODE_MAP
-
-
-def minutes_to_hm(m):
-    return f"{m // 60}:{m % 60:02d}"
 
 
 class AbsentEmployeesView(APIView):
@@ -24,18 +20,8 @@ class AbsentEmployeesView(APIView):
     @extend_schema(
         tags=['Attendance'],
         parameters=[
-            OpenApiParameter(
-                name="date",
-                type=str,
-                description="Kun (YYYY-MM-DD). Kiritilmasa — bugungi kun olinadi",
-                required=False,
-            ),
-            OpenApiParameter(
-                name="branch_id",
-                type=int,
-                description="Branch ID (majburiy)",
-                required=True,
-            )
+            OpenApiParameter(name="date", type=str, description="Kiritilmasa bugungi kun olinadi", required=False),
+            OpenApiParameter(name="branch_id", type=int, description="Branch ID (majburiy)", required=True)
         ]
     )
     def get(self, request):
@@ -146,10 +132,7 @@ class AbsentEmployeesView(APIView):
         obj, created = AttendanceDaily.objects.update_or_create(
             employee=employee,
             date=target_date,
-            defaults={
-                "status": status_value,
-                "comment": comment
-            }
+            defaults={"status": status_value, "comment": comment}
         )
 
         return Response({

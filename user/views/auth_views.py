@@ -1,10 +1,10 @@
+from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import AllowAny, IsAuthenticated
 from drf_spectacular.utils import extend_schema
-from user.serializers.auth_serializers import SignInSerializer, LogoutSerializer, MeSerializer
 from user.services.token_service import UserTokenService
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from user.serializers.auth_serializers import SignInSerializer, LogoutSerializer, MeSerializer
 from utils.utils.rate_limit import reset_login_rate_limit, check_login_rate_limit, get_client_ip
 
 

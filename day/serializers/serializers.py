@@ -1,6 +1,6 @@
 from rest_framework import serializers
-from day.models import DayOff, WorkDay, Shift, BreakTime
 from day.serializers.fields import WeekDaysField
+from day.models import DayOff, WorkDay, Shift, BreakTime
 
 
 class DayOffGetSerializer(serializers.ModelSerializer):

@@ -1,6 +1,6 @@
+from person.models import Employee
 from django.db import models, transaction
 from attendance.utils import count_workdays_in_month
-from person.models import Employee
 
 
 class AttendanceDaily(models.Model):

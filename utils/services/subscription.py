@@ -1,6 +1,6 @@
 from django.utils import timezone
-from dateutil.relativedelta import relativedelta
 from utils.models import Subscription, User
+from dateutil.relativedelta import relativedelta
 
 
 class SubscriptionService:

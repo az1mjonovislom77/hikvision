@@ -1,13 +1,13 @@
 import time
 import logging
-from django.core.management.base import BaseCommand
 from django.utils import timezone
-from event.services.event_state import get_last_event_time, set_last_event_time
 from event.models import AccessEvent
 from event.utils.wrappers import fetch
 from utils.models import TelegramChannel, Devices
+from django.core.management.base import BaseCommand
 from utils.telegram.telegram import download_image, send_telegram
 from utils.telegram.telegram_updates import sync_channels_from_updates
+from event.services.event_state import get_last_event_time, set_last_event_time
 
 logger = logging.getLogger(__name__)
 

@@ -19,7 +19,6 @@ from person.serializers import EmployeeSerializer, EmployeeCreateSerializer, Emp
     EmployeeHistorySerializer
 
 
-
 @extend_schema(tags=['Employee'],
                parameters=[
                    OpenApiParameter(name="branch_id", type=int, description="Branch ID (majburiy)", required=True),
@@ -283,27 +282,18 @@ class EmployeeHistoryListView(ListAPIView):
         start = make_aware(datetime.combine(date, time.min))
         end = make_aware(datetime.combine(date, time.max))
 
-        qs = EmployeeHistory.objects.filter(
-            employee_id=employee_id,
-            event_time__range=(start, end)
-        )
+        qs = EmployeeHistory.objects.filter(employee_id=employee_id, event_time__range=(start, end))
 
         if not qs.exists():
             employee = Employee.objects.filter(id=employee_id).first()
             if employee:
-                events = AccessEvent.objects.filter(
-                    employee_no=employee.employee_no,
-                    time__range=(start, end)
-                )
+                events = AccessEvent.objects.filter(employee_no=employee.employee_no, time__range=(start, end))
 
                 for ev in events:
                     EmployeeHistory.objects.get_or_create(
                         employee=employee,
                         event=ev,
-                        defaults={
-                            "event_time": ev.time,
-                            "label_name": ev.label_name,
-                        }
+                        defaults={"event_time": ev.time, "label_name": ev.label_name, }
                     )
 
                 qs = EmployeeHistory.objects.filter(employee_id=employee_id, event_time__range=(start, end))
@@ -314,51 +304,3 @@ class EmployeeHistoryListView(ListAPIView):
                 return EmployeeHistory.objects.none()
 
         return qs.order_by("-event_time")
-
-# class FaceCreateView(APIView):
-#
-#     @extend_schema(
-#         request=FaceCreateSerializer,
-#         responses={200: openapi.TYPE_OBJECT}
-#     )
-#     def post(self, request):
-#
-#         ser = FaceCreateSerializer(data=request.data)
-#         ser.is_valid(raise_exception=True)
-#         v = ser.validated_data
-#
-#         emp = v["employee_no"]
-#         image = v["image"]
-#
-#         url = f"http://{HIKVISION_IP}/ISAPI/Intelligent/FDLib/FaceDataRecord?format=json"
-#
-#         json_part = {
-#             "faceLibType": "blackFD",
-#             "FDID": "1",            # face library ID (default)
-#             "FPID": emp             # person identifier (employeeNo)
-#         }
-#
-#         # Multipart form-data so‘rov
-#         files = {
-#             "FaceImage": ("face.jpg", image, "image/jpeg"),
-#             "faceDataRecord": (None, json.dumps(json_part), "application/json")
-#         }
-#
-#         res = requests.post(
-#             url,
-#             files=files,
-#             auth=HTTPDigestAuth(HIKVISION_USER, HIKVISION_PASS),
-#             timeout=10
-#         )
-#
-#         if res.status_code not in (200, 201):
-#             return Response({
-#                 "error": "Face upload failed",
-#                 "detail": res.text
-#             }, status=400)
-#
-#         person = Employee.objects.filter(employee_no=emp).first()
-#         if person:
-#             person.face_image.save(f"{emp}.jpg", v["image"], save=True)
-#
-#         return Response({"status": "Face uploaded successfully","employee_no": emp})

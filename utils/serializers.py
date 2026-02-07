@@ -1,5 +1,4 @@
 from rest_framework import serializers
-
 from utils.base.serializers_base import BaseReadSerializer
 from utils.models import Devices, Department, Branch, TelegramChannel, Plan, Subscription, Notification
 

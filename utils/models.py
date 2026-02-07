@@ -1,7 +1,7 @@
 from django.db import models
 from user.models import User
-from utils.base.model_base import TimeStampedModel, OwnedNamedModel
 from django.utils import timezone
+from utils.base.model_base import TimeStampedModel, OwnedNamedModel
 
 
 class Devices(TimeStampedModel):

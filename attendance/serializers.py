@@ -1,5 +1,4 @@
 from rest_framework import serializers
-
 from attendance.models import AttendanceDaily
 
 

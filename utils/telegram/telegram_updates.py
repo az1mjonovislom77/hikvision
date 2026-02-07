@@ -1,5 +1,5 @@
-import requests
 import logging
+import requests
 from decouple import config
 from utils.models import TelegramChannel
 

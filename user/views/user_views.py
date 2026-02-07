@@ -1,9 +1,9 @@
-from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
-from drf_spectacular.utils import extend_schema
 from user.models import User
-from user.serializers.user_serializers import UserCreateSerializer, UserDetailSerializer
+from rest_framework import viewsets
+from drf_spectacular.utils import extend_schema
 from utils.base.views_base import PartialPutMixin
+from rest_framework.permissions import IsAuthenticated
+from user.serializers.user_serializers import UserCreateSerializer, UserDetailSerializer
 
 
 @extend_schema(tags=["User"])

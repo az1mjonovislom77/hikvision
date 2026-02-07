@@ -1,8 +1,8 @@
 from datetime import date
 from django.db.models import Min
+from person.models import Employee
 from event.models import AccessEvent
 from attendance.models import AttendanceDaily
-from person.models import Employee
 
 
 def mark_daily_attendance(target_date=None):

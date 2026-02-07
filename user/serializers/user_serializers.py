@@ -1,8 +1,8 @@
-from rest_framework import serializers
 from user.models import User
-from user.services.user_service import UserService
-from utils.models import Subscription
 from django.utils import timezone
+from utils.models import Subscription
+from rest_framework import serializers
+from user.services.user_service import UserService
 
 
 class ActiveSubscriptionSerializer(serializers.ModelSerializer):

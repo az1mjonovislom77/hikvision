@@ -1,6 +1,6 @@
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
 from event.utils.fetch import fetch_face_events
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
 

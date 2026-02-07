@@ -24,3 +24,7 @@ def count_workdays_in_month(workday_obj, dayoff_obj, year, month):
             total += 1
 
     return total
+
+
+def minutes_to_hm(m):
+    return f"{m // 60}:{m % 60:02d}"

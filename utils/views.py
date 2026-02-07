@@ -1,17 +1,17 @@
+from rest_framework import status
+from rest_framework import viewsets
+from rest_framework.response import Response
+from utils.utils.schema import user_extend_schema
+from utils.services.subscription import SubscriptionService
+from utils.services.notifications import NotificationService
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from utils.base.views_base import BaseUserViewSet, User, ReadWriteSerializerMixin
 from utils.models import Devices, Department, Branch, TelegramChannel, Subscription, Plan, Notification
-from utils.services.notifications import NotificationService
-from utils.services.subscription import SubscriptionService
-from utils.utils.schema import user_extend_schema
 from utils.serializers import DevicesSerializer, TelegramChannelSerializer, \
     BranchGetSerializer, BranchCreateSerializer, DepartmentCreateSerializer, DepartmentGetSerializer, \
     PlanSerializer, SubscriptionCreateSerializer, SubscriptionDetailSerializer, NotificationSerializer, \
     AdminNotificationSerializer
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework import viewsets
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 
 @user_extend_schema("Devices")

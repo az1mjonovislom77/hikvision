@@ -1,8 +1,8 @@
-from rest_framework import serializers
 from user.models import User
-from user.services.auth_service import AuthService
-from utils.models import Subscription
 from django.utils import timezone
+from utils.models import Subscription
+from rest_framework import serializers
+from user.services.auth_service import AuthService
 
 
 class SignInSerializer(serializers.Serializer):

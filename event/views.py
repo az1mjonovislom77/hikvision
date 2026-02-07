@@ -1,16 +1,16 @@
-from rest_framework.generics import ListAPIView
-from rest_framework.pagination import PageNumberPagination
-from event.models import AccessEvent
-from event.serializers import AccessEventSerializer
-from event.services.event_sync import EventSyncService
-from person.models import Employee
 from user.models import User
 from utils.models import Devices
-from drf_spectacular.utils import extend_schema
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
+from person.models import Employee
+from event.models import AccessEvent
 from rest_framework.views import APIView
+from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema
+from rest_framework.generics import ListAPIView
 from utils.utils.schema import user_extend_schema
+from event.serializers import AccessEventSerializer
+from event.services.event_sync import EventSyncService
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.pagination import PageNumberPagination
 
 
 class CustomPagination(PageNumberPagination):

@@ -1,6 +1,6 @@
 from django.contrib import admin
-from day.models import DayOff, WorkDay, Shift, BreakTime
 from utils.base.admin_base import NameOnlyAdmin
+from day.models import DayOff, WorkDay, Shift, BreakTime
 
 
 @admin.register(DayOff)

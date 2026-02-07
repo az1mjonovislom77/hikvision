@@ -1,12 +1,12 @@
 import pytz
 import requests
-from urllib.parse import urlparse
-from django.core.files.base import ContentFile
-from requests.auth import HTTPDigestAuth
 from utils.models import Devices
-from event.models import AccessEvent
+from urllib.parse import urlparse
 from datetime import datetime, time
+from event.models import AccessEvent
+from requests.auth import HTTPDigestAuth
 from django.utils.timezone import make_aware
+from django.core.files.base import ContentFile
 
 UZ_TZ = pytz.timezone("Asia/Tashkent")
 

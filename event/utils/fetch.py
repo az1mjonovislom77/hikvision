@@ -1,11 +1,11 @@
-import requests
 import time
+import requests
+from person.utils import UZ_TZ
+from event.models import AccessEvent
 from requests.auth import HTTPDigestAuth
 from django.utils.dateparse import parse_datetime
-from event.models import AccessEvent
-from event.utils.events_name import major_name, minor_name
-from person.utils import UZ_TZ
 from person.models import Employee, EmployeeHistory
+from event.utils.events_name import major_name, minor_name
 
 
 def fetch_face_events(devices, since=None):

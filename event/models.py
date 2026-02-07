@@ -1,6 +1,6 @@
 from django.db import models
-from person.models import Employee
 from utils.models import Devices
+from person.models import Employee
 
 
 class AccessEvent(models.Model):

@@ -1,17 +1,17 @@
 import openpyxl
 from io import BytesIO
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, OpenApiParameter
-from rest_framework.permissions import IsAuthenticated
-from django.http import HttpResponse
-from django.utils.timezone import now, make_aware, localtime
-from django.utils.dateparse import parse_date
-from person.models import Employee
-from person.utils import get_first_last_events, format_late, UZ_TZ
-from utils.models import Branch
 from datetime import datetime
+from utils.models import Branch
+from person.models import Employee
+from django.http import HttpResponse
+from rest_framework.views import APIView
 from django.utils.timezone import localdate
+from rest_framework.response import Response
+from django.utils.dateparse import parse_date
+from rest_framework.permissions import IsAuthenticated
+from django.utils.timezone import now, make_aware, localtime
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+from person.utils import get_first_last_events, format_late, UZ_TZ
 
 
 @extend_schema(

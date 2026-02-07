@@ -1,7 +1,7 @@
 import logging
+import requests
 from datetime import timedelta
 from event.models import AccessEvent
-import requests
 from requests.auth import HTTPDigestAuth
 
 from event.utils.wrappers import fetch

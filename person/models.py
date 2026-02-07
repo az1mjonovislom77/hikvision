@@ -1,7 +1,7 @@
 from django.db import models
-from day.models import Shift, BreakTime, WorkDay, DayOff
 from utils.base.model_base import TimeStampedModel
 from utils.models import Department, Branch, Devices
+from day.models import Shift, BreakTime, WorkDay, DayOff
 
 
 class Employee(TimeStampedModel):

@@ -1,7 +1,9 @@
-from concurrent.futures import ThreadPoolExecutor, as_completed
-
+import logging
 from person.models import Employee
 from person.utils import download_face_from_url
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+logger = logging.getLogger(__name__)
 
 
 class EmployeeService:
@@ -57,7 +59,8 @@ class EmployeeService:
                     if img:
                         emp_obj.face_image.save(f"{device.ip}_{emp_obj.employee_no}.jpg", img, save=True, )
                 except Exception:
-                    pass
+                    logger.exception("Employee fetch failed")
+                continue
 
         return {
             "added": added,
