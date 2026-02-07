@@ -1,9 +1,10 @@
 import logging
 from datetime import timedelta
 from event.models import AccessEvent
-from event.utils.fetch import fetch_face_events
 import requests
 from requests.auth import HTTPDigestAuth
+
+from event.utils.wrappers import fetch
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +75,7 @@ class EventSyncService:
         if latest:
             since_time = latest.time - timedelta(seconds=5)
 
-        return fetch_face_events(devices=devices, since=since_time)
+        return fetch(devices=devices, since=since_time)
 
     @staticmethod
     def get_events_queryset():
