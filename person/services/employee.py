@@ -1,4 +1,5 @@
 import logging
+from event.utils.fetch_employee import fetch_all_employees
 from person.models import Employee
 from person.utils import download_face_from_url
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -9,7 +10,10 @@ logger = logging.getLogger(__name__)
 class EmployeeService:
 
     @staticmethod
-    def sync_from_hikvision(device, hk_users):
+    def sync_from_hikvision(device, hk_users=None):
+        if hk_users is None:
+            hk_users = fetch_all_employees(device)
+
         device_employees = Employee.objects.filter(device=device)
         db_ids = set(device_employees.values_list("employee_no", flat=True))
         hk_ids = {u.get("employeeNo") for u in hk_users if u.get("employeeNo")}
@@ -57,10 +61,13 @@ class EmployeeService:
                 try:
                     img = future.result()
                     if img:
-                        emp_obj.face_image.save(f"{device.ip}_{emp_obj.employee_no}.jpg", img, save=True, )
+                        emp_obj.face_image.save(
+                            f"{device.ip}_{emp_obj.employee_no}.jpg",
+                            img,
+                            save=True,
+                        )
                 except Exception:
                     logger.exception("Employee fetch failed")
-                continue
 
         return {
             "added": added,
