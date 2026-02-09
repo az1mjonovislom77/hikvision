@@ -63,8 +63,7 @@ class EmployeeSyncView(APIView):
         }
 
         for device in devices:
-            hk_users = HikvisionService.search_users(device)
-            stats = EmployeeService.sync_from_hikvision(device, hk_users)
+            stats = EmployeeService.sync_from_hikvision(device)
 
             total_stats["synced_devices"] += 1
             total_stats["added"] += stats["added"]
