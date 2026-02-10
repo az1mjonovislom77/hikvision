@@ -69,8 +69,8 @@ def get_first_last_events(emp_no, date_obj):
 
     qs = AccessEvent.objects.filter(employee_no=emp_no, time__range=(start, end))
 
-    first_entry = qs.filter(label_name__in=["KIRISH", "checkIn", "Kirish"]).order_by("time").first()
+    first_entry = qs.filter(label_name__in=["KIRISH", "checkIn", "Kirish", "Keldim"]).order_by("time").first()
 
-    last_exit = qs.filter(label_name__in=["CHIQISH", "checkOut", "Chiqish"]).order_by("-time").first()
+    last_exit = qs.filter(label_name__in=["CHIQISH", "checkOut", "Chiqish", "Ketdim"]).order_by("-time").first()
 
     return first_entry, last_exit
