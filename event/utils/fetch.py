@@ -4,7 +4,6 @@ from person.utils import UZ_TZ
 from event.models import AccessEvent
 from requests.auth import HTTPDigestAuth
 from django.utils.dateparse import parse_datetime
-from django.utils import timezone
 from person.models import Employee, EmployeeHistory
 from event.utils.events_name import major_name, minor_name
 
@@ -12,14 +11,8 @@ from event.utils.events_name import major_name, minor_name
 def fetch_face_events(devices, since=None):
     saved = 0
 
-    # timezone normalize
-    if since:
-        if since.tzinfo is None:
-            since = UZ_TZ.localize(since)
-
-        # agar future bo‘lsa disable qilamiz
-        if since > timezone.now().astimezone(UZ_TZ):
-            since = None
+    if since and since.tzinfo is None:
+        since = UZ_TZ.localize(since)
 
     for device in devices:
         url = f"http://{device.ip}/ISAPI/AccessControl/AcsEvent?format=json"
@@ -44,12 +37,13 @@ def fetch_face_events(devices, since=None):
             }
 
             if since:
+                # universal startTime (hamma modelda ishlaydi)
                 payload["AcsEventCond"]["startTime"] = since.strftime("%Y-%m-%dT%H:%M:%S+05:00")
 
             try:
                 r = session.post(url, json=payload, timeout=15)
 
-                # fallback format
+                # agar device T formatni qabul qilmasa fallback ishlaydi
                 if r.status_code == 400 and since:
                     payload["AcsEventCond"]["startTime"] = since.strftime("%Y-%m-%d %H:%M:%S")
                     r = session.post(url, json=payload, timeout=15)
@@ -64,7 +58,6 @@ def fetch_face_events(devices, since=None):
             access = data.get("AcsEvent", {})
             events = access.get("InfoList", []) or []
             status = access.get("responseStatusStrg", "")
-            matches = access.get("numOfMatches", len(events))
 
             if access.get("searchID") and access["searchID"] != "0":
                 search_id = access["searchID"]
@@ -116,7 +109,7 @@ def fetch_face_events(devices, since=None):
             if status != "MORE" or not events:
                 break
 
-            offset += matches
+            offset += len(events)
             time.sleep(0.2)
 
     return saved
