@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from day.serializers.fields import WeekDaysField
 from day.models import DayOff, WorkDay, Shift, BreakTime
+from utils.base.serializers_base import BaseReadSerializer
 
 
 class DayOffGetSerializer(serializers.ModelSerializer):
@@ -35,10 +36,9 @@ class WorkDayCreateSerializer(serializers.ModelSerializer):
         fields = ['name', 'days']
 
 
-class BreakTimeGetSerializer(serializers.ModelSerializer):
+class BreakTimeGetSerializer(BaseReadSerializer):
     class Meta:
         model = BreakTime
-        fields = "__all__"
 
 
 class BreakTimeCreateSerializer(serializers.ModelSerializer):

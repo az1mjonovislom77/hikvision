@@ -11,6 +11,9 @@ from event.utils.events_name import major_name, minor_name
 def fetch_face_events(devices, since=None):
     saved = 0
 
+    if since and since.tzinfo is None:
+        since = UZ_TZ.localize(since)
+
     for device in devices:
         url = f"http://{device.ip}/ISAPI/AccessControl/AcsEvent?format=json"
 
@@ -34,12 +37,20 @@ def fetch_face_events(devices, since=None):
             }
 
             if since:
-                payload["AcsEventCond"]["startTime"] = since.strftime("%Y-%m-%d %H:%M:%S")
+                # universal startTime (hamma modelda ishlaydi)
+                payload["AcsEventCond"]["startTime"] = since.strftime("%Y-%m-%dT%H:%M:%S+05:00")
 
             try:
                 r = session.post(url, json=payload, timeout=15)
+
+                # agar device T formatni qabul qilmasa fallback ishlaydi
+                if r.status_code == 400 and since:
+                    payload["AcsEventCond"]["startTime"] = since.strftime("%Y-%m-%d %H:%M:%S")
+                    r = session.post(url, json=payload, timeout=15)
+
                 if r.status_code != 200:
                     break
+
                 data = r.json()
             except Exception:
                 break
