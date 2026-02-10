@@ -10,6 +10,7 @@ class UserAdmin(BaseUserAdmin):
     model = User
 
     list_display = ("id", "phone_number", "role", "is_staff", "is_active")
+    ordering = ("id",)
 
     fieldsets = (
         (None, {"fields": ("phone_number", "password")}),
