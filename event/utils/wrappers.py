@@ -4,19 +4,17 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
 
-def fetch(devices, since_map=None):
+
+def fetch(devices):
     total_saved = 0
 
     def worker(device):
-        since = None
-        if since_map:
-            since = since_map.get(device.id)
-        return fetch_face_events([device], since)
+        return fetch_face_events([device])
 
     with ThreadPoolExecutor(max_workers=5) as executor:
-        futures = [executor.submit(worker, device) for device in devices]
+        futures = [executor.submit(worker, d) for d in devices]
 
-        for future in as_completed(futures):
-            total_saved += future.result()
+        for f in as_completed(futures):
+            total_saved += f.result()
 
     return total_saved
