@@ -36,9 +36,10 @@ class WorkDayCreateSerializer(serializers.ModelSerializer):
         fields = ['name', 'days']
 
 
-class BreakTimeGetSerializer(BaseReadSerializer):
+class BreakTimeGetSerializer(serializers.ModelSerializer):
     class Meta:
         model = BreakTime
+        fields = "__all__"
 
 
 class BreakTimeCreateSerializer(serializers.ModelSerializer):
