@@ -84,7 +84,7 @@ class EventSyncService:
             else:
                 device_since_map[device.id] = None
 
-        return fetch(devices=devices, since_map=device_since_map)
+        return fetch(devices=devices)
 
     @staticmethod
     def get_events_queryset():
