@@ -70,12 +70,21 @@ class EventSyncService:
 
     @staticmethod
     def sync_events(devices):
-        latest = AccessEvent.objects.filter(device__in=devices, major=5, minor=75).order_by("-time").first()
-        since_time = None
-        if latest:
-            since_time = latest.time - timedelta(seconds=5)
+        device_since_map = {}
 
-        return fetch(devices=devices, since=since_time)
+        for device in devices:
+            latest = AccessEvent.objects.filter(
+                device=device,
+                major=5,
+                minor=75
+            ).order_by("-time").first()
+
+            if latest:
+                device_since_map[device.id] = latest.time - timedelta(seconds=5)
+            else:
+                device_since_map[device.id] = None
+
+        return fetch(devices=devices, since_map=device_since_map)
 
     @staticmethod
     def get_events_queryset():
