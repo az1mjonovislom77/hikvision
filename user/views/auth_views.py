@@ -71,7 +71,8 @@ class LogOutAPIView(APIView):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        response = Response({"detail": "Successfully logged out"}, status=status.HTTP_204_NO_CONTENT)
+        response = Response({"detail": "Successfully logged out"}, status=status.HTTP_200_OK)
+
         UserTokenService.clear_refresh_cookie(response)
         return response
 
