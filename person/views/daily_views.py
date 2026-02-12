@@ -50,7 +50,7 @@ class DailyAccessListView(APIView):
         stats = {"total": employees.count(), "came": 0, "late": 0, "absent": 0}
 
         for emp in employees:
-            first, last = get_first_last_events(emp.employee_no, date_obj)
+            first, last = get_first_last_events(emp, date_obj)
 
             if first:
                 stats["came"] += 1
@@ -103,7 +103,7 @@ class DailyAccessExcelExport(APIView):
         ws.append(["Employee No", "Name", "Kirish", "Chiqish", "Late", "Shift"])
 
         for emp in employees:
-            first, last = get_first_last_events(emp.employee_no, date_obj)
+            first, last = get_first_last_events(emp, date_obj)
             kirish = first.time.astimezone(UZ_TZ).strftime("%H:%M:%S") if first else ""
             chiqish = last.time.astimezone(UZ_TZ).strftime("%H:%M:%S") if last else ""
 
