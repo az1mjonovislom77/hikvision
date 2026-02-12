@@ -63,7 +63,7 @@ class SmartCityStatsService:
             result.append(
                 {
                     "id": item["device__user__id"],
-                    "mahallaName": item["device__user__name"],
+                    "mahallaName": item["device__user__full_name"],
                     "totalEmployees": total,
                     "presentEmployees": present,
                     "absentEmployees": absent,
