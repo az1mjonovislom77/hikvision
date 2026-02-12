@@ -47,7 +47,7 @@ class SmartCityStatsService:
 
     def mahalla_statistics(self):
         qs = (self.base_employee_queryset()
-              .values("device__user__id", "device__user__full_name", "device__user__slug")
+              .values("device__user__id", "device__user__full_name")
               .annotate(total_employees=Count("id"),
                         present_employees=Count("id", filter=Q(begin_time__range=(self.start_date, self.end_date)))))
 
