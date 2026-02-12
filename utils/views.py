@@ -1,6 +1,10 @@
 from rest_framework import status
 from rest_framework import viewsets
+from rest_framework.views import APIView
 from rest_framework.response import Response
+from person.models import Employee
+from utils.services.smartcity_stats import SmartCityStatsService
+from utils.utils.constants import times
 from utils.utils.schema import user_extend_schema
 from utils.services.subscription import SubscriptionService
 from utils.services.notifications import NotificationService
@@ -12,6 +16,8 @@ from utils.serializers import DevicesSerializer, TelegramChannelSerializer, \
     BranchGetSerializer, BranchCreateSerializer, DepartmentCreateSerializer, DepartmentGetSerializer, \
     PlanSerializer, SubscriptionCreateSerializer, SubscriptionDetailSerializer, NotificationSerializer, \
     AdminNotificationSerializer
+from django.utils import timezone
+from datetime import timedelta
 
 
 @user_extend_schema("Devices")
@@ -109,3 +115,24 @@ class AdminNotificationViewSet(viewsets.ViewSet):
         NotificationService.send_bulk(text=text, users=users)
 
         return Response({"detail": "Notification yuborildi"}, status=status.HTTP_201_CREATED)
+
+
+@extend_schema(tags=["SmartCityStats"], parameters=[OpenApiParameter(name="timeFilter", type=str)])
+class SmartCityAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        time_filter = request.GET.get("timeFilter", "week")
+
+        try:
+            service = SmartCityStatsService(time_filter)
+            data = service.build()
+        except ValueError:
+            return Response({"success": False, "message": "Invalid timeFilter"}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {
+                "success": True,
+                "message": "Data fetched successfully",
+                "data": data,
+            }, status=status.HTTP_200_OK)

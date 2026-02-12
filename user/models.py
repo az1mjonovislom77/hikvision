@@ -24,6 +24,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     class UserRoles(models.TextChoices):
         SUPERADMIN = 's', "superadmin"
         ADMIN = 'a', "admin"
+        MAHALLA = 'm', "mahalla"
 
     full_name = models.CharField(max_length=100, null=True, blank=True)
     phone_number = models.CharField(max_length=100, unique=True, null=True, blank=True)

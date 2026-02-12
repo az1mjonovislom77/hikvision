@@ -1,3 +1,11 @@
+times = [
+    "week",
+    "month",
+    "3month",
+    "6month",
+    "year"
+]
+
 WEEK_DAYS = [
     ('mon', 'Dushanba'),
     ('tue', 'Seshanba'),
