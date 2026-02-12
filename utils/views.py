@@ -2,9 +2,8 @@ from rest_framework import status
 from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from person.models import Employee
+from utils.services.smartcity_daily_stats import SmartCityDailyStatsService
 from utils.services.smartcity_stats import SmartCityStatsService
-from utils.utils.constants import times
 from utils.utils.schema import user_extend_schema
 from utils.services.subscription import SubscriptionService
 from utils.services.notifications import NotificationService
@@ -16,8 +15,6 @@ from utils.serializers import DevicesSerializer, TelegramChannelSerializer, \
     BranchGetSerializer, BranchCreateSerializer, DepartmentCreateSerializer, DepartmentGetSerializer, \
     PlanSerializer, SubscriptionCreateSerializer, SubscriptionDetailSerializer, NotificationSerializer, \
     AdminNotificationSerializer
-from django.utils import timezone
-from datetime import timedelta
 
 
 @user_extend_schema("Devices")
@@ -136,3 +133,43 @@ class SmartCityAPIView(APIView):
                 "message": "Data fetched successfully",
                 "data": data,
             }, status=status.HTTP_200_OK)
+
+
+@extend_schema(
+    tags=["SmartCityDaily"],
+    parameters=[
+        OpenApiParameter(name="date", type=str, required=True),
+        OpenApiParameter(name="mahalla", type=int, required=False),
+    ]
+)
+class SmartCityDailyAPIView(APIView):
+
+    def get(self, request):
+        date = request.GET.get("date")
+        mahalla = request.GET.get("mahalla")
+
+        if not date:
+            return Response({"success": False, "message": "date parameter is required"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if mahalla is not None:
+            try:
+                mahalla = int(mahalla)
+            except ValueError:
+                return Response({"success": False, "message": "mahalla must be integer"},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            service = SmartCityDailyStatsService(date=date, mahalla_id=mahalla)
+            data = service.build()
+
+        except ValueError as e:
+            return Response({"success": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {
+                "success": True,
+                "message": "Daily stats fetched successfully",
+                "data": data
+            }, status=status.HTTP_200_OK
+        )
