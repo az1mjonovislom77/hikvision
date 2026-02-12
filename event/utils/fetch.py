@@ -6,7 +6,6 @@ from requests.auth import HTTPDigestAuth
 from django.utils.dateparse import parse_datetime
 from person.models import Employee, EmployeeHistory
 from event.utils.events_name import major_name, minor_name
-from django.utils import timezone
 
 
 def fetch_face_events(devices, since=None):
@@ -62,22 +61,24 @@ def fetch_face_events(devices, since=None):
                 else:
                     t = t.astimezone(UZ_TZ)
 
-                server_time = timezone.now().astimezone(UZ_TZ)
-
-                if abs((server_time - t).total_seconds()) < 300:
-                    t = server_time
-
                 if since and t <= since:
                     continue
 
                 serial_no = ev.get("serialNo")
                 employee_no = ev.get("employeeNoString", "")
-
-                label_name = (ev.get("labelName") or ev.get("label") or ev.get("name") or "")
+                label_name = (
+                    ev.get("labelName")
+                    or ev.get("label")
+                    or ev.get("name")
+                    or ""
+                )
 
                 employee = None
                 if employee_no:
-                    employee = Employee.objects.filter(employee_no=employee_no, device=device).first()
+                    employee = Employee.objects.filter(
+                        employee_no=employee_no,
+                        device=device
+                    ).first()
 
                 event_obj, created = AccessEvent.objects.get_or_create(
                     device=device,
@@ -98,8 +99,13 @@ def fetch_face_events(devices, since=None):
                 )
 
                 if created and employee:
-                    EmployeeHistory.objects.create(employee=employee, event=event_obj, event_time=t)
-                    saved += 1
+                    EmployeeHistory.objects.create(
+                        employee=employee,
+                        event=event_obj,
+                        event_time=t
+                    )
+
+                saved += 1
 
             if status != "MORE" or not events:
                 break
