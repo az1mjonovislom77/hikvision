@@ -23,7 +23,7 @@ class SmartCityDailyStatsService:
 
     def employee_detail(self):
 
-        qs = self.base_queryset().select_related("device__full_user", "shift")
+        qs = self.base_queryset().select_related("device__user", "shift")
 
         result = []
 
