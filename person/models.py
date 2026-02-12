@@ -22,7 +22,7 @@ class Employee(TimeStampedModel):
     fine = models.FloatField(default=0)
     is_fine = models.BooleanField(default=True)
     day_off = models.ForeignKey(DayOff, on_delete=models.SET_NULL, null=True, blank=True)
-    begin_time = models.DateTimeField(null=True, blank=True, db_index=True)
+    begin_time = models.DateTimeField(null=True, blank=True)
     end_time = models.DateTimeField(null=True, blank=True)
     door_right = models.CharField(max_length=50, default="1")
     face_url = models.CharField(max_length=500, null=True, blank=True)

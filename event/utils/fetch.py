@@ -6,6 +6,7 @@ from requests.auth import HTTPDigestAuth
 from django.utils.dateparse import parse_datetime
 from person.models import Employee, EmployeeHistory
 from event.utils.events_name import major_name, minor_name
+from django.utils import timezone
 
 
 def fetch_face_events(devices, since=None):
@@ -60,6 +61,11 @@ def fetch_face_events(devices, since=None):
                     t = UZ_TZ.localize(t)
                 else:
                     t = t.astimezone(UZ_TZ)
+
+                server_time = timezone.now().astimezone(UZ_TZ)
+
+                if abs((server_time - t).total_seconds()) < 300:
+                    t = server_time
 
                 if since and t <= since:
                     continue
