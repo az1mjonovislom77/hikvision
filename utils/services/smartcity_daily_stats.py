@@ -29,8 +29,14 @@ class SmartCityDailyStatsService:
 
         for emp in qs:
 
-            begin = emp.begin_time
-            end = emp.end_time if emp.end_time else None
+            begin = None
+            end = None
+
+            if emp.begin_time and self.start <= emp.begin_time <= self.end:
+                begin = emp.begin_time
+
+            if emp.end_time and self.start <= emp.end_time <= self.end:
+                end = emp.end_time
 
             status = "ABSENT"
 
