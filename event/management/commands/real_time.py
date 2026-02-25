@@ -23,12 +23,13 @@ class Command(BaseCommand):
             last_event = AccessEvent.objects.order_by("-time").first()
             last_time = last_event.time if last_event else timezone.now()
 
+        devices = Devices.objects.all()
         while True:
             try:
                 sync_channels_from_updates()
 
-                devices = Devices.objects.all()
-                fetch(devices=devices, since_map=last_time)
+                since_map = {d.id: last_time for d in devices}
+                fetch(devices=devices, since_map=since_map)
 
                 events = (AccessEvent.objects.filter(time__gt=last_time, sent_to_telegram=False)
                           .select_related("employee", "device", "device__user").order_by("time"))
