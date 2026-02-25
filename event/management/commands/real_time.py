@@ -28,7 +28,7 @@ class Command(BaseCommand):
                 sync_channels_from_updates()
 
                 devices = Devices.objects.all()
-                fetch(devices=devices, since=last_time)
+                fetch(devices=devices, since_map=last_time)
 
                 events = (AccessEvent.objects.filter(time__gt=last_time, sent_to_telegram=False)
                           .select_related("employee", "device", "device__user").order_by("time"))

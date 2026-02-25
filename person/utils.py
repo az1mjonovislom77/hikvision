@@ -66,19 +66,8 @@ def get_day_range(date_obj):
 def get_first_last_events(employee, date_obj):
     start = make_aware(datetime.combine(date_obj, time.min), UZ_TZ)
     end = make_aware(datetime.combine(date_obj, time.max), UZ_TZ)
-
-    qs = AccessEvent.objects.filter(
-        employee_no=employee.employee_no,
-        device=employee.device,   # 🔥 MUHIM
-        time__range=(start, end)
-    )
-
-    first_entry = qs.filter(
-        label_name__in=["KIRISH", "checkIn", "Kirish", "Keldim"]
-    ).order_by("time").first()
-
-    last_exit = qs.filter(
-        label_name__in=["CHIQISH", "checkOut", "Chiqish", "Ketdim"]
-    ).order_by("-time").first()
+    qs = AccessEvent.objects.filter(employee_no=employee.employee_no, device=employee.device, time__range=(start, end))
+    first_entry = qs.filter(label_name__in=["KIRISH", "checkIn", "Kirish", "Keldim"]).order_by("time").first()
+    last_exit = qs.filter(label_name__in=["CHIQISH", "checkOut", "Chiqish", "Ketdim"]).order_by("-time").first()
 
     return first_entry, last_exit
