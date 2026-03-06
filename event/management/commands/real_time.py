@@ -1,13 +1,13 @@
 import time
 import logging
 from django.utils import timezone
+from django.core.management.base import BaseCommand
 from event.models import AccessEvent
 from event.utils.wrappers import fetch
-from utils.models import TelegramChannel, Devices
-from django.core.management.base import BaseCommand
-from utils.telegram.telegram import download_image, send_telegram
-from utils.telegram.telegram_updates import sync_channels_from_updates
 from event.services.event_state import get_last_event_time, set_last_event_time
+from utils.models import Devices
+from utils.telegram.telegram_updates import sync_channels_from_updates
+from utils.tasks import send_event_to_telegram
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +31,12 @@ class Command(BaseCommand):
                 since_map = {d.id: last_time for d in devices}
                 fetch(devices=devices, since_map=since_map)
 
-                events = (AccessEvent.objects.filter(time__gt=last_time, sent_to_telegram=False)
-                          .select_related("employee", "device", "device__user").order_by("time"))
+                events = (
+                    AccessEvent.objects
+                    .filter(time__gt=last_time, sent_to_telegram=False)
+                    .select_related("employee", "device", "device__user")
+                    .order_by("time")
+                )
 
                 for event in events:
                     employee = event.employee
@@ -44,10 +48,21 @@ class Command(BaseCommand):
                         continue
 
                     raw = event.raw_json or {}
-                    label = (raw.get("labelName") or raw.get("label") or raw.get("name") or "").strip().lower()
 
-                    direction = ("🚪 KIRISH" if label in {"kirish", "in", "entry", "enter"}
-                                 else "🚷 CHIQISH" if label in {"chiqish", "out", "exit", "leave"} else "❓ NOMAʼLUM")
+                    label = (
+                            raw.get("labelName")
+                            or raw.get("label")
+                            or raw.get("name")
+                            or ""
+                    ).strip().lower()
+
+                    direction = (
+                        "🚪 KIRISH"
+                        if label in {"kirish", "in", "entry", "enter"}
+                        else "🚷 CHIQISH"
+                        if label in {"chiqish", "out", "exit", "leave"}
+                        else "❓ NOMAʼLUM"
+                    )
 
                     local_time = timezone.localtime(event.time)
 
@@ -59,22 +74,8 @@ class Command(BaseCommand):
                         f"📍 <b>Qurilma:</b> {device.name}"
                     )
 
-                    image_bytes = None
                     picture_url = raw.get("pictureURL") or raw.get("faceURL")
-
-                    if picture_url and device.username and device.password:
-                        image_bytes = download_image(picture_url, device)
-
-                    channels = TelegramChannel.objects.filter(device=device, resolved_id__isnull=False)
-
-                    for channel in channels:
-                        try:
-                            send_telegram(chat_id=channel.resolved_id, text=msg, image_bytes=image_bytes)
-                        except Exception:
-                            logger.exception(f"Telegram send failed: {channel.resolved_id}")
-
-                    event.sent_to_telegram = True
-                    event.save(update_fields=["sent_to_telegram"])
+                    send_event_to_telegram.delay(event.id, msg, picture_url, device.id)
 
                     last_time = event.time
                     set_last_event_time(last_time)
