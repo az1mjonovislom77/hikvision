@@ -14,11 +14,17 @@ class EmployeeService:
         if hk_users is None:
             hk_users = fetch_all_employees(device)
 
-        device_employees = Employee.objects.filter(device=device)
-        db_ids = set(device_employees.values_list("employee_no", flat=True))
+        device_employees = Employee.objects.filter(device=device).only(
+            "id", "employee_no", "name", "door_right", "user_type", "raw_json", "face_url")
+
+        employee_map = {e.employee_no: e for e in device_employees}
+
+        db_ids = set(employee_map.keys())
         hk_ids = {u.get("employeeNo") for u in hk_users if u.get("employeeNo")}
+
         to_delete = db_ids - hk_ids
-        Employee.objects.filter(device=device, employee_no__in=to_delete).delete()
+        if to_delete:
+            Employee.objects.filter(device=device, employee_no__in=to_delete).delete()
 
         added = 0
         download_tasks = []
@@ -28,20 +34,30 @@ class EmployeeService:
             if not emp_no:
                 continue
 
-            emp_obj, created = Employee.objects.update_or_create(
-                device=device,
-                employee_no=emp_no,
-                defaults={
-                    "name": u.get("name"),
-                    "door_right": u.get("doorRight"),
-                    "user_type": u.get("userType"),
-                    "raw_json": u,
-                    "face_url": u.get("faceURL"),
-                }
-            )
+            defaults = {
+                "name": u.get("name"),
+                "door_right": u.get("doorRight"),
+                "user_type": u.get("userType"),
+                "raw_json": u,
+                "face_url": u.get("faceURL"),
+            }
 
-            if created:
+            if emp_no in employee_map:
+                emp_obj = employee_map[emp_no]
+
+                for k, v in defaults.items():
+                    setattr(emp_obj, k, v)
+
+                emp_obj.save(update_fields=list(defaults.keys()))
+
+            else:
+                emp_obj = Employee.objects.create(
+                    device=device,
+                    employee_no=emp_no,
+                    **defaults
+                )
                 added += 1
+                employee_map[emp_no] = emp_obj
 
             face_url = u.get("faceURL")
             if face_url:
@@ -51,8 +67,10 @@ class EmployeeService:
             return download_face_from_url(face_url)
 
         with ThreadPoolExecutor(max_workers=5) as executor:
-            future_map = {executor.submit(worker, face_url): emp_obj
-                          for emp_obj, face_url in download_tasks}
+            future_map = {
+                executor.submit(worker, face_url): emp_obj
+                for emp_obj, face_url in download_tasks
+            }
 
             for future in as_completed(future_map):
                 emp_obj = future_map[future]

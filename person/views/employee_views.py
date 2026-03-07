@@ -53,7 +53,7 @@ class EmployeeSyncView(APIView):
 
         devices = Devices.objects.filter(id=branch.device_id)
 
-        if not devices.exists():
+        if not branch.device_id:
             return Response({"error": "Ushbu branch uchun device topilmadi"}, status=400)
 
         total_stats = {
@@ -106,10 +106,11 @@ class EmployeeListView(APIView):
         if not branch:
             return Response({"error": "Branch topilmadi yoki sizga tegishli emas"}, status=400)
 
-        employees = Employee.objects.filter(device=branch.device)
+        employees = (Employee.objects
+                     .filter(device=branch.device)
+                     .select_related("device"))
 
         serializer = EmployeeSerializer(employees, many=True, context={"request": request})
-
         return Response(serializer.data)
 
 
@@ -281,25 +282,41 @@ class EmployeeHistoryListView(ListAPIView):
         start = make_aware(datetime.combine(date, time.min))
         end = make_aware(datetime.combine(date, time.max))
 
-        qs = EmployeeHistory.objects.filter(employee_id=employee_id, event_time__range=(start, end))
-
-        if not qs.exists():
-            employee = Employee.objects.filter(id=employee_id).first()
-            if employee:
-                events = AccessEvent.objects.filter(employee_no=employee.employee_no, time__range=(start, end))
-
-                for ev in events:
-                    EmployeeHistory.objects.get_or_create(
-                        employee=employee,
-                        event=ev,
-                        defaults={"event_time": ev.time, "label_name": ev.label_name, }
-                    )
-
-                qs = EmployeeHistory.objects.filter(employee_id=employee_id, event_time__range=(start, end))
+        employee = Employee.objects.select_related("device__user").filter(id=employee_id).first()
+        if not employee:
+            return EmployeeHistory.objects.none()
 
         if not user.role == User.UserRoles.SUPERADMIN and not user.is_staff:
-            user_devices = Devices.objects.filter(user=user)
-            if not Employee.objects.filter(id=employee_id, device__in=user_devices).exists():
+            if employee.device.user != user:
                 return EmployeeHistory.objects.none()
+
+        qs = (EmployeeHistory.objects
+              .filter(employee_id=employee_id, event_time__range=(start, end))
+              .select_related("event", "employee"))
+
+        if not qs.exists():
+
+            events = list(AccessEvent.objects
+                          .filter(employee_no=employee.employee_no, time__range=(start, end))
+                          .only("id", "time", "label_name"))
+
+            existing_event_ids = set(
+                EmployeeHistory.objects.filter(
+                    employee=employee,
+                    event_id__in=[e.id for e in events]).values_list("event_id", flat=True))
+
+            to_create = []
+
+            for ev in events:
+                if ev.id not in existing_event_ids:
+                    to_create.append(
+                        EmployeeHistory(employee=employee, event=ev, event_time=ev.time, label_name=ev.label_name))
+
+            if to_create:
+                EmployeeHistory.objects.bulk_create(to_create)
+
+            qs = (EmployeeHistory.objects
+                  .filter(employee_id=employee_id, event_time__range=(start, end))
+                  .select_related("event", "employee"))
 
         return qs.order_by("-event_time")
