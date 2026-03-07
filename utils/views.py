@@ -68,13 +68,9 @@ class SubscriptionViewSet(BaseUserViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         target_user = SubscriptionService.resolve_target_user(request.user, request.query_params.get("user_id"))
-
         plan = serializer.validated_data["plan"]
-
         subscription = SubscriptionService.create_subscription(serializer=serializer, user=target_user, plan=plan)
-
         response = SubscriptionDetailSerializer(subscription, context=self.get_serializer_context())
 
         return Response(response.data, status=status.HTTP_201_CREATED)
