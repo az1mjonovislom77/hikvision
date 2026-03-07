@@ -5,9 +5,8 @@ class NotificationService:
 
     @staticmethod
     def resolve_users(user_ids):
-        return (
-            User.objects.filter(id__in=user_ids)
-            if user_ids else User.objects.all())
+        return (User.objects.filter(id__in=user_ids)
+                if user_ids else User.objects.all())
 
     @staticmethod
     def send_bulk(text, users):

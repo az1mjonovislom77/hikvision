@@ -22,19 +22,16 @@ class SmartCityDailyStatsService:
         return qs
 
     def employee_detail(self):
-
         qs = self.base_queryset().select_related("device__user", "shift")
 
         result = []
 
         for emp in qs:
-
             begin = None
             end = None
 
             if emp.begin_time and self.start <= emp.begin_time <= self.end:
                 begin = emp.begin_time
-
             if emp.end_time and self.start <= emp.end_time <= self.end:
                 end = emp.end_time
 
@@ -64,11 +61,10 @@ class SmartCityDailyStatsService:
 
     def mahalla_summary(self):
 
-        qs = (
-            self.base_queryset()
-            .values("device__user__id", "device__user__full_name", )
-            .annotate(total=Count("id"),
-                      present=Count("id", filter=Q(begin_time__range=(self.start, self.end)))))
+        qs = (self.base_queryset()
+              .values("device__user__id", "device__user__full_name")
+              .annotate(total=Count("id"),
+                        present=Count("id", filter=Q(begin_time__range=(self.start, self.end)))))
 
         result = []
 
@@ -91,7 +87,6 @@ class SmartCityDailyStatsService:
         return result
 
     def build(self):
-
         if self.mahalla_id:
             return {"type": "detail", "data": self.employee_detail()}
 

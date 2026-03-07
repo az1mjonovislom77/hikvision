@@ -51,21 +51,15 @@ class EmployeeService:
             return download_face_from_url(face_url)
 
         with ThreadPoolExecutor(max_workers=5) as executor:
-            future_map = {
-                executor.submit(worker, face_url): emp_obj
-                for emp_obj, face_url in download_tasks
-            }
+            future_map = {executor.submit(worker, face_url): emp_obj
+                          for emp_obj, face_url in download_tasks}
 
             for future in as_completed(future_map):
                 emp_obj = future_map[future]
                 try:
                     img = future.result()
                     if img:
-                        emp_obj.face_image.save(
-                            f"{device.ip}_{emp_obj.employee_no}.jpg",
-                            img,
-                            save=True,
-                        )
+                        emp_obj.face_image.save(f"{device.ip}_{emp_obj.employee_no}.jpg", img, save=True)
                 except Exception:
                     logger.exception("Employee fetch failed")
 

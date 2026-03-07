@@ -64,8 +64,7 @@ class SubscriptionDetailSerializer(serializers.ModelSerializer):
                 "title": obj.plan.title,
                 "plan_type": obj.plan.plan_type,
                 "billing_cycle": obj.plan.billing_cycle,
-                "price": obj.plan.price
-                }
+                "price": obj.plan.price}
 
     def get_remaining_days(self, obj):
         return obj.remaining_days

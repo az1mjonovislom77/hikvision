@@ -38,7 +38,6 @@ def download_face_from_url(url):
 def fix_hikvision_time(begin_dt, end_dt):
     if begin_dt.tzinfo:
         begin_dt = begin_dt.replace(tzinfo=None)
-
     if end_dt.tzinfo:
         end_dt = end_dt.replace(tzinfo=None)
 
@@ -57,17 +56,22 @@ def format_late(minutes):
     return f"{hours}:{mins:02d}"
 
 
-def get_day_range(date_obj):
-    start = make_aware(datetime.combine(date_obj, time.min))
-    end = make_aware(datetime.combine(date_obj, time.max))
-    return start, end
-
-
 def get_first_last_events(employee, date_obj):
     start = make_aware(datetime.combine(date_obj, time.min), UZ_TZ)
     end = make_aware(datetime.combine(date_obj, time.max), UZ_TZ)
-    qs = AccessEvent.objects.filter(employee_no=employee.employee_no, device=employee.device, time__range=(start, end))
-    first_entry = qs.filter(label_name__in=["KIRISH", "checkIn", "Kirish", "Keldim"]).order_by("time").first()
-    last_exit = qs.filter(label_name__in=["CHIQISH", "checkOut", "Chiqish", "Ketdim"]).order_by("-time").first()
+
+    if hasattr(employee.device, "prefetched_events"):
+        events = [e for e in employee.device.prefetched_events
+                  if e.employee_no == employee.employee_no and start <= e.time <= end]
+        events.sort(key=lambda x: x.time)
+    else:
+        qs = AccessEvent.objects.filter(employee_no=employee.employee_no, device=employee.device,
+                                        time__range=(start, end)).order_by("time")
+        events = list(qs)
+
+    first_entry = next(
+        (e for e in events if e.label_name in ["KIRISH", "checkIn", "Kirish", "Keldim"]), None)
+    last_exit = next(
+        (e for e in reversed(events) if e.label_name in ["CHIQISH", "checkOut", "Chiqish", "Ketdim"]), None)
 
     return first_entry, last_exit

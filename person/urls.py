@@ -13,5 +13,4 @@ urlpatterns = [
     path("delete/<int:employee_id>/", EmployeeDeleteView.as_view(), name="person-delete"),
     path("daily-list/", DailyAccessListView.as_view(), name="daily-list"),
     path('daily-excel/', DailyAccessExcelExport.as_view()),
-
 ]

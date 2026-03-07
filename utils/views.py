@@ -39,7 +39,7 @@ class BranchViewSet(ReadWriteSerializerMixin, BaseUserViewSet):
 
 @extend_schema(tags=['TelegramChannel'],
                parameters=[
-                   OpenApiParameter(name="branch_id", type=int, description="Branch ID (majburiy)", required=True),
+                   OpenApiParameter(name="branch_id", type=int, required=True),
                    OpenApiParameter(name="user_id", type=int, required=False, description="Faqat superadmin uchun")
                ])
 class TelegramChannelViewSet(BaseUserViewSet):

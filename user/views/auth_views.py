@@ -33,8 +33,7 @@ class SignInAPIView(APIView):
                 "success": True,
                 "message": "User logged in successfully",
                 "data": {"access": tokens["access"]}
-            }, status=status.HTTP_200_OK
-        )
+            }, status=status.HTTP_200_OK)
 
         UserTokenService.set_refresh_cookie(response, tokens["refresh"])
 
