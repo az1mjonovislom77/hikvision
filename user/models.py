@@ -32,12 +32,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
-    groups = models.ManyToManyField(Group, related_name='custom_user_set', blank=True, verbose_name='groups',
-                                    help_text='The groups this user belongs to')
-    user_permissions = models.ManyToManyField(Permission, related_name='custom_user_permissions_set', blank=True,
-                                              verbose_name='user permissions',
-                                              help_text='Specific permissions for this user.', )
-
     USERNAME_FIELD = 'phone_number'
 
     objects = UserManager()
