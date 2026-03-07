@@ -12,9 +12,11 @@ class DailyAccessService:
     @staticmethod
     def get_employees(user, branch_id=None):
 
-        event_prefetch = Prefetch("device__accessevent_set",
-                                  queryset=AccessEvent.objects.order_by("time"),
-                                  to_attr="prefetched_events")
+        event_prefetch = Prefetch(
+            "device__events",
+            queryset=AccessEvent.objects.order_by("time"),
+            to_attr="prefetched_events"
+        )
 
         if user.is_staff or user.role == user.UserRoles.SUPERADMIN:
             employees = (Employee.objects
