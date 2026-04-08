@@ -76,7 +76,6 @@ class Command(BaseCommand):
 
                     picture_url = raw.get("pictureURL") or raw.get("faceURL")
                     send_event_to_telegram.delay(event.id, msg, picture_url, device.id)
-
                     last_time = event.time
                     set_last_event_time(last_time)
 

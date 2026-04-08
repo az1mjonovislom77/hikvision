@@ -27,7 +27,6 @@ class AttendanceDaily(models.Model):
                 .only("status", "fine_amount").first()
 
         with transaction.atomic():
-
             if old and old.status == "szk" and self.status == "sbk":
                 if old.fine_amount:
                     emp.fine -= old.fine_amount

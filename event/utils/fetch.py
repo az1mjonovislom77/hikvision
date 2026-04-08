@@ -67,22 +67,18 @@ def fetch_face_events(devices, since=None):
                 serial_no = ev.get("serialNo")
                 employee_no = ev.get("employeeNoString", "")
                 label_name = (
-                    ev.get("labelName")
-                    or ev.get("label")
-                    or ev.get("name")
-                    or ""
+                        ev.get("labelName")
+                        or ev.get("label")
+                        or ev.get("name")
+                        or ""
                 )
 
                 employee = None
                 if employee_no:
-                    employee = Employee.objects.filter(
-                        employee_no=employee_no,
-                        device=device
-                    ).first()
+                    employee = Employee.objects.filter(employee_no=employee_no, device=device).first()
 
                 event_obj, created = AccessEvent.objects.get_or_create(
-                    device=device,
-                    serial_no=serial_no,
+                    device=device, serial_no=serial_no,
                     defaults={
                         "employee": employee,
                         "time": t,
@@ -99,11 +95,7 @@ def fetch_face_events(devices, since=None):
                 )
 
                 if created and employee:
-                    EmployeeHistory.objects.create(
-                        employee=employee,
-                        event=event_obj,
-                        event_time=t
-                    )
+                    EmployeeHistory.objects.create(employee=employee, event=event_obj, event_time=t)
 
                 saved += 1
 

@@ -44,4 +44,4 @@ class EmployeeHistorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EmployeeHistory
-        fields = ["id", "event_time", "label_name", ]
+        fields = ["id", "event_time", "label_name"]

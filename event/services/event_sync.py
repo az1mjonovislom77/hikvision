@@ -3,7 +3,6 @@ import requests
 from datetime import timedelta
 from event.models import AccessEvent
 from requests.auth import HTTPDigestAuth
-
 from event.utils.wrappers import fetch
 
 logger = logging.getLogger(__name__)
@@ -54,7 +53,7 @@ class EventSyncService:
         threshold = int(limit * 0.95)
 
         if used >= threshold:
-            logger.warning(f"⚠️ Device {device.ip} → event limit {used}/{limit} → AUTO CLEAN!")
+            logger.warning(f"Device {device.ip} → event limit {used}/{limit} → AUTO CLEAN!")
 
             url = f"http://{device.ip}/ISAPI/AccessControl/AcsEvent?format=json"
             payload = {"AcsEventCond": {"deleteAll": True}}
@@ -62,7 +61,7 @@ class EventSyncService:
             try:
                 r = requests.put(url, json=payload, auth=HTTPDigestAuth(device.username, device.password), timeout=10)
                 if r.status_code == 200:
-                    logger.warning(f"🧹 Device {device.ip} eski eventlar o‘chirildi")
+                    logger.warning(f"Device {device.ip} eski eventlar o‘chirildi")
                 else:
                     logger.error(f"{device.ip} delete failed: {r.text}")
             except Exception as e:
@@ -73,11 +72,7 @@ class EventSyncService:
         device_since_map = {}
 
         for device in devices:
-            latest = AccessEvent.objects.filter(
-                device=device,
-                major=5,
-                minor=75
-            ).order_by("-time").first()
+            latest = AccessEvent.objects.filter(device=device, major=5, minor=75).order_by("-time").first()
 
             if latest:
                 device_since_map[device.id] = latest.time - timedelta(seconds=5)

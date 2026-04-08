@@ -21,8 +21,7 @@ class DailyAccessService:
         if user.is_staff or user.role == user.UserRoles.SUPERADMIN:
             employees = (Employee.objects
                          .select_related("shift", "device")
-                         .prefetch_related(event_prefetch)
-                         .all())
+                         .prefetch_related(event_prefetch).all())
         else:
             branch_qs = Branch.objects.filter(user=user)
             if branch_id:
@@ -69,7 +68,7 @@ class DailyAccessService:
                 "kirish": localtime(first.time) if first else None,
                 "chiqish": localtime(last.time) if last else None,
                 "late": format_late(late_minutes),
-                "face": request.build_absolute_uri(emp.face_image.url) if emp.face_image else None,
+                "face": request.build_absolute_uri(emp.face_image.url) if emp.face_image else None
             }, "late_minutes": late_minutes}
 
     @staticmethod

@@ -21,7 +21,6 @@ class EmployeeService:
 
         db_ids = set(employee_map.keys())
         hk_ids = {u.get("employeeNo") for u in hk_users if u.get("employeeNo")}
-
         to_delete = db_ids - hk_ids
         if to_delete:
             Employee.objects.filter(device=device, employee_no__in=to_delete).delete()
@@ -51,11 +50,7 @@ class EmployeeService:
                 emp_obj.save(update_fields=list(defaults.keys()))
 
             else:
-                emp_obj = Employee.objects.create(
-                    device=device,
-                    employee_no=emp_no,
-                    **defaults
-                )
+                emp_obj = Employee.objects.create(device=device, employee_no=emp_no, **defaults)
                 added += 1
                 employee_map[emp_no] = emp_obj
 

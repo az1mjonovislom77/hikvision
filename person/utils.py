@@ -69,8 +69,7 @@ def get_first_last_events(employee, date_obj):
                                         time__range=(start, end)).order_by("time")
         events = list(qs)
 
-    first_entry = next(
-        (e for e in events if e.label_name in ["KIRISH", "checkIn", "Kirish", "Keldim"]), None)
+    first_entry = next((e for e in events if e.label_name in ["KIRISH", "checkIn", "Kirish", "Keldim"]), None)
     last_exit = next(
         (e for e in reversed(events) if e.label_name in ["CHIQISH", "checkOut", "Chiqish", "Ketdim"]), None)
 

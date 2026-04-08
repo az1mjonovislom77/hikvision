@@ -12,7 +12,7 @@ def fetch_all_employees(device):
 
     search_id = "0"
     offset = 0
-    limit = 100
+    limit = 50
 
     all_users = []
 
@@ -31,7 +31,6 @@ def fetch_all_employees(device):
 
         data = r.json()
         block = data.get("UserInfoSearch", {})
-
         users = block.get("UserInfo", []) or []
         status = block.get("responseStatusStrg", "")
 
