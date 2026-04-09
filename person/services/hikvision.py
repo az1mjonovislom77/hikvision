@@ -1,3 +1,5 @@
+import time
+
 import requests
 from requests.auth import HTTPDigestAuth
 
@@ -31,7 +33,31 @@ class HikvisionService:
     @staticmethod
     def create_user(device, data):
         url = HikvisionService._url(device, "AccessControl/UserInfo/Record")
-        return requests.post(url, json=data, auth=HikvisionService._auth(device), timeout=20)
+
+        for i in range(5):  # 🔥 5 marta urinadi
+            try:
+                response = requests.post(
+                    url,
+                    json=data,
+                    auth=HikvisionService._auth(device),
+                    timeout=10
+                )
+
+                if response.status_code == 200:
+                    return response
+
+                print(f"Bad status: {response.status_code}")
+
+            except requests.exceptions.ConnectionError:
+                print(f"Connection refused → retry {i+1}")
+                time.sleep(2)
+
+            except requests.exceptions.Timeout:
+                print(f"Timeout → retry {i+1}")
+                time.sleep(2)
+
+        # 🔥 oxirgi fallback
+        raise Exception("Hikvision create_user FAILED after retries")
 
     @staticmethod
     def update_user(device, data):
