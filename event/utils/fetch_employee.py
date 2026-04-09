@@ -12,7 +12,7 @@ def fetch_all_employees(device):
 
     search_id = "0"
     offset = 0
-    limit = 50
+    limit = 200
 
     all_users = []
 

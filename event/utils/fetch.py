@@ -20,7 +20,7 @@ def fetch_face_events(devices, since=None):
 
         search_id = "0"
         offset = 0
-        limit = 50
+        limit = 200
 
         while True:
             payload = {
