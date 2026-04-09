@@ -15,15 +15,31 @@ class EmployeeService:
             hk_users = fetch_all_employees(device)
 
         device_employees = Employee.objects.filter(device=device).only(
-            "id", "employee_no", "name", "door_right", "user_type", "raw_json", "face_url")
+            "id", "employee_no", "name", "door_right", "user_type", "raw_json", "face_url"
+        )
 
         employee_map = {e.employee_no: e for e in device_employees}
 
         db_ids = set(employee_map.keys())
         hk_ids = {u.get("employeeNo") for u in hk_users if u.get("employeeNo")}
-        to_delete = db_ids - hk_ids
-        if to_delete:
-            Employee.objects.filter(device=device, employee_no__in=to_delete).delete()
+        should_delete = True
+
+        if not hk_ids:
+            logger.warning(f"[{device.ip}] API bo‘sh qaytdi → delete skip")
+            should_delete = False
+
+        elif len(hk_ids) < len(db_ids) * 0.7:
+            logger.warning(
+                f"[{device.ip}] Shubhali kam user keldi ({len(hk_ids)} vs {len(db_ids)}) → delete skip"
+            )
+            should_delete = False
+
+        if should_delete:
+            to_delete = db_ids - hk_ids
+            if to_delete:
+                Employee.objects.filter(device=device, employee_no__in=to_delete).delete()
+        else:
+            to_delete = set()
 
         added = 0
         download_tasks = []
@@ -50,7 +66,11 @@ class EmployeeService:
                 emp_obj.save(update_fields=list(defaults.keys()))
 
             else:
-                emp_obj = Employee.objects.create(device=device, employee_no=emp_no, **defaults)
+                emp_obj = Employee.objects.create(
+                    device=device,
+                    employee_no=emp_no,
+                    **defaults
+                )
                 added += 1
                 employee_map[emp_no] = emp_obj
 
@@ -72,7 +92,11 @@ class EmployeeService:
                 try:
                     img = future.result()
                     if img:
-                        emp_obj.face_image.save(f"{device.ip}_{emp_obj.employee_no}.jpg", img, save=True)
+                        emp_obj.face_image.save(
+                            f"{device.ip}_{emp_obj.employee_no}.jpg",
+                            img,
+                            save=True
+                        )
                 except Exception:
                     logger.exception("Employee fetch failed")
 
