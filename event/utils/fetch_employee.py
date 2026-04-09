@@ -10,19 +10,16 @@ logger.setLevel(logging.DEBUG)
 def fetch_all_employees(device):
     url = f"http://{device.ip}/ISAPI/AccessControl/UserInfo/Search?format=json"
 
-    session = requests.Session()
-    session.auth = HTTPDigestAuth(device.username, device.password)
-    session.headers.update({"Content-Type": "application/json"})
-
     search_id = "0"
     offset = 0
     limit = 50
 
     all_users = []
+    max_loops = 1000  # safety
 
     logger.warning(f"🚀 START FETCH | device={device.ip}")
 
-    while True:
+    for i in range(max_loops):
         payload = {
             "UserInfoSearchCond": {
                 "searchID": search_id,
@@ -34,12 +31,35 @@ def fetch_all_employees(device):
         logger.debug(f"➡️ REQUEST | offset={offset} | limit={limit} | search_id={search_id}")
 
         try:
-            r = session.post(url, json=payload, timeout=15)
-        except Exception as e:
-            logger.exception(f"❌ REQUEST FAILED | offset={offset}")
+            r = requests.post(
+                url,
+                json=payload,
+                auth=HTTPDigestAuth(device.username, device.password),
+                headers={"Content-Type": "application/json"},
+                timeout=15
+            )
+        except Exception:
+            logger.exception("❌ REQUEST FAILED")
             break
 
         logger.debug(f"⬅️ RESPONSE STATUS = {r.status_code}")
+
+        # 🔐 401 retry (ENG MUHIM FIX)
+        if r.status_code == 401:
+            logger.warning("🔐 401 detected → retrying...")
+            time.sleep(0.5)
+
+            try:
+                r = requests.post(
+                    url,
+                    json=payload,
+                    auth=HTTPDigestAuth(device.username, device.password),
+                    headers={"Content-Type": "application/json"},
+                    timeout=15
+                )
+            except Exception:
+                logger.exception("❌ RETRY FAILED")
+                break
 
         if r.status_code != 200:
             logger.error(f"❌ BAD STATUS CODE: {r.status_code}")
@@ -56,26 +76,27 @@ def fetch_all_employees(device):
         status = block.get("responseStatusStrg", "")
 
         logger.warning(
-            f"📦 BATCH | offset={offset} | count={len(users)} | status={status} | total_collected={len(all_users)}"
+            f"📦 BATCH | offset={offset} | count={len(users)} | status={status} | total={len(all_users)}"
         )
 
+        # search_id update
         if block.get("searchID") and block["searchID"] != "0":
-            logger.debug(f"🔁 NEW search_id: {block['searchID']}")
             search_id = block["searchID"]
 
-        # sample 1-2 user ko‘rib olish
-        if users:
-            logger.debug(f"👤 SAMPLE USER: {users[0].get('employeeNo')}")
+        if not users:
+            logger.warning("🛑 STOP: empty users")
+            break
 
         all_users.extend(users)
 
-        if status != "MORE" or not users:
-            logger.warning(
-                f"🛑 STOP CONDITION | status={status} | users_empty={not users}"
-            )
+        # 👇 pagination (device 30 qaytaryapti)
+        offset += len(users)
+
+        # 👇 stop condition (statusga ishonmaymiz)
+        if len(users) < 30:
+            logger.warning("🛑 STOP: last batch")
             break
 
-        offset += len(users)
         time.sleep(0.2)
 
     logger.warning(f"✅ DONE | TOTAL FETCHED = {len(all_users)}")
