@@ -53,13 +53,10 @@ class EmployeeService:
             )
             should_delete = False
 
-        if should_delete:
+        if should_delete and len(hk_ids) >= len(db_ids):
             to_delete = db_ids - hk_ids
             if to_delete:
-                Employee.objects.filter(
-                    device=device,
-                    employee_no__in=to_delete
-                ).delete()
+                Employee.objects.filter(device=device, employee_no__in=to_delete).delete()
         else:
             to_delete = set()
 
