@@ -4,27 +4,6 @@ import requests
 from requests.auth import HTTPDigestAuth
 
 
-def _fetch_chunk(session, url, start, limit):
-    payload = {
-        "UserInfoSearchCond": {
-            "searchID": str(uuid.uuid4()),
-            "searchResultPosition": start,
-            "maxResults": limit,
-        }
-    }
-
-    try:
-        r = session.post(url, json=payload, timeout=15)
-        if r.status_code != 200:
-            return []
-
-        data = r.json()
-    except Exception:
-        return []
-
-    return data.get("UserInfoSearch", {}).get("UserInfo", []) or []
-
-
 def fetch_all_employees(device):
     url = f"http://{device.ip}/ISAPI/AccessControl/UserInfo/Search?format=json"
 
