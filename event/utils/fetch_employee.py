@@ -30,7 +30,7 @@ def fetch_all_employees(device):
 
         logger.debug(f"➡️ REQUEST | offset={offset} | limit={limit} | search_id={search_id}")
 
-        # ✅ RETRY LOOP (minimal fix)
+        # ✅ timeout + connection retry (minimal fix)
         for retry in range(3):
             try:
                 r = requests.post(
@@ -44,8 +44,11 @@ def fetch_all_employees(device):
             except requests.exceptions.Timeout:
                 logger.warning(f"⏳ TIMEOUT → retry {retry+1}")
                 time.sleep(1)
+            except requests.exceptions.ConnectionError:
+                logger.warning(f"🔌 CONNECTION ERROR → retry {retry+1}")
+                time.sleep(1)
         else:
-            logger.error("❌ SKIP THIS BATCH (timeout)")
+            logger.error("❌ SKIP THIS REQUEST")
             continue  # 🔥 break emas!
 
         logger.debug(f"⬅️ RESPONSE STATUS = {r.status_code}")
