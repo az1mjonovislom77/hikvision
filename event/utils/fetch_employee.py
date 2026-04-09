@@ -91,7 +91,7 @@ def fetch_all_employees(device):
             logger.warning("🛑 STOP: last batch")
             break
 
-        time.sleep(0.5)
+        time.sleep(0.2)
 
     logger.warning(f"✅ DONE | TOTAL FETCHED = {len(all_users)}")
 
