@@ -2,6 +2,7 @@ import time
 import requests
 import logging
 from requests.auth import HTTPDigestAuth
+from person.services.hikvision_lock import hikvision_lock  # 🔥
 
 logger = logging.getLogger("hikvision_fetch")
 logger.setLevel(logging.DEBUG)
@@ -35,11 +36,12 @@ def fetch_all_employees(device):
         logger.debug(f"➡️ REQUEST | offset={offset} | limit={limit} | search_id={search_id}")
 
         try:
-            r = session.post(   # 🔥 session ishlatyapmiz
-                url,
-                json=payload,
-                timeout=15
-            )
+            with hikvision_lock:
+                r = session.post(
+                    url,
+                    json=payload,
+                    timeout=15
+                )
         except (requests.exceptions.Timeout,
                 requests.exceptions.ConnectionError):
             logger.error("❌ TIMEOUT / CONNECTION ERROR → STOP")
@@ -52,11 +54,12 @@ def fetch_all_employees(device):
             time.sleep(0.5)
 
             try:
-                r = session.post(   # 🔥 bu ham session
-                    url,
-                    json=payload,
-                    timeout=15
-                )
+                with hikvision_lock:
+                    r = session.post(
+                        url,
+                        json=payload,
+                        timeout=15
+                    )
             except Exception:
                 logger.exception("❌ RETRY FAILED")
                 break
