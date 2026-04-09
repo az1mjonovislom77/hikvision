@@ -10,13 +10,10 @@ logger.setLevel(logging.DEBUG)
 def fetch_all_employees(device):
     url = f"http://{device.ip}/ISAPI/AccessControl/UserInfo/Search?format=json"
 
-    def create_session():
-        s = requests.Session()
-        s.auth = HTTPDigestAuth(device.username, device.password)
-        s.headers.update({"Content-Type": "application/json"})
-        return s
-
-    session = create_session()
+    # 🔥 FAQAT SHU QO‘SHILDI (connection reuse)
+    session = requests.Session()
+    session.auth = HTTPDigestAuth(device.username, device.password)
+    session.headers.update({"Content-Type": "application/json"})
 
     search_id = "0"
     offset = 0
@@ -39,7 +36,7 @@ def fetch_all_employees(device):
         logger.debug(f"➡️ REQUEST | offset={offset} | limit={limit} | search_id={search_id}")
 
         try:
-            r = session.post(url, json=payload, timeout=20)  # 🔥 timeout oshirildi
+            r = session.post(url, json=payload, timeout=15)
         except (requests.exceptions.Timeout,
                 requests.exceptions.ConnectionError):
             logger.error("❌ TIMEOUT / CONNECTION ERROR → STOP")
@@ -47,21 +44,16 @@ def fetch_all_employees(device):
 
         logger.debug(f"⬅️ RESPONSE STATUS = {r.status_code}")
 
-        # 🔥 401 FIX (ENG MUHIM)
         if r.status_code == 401:
-            logger.warning("🔐 401 detected → resetting session...")
-
-            time.sleep(1)
-
-            # 🔥 yangi session
-            session = create_session()
-
-            # 🔥 searchni reset qilamiz
-            search_id = "0"
-            offset = 0
+            logger.warning("🔐 401 detected → retrying...")
+            time.sleep(0.5)
 
             try:
-                r = session.post(url, json=payload, timeout=20)
+                r = session.post(  # 🔥 bu ham session
+                    url,
+                    json=payload,
+                    timeout=15
+                )
             except Exception:
                 logger.exception("❌ RETRY FAILED")
                 break
@@ -80,9 +72,7 @@ def fetch_all_employees(device):
         users = block.get("UserInfo", []) or []
         status = block.get("responseStatusStrg", "")
 
-        logger.warning(
-            f"📦 BATCH | offset={offset} | count={len(users)} | status={status} | total={len(all_users)}"
-        )
+        logger.warning(f"📦 BATCH | offset={offset} | count={len(users)} | status={status} | total={len(all_users)}")
 
         if block.get("searchID") and block["searchID"] != "0":
             search_id = block["searchID"]
