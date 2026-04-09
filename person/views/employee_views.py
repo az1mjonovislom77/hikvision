@@ -1,5 +1,4 @@
 import uuid
-import time
 from user.models import User
 from rest_framework import status
 from datetime import datetime, time
@@ -175,6 +174,7 @@ class EmployeeCreateView(APIView):
                 }
             }
         }
+        import time
         time.sleep(3)
         result = HikvisionService.create_user(device, payload)
         if result.status_code != 200:
