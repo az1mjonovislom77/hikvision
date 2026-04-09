@@ -1,4 +1,6 @@
 import time
+import uuid
+
 import requests
 from requests.auth import HTTPDigestAuth
 
@@ -10,9 +12,9 @@ def fetch_all_employees(device):
     session.auth = HTTPDigestAuth(device.username, device.password)
     session.headers.update({"Content-Type": "application/json"})
 
-    search_id = "0"
+    search_id = str(uuid.uuid4())
     offset = 0
-    limit = 200
+    limit = 50
 
     all_users = []
 
@@ -33,9 +35,6 @@ def fetch_all_employees(device):
         block = data.get("UserInfoSearch", {})
         users = block.get("UserInfo", []) or []
         status = block.get("responseStatusStrg", "")
-
-        if block.get("searchID") and block["searchID"] != "0":
-            search_id = block["searchID"]
 
         all_users.extend(users)
 
