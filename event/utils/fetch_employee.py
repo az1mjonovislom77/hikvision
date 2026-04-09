@@ -30,17 +30,23 @@ def fetch_all_employees(device):
 
         logger.debug(f"➡️ REQUEST | offset={offset} | limit={limit} | search_id={search_id}")
 
-        try:
-            r = requests.post(
-                url,
-                json=payload,
-                auth=HTTPDigestAuth(device.username, device.password),
-                headers={"Content-Type": "application/json"},
-                timeout=15
-            )
-        except Exception:
-            logger.exception("❌ REQUEST FAILED")
-            break
+        # ✅ RETRY LOOP (minimal fix)
+        for retry in range(3):
+            try:
+                r = requests.post(
+                    url,
+                    json=payload,
+                    auth=HTTPDigestAuth(device.username, device.password),
+                    headers={"Content-Type": "application/json"},
+                    timeout=15
+                )
+                break
+            except requests.exceptions.Timeout:
+                logger.warning(f"⏳ TIMEOUT → retry {retry+1}")
+                time.sleep(1)
+        else:
+            logger.error("❌ SKIP THIS BATCH (timeout)")
+            continue  # 🔥 break emas!
 
         logger.debug(f"⬅️ RESPONSE STATUS = {r.status_code}")
 
@@ -58,17 +64,18 @@ def fetch_all_employees(device):
                 )
             except Exception:
                 logger.exception("❌ RETRY FAILED")
-                break
+                continue  # 🔥 break emas!
 
         if r.status_code != 200:
             logger.error(f"❌ BAD STATUS CODE: {r.status_code}")
-            break
+            time.sleep(1)
+            continue  # 🔥 break emas!
 
         try:
             data = r.json()
         except Exception:
             logger.exception("❌ JSON PARSE ERROR")
-            break
+            continue  # 🔥 break emas!
 
         block = data.get("UserInfoSearch", {})
         users = block.get("UserInfo", []) or []
