@@ -1,6 +1,5 @@
 import time
 import uuid
-
 import requests
 from requests.auth import HTTPDigestAuth
 
@@ -17,8 +16,10 @@ def fetch_all_employees(device):
     limit = 50
 
     all_users = []
+    seen_ids = set()
 
-    while True:
+    for _ in range(1000):
+
         payload = {
             "UserInfoSearchCond": {
                 "searchID": search_id,
@@ -27,21 +28,45 @@ def fetch_all_employees(device):
             }
         }
 
-        r = session.post(url, json=payload, timeout=15)
+        try:
+            r = session.post(url, json=payload, timeout=15)
+        except requests.RequestException:
+            break
+
         if r.status_code != 200:
             break
 
-        data = r.json()
+        try:
+            data = r.json()
+        except Exception:
+            break
+
         block = data.get("UserInfoSearch", {})
         users = block.get("UserInfo", []) or []
-        status = block.get("responseStatusStrg", "")
+        total = block.get("totalMatches", 0)
 
-        all_users.extend(users)
+        if not users:
+            break
 
-        if status != "MORE" or not users:
+        new_count = 0
+
+        for u in users:
+            emp_no = u.get("employeeNo")
+
+            if not emp_no or emp_no in seen_ids:
+                continue
+
+            seen_ids.add(emp_no)
+            all_users.append(u)
+            new_count += 1
+
+        if new_count == 0:
             break
 
         offset += len(users)
+        if total and offset >= total:
+            break
+
         time.sleep(0.2)
 
     return all_users
