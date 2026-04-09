@@ -33,40 +33,37 @@ def fetch_all_employees(device):
     session.headers.update({"Content-Type": "application/json"})
 
     all_users = {}
-    seen_ids = set()
+    seen = set()
 
-    offset = 0
-    limit = 50
+    offsets = [0, 20, 40, 60, 80, 100, 120, 150, 200]
 
-    for _ in range(20):
-        users = _fetch_chunk(session, url, offset, limit)
+    for offset in offsets:
+        payload = {
+            "UserInfoSearchCond": {
+                "searchID": str(uuid.uuid4()),
+                "searchResultPosition": offset,
+                "maxResults": 50,
+            }
+        }
 
-        if not users:
-            break
-
-        for u in users:
-            emp_no = u.get("employeeNo")
-            if not emp_no or emp_no in seen_ids:
+        try:
+            r = session.post(url, json=payload, timeout=10)
+            if r.status_code != 200:
                 continue
 
-            seen_ids.add(emp_no)
-            all_users[emp_no] = u
+            data = r.json()
+            users = data.get("UserInfoSearch", {}).get("UserInfo", []) or []
 
-        offset += len(users)
-        time.sleep(0.2)
+            for u in users:
+                emp_no = u.get("employeeNo")
+                if not emp_no or emp_no in seen:
+                    continue
 
-    extra_offsets = [0, 30, 60, 90, 120, 150, 200, 300]
+                seen.add(emp_no)
+                all_users[emp_no] = u
 
-    for start in extra_offsets:
-        users = _fetch_chunk(session, url, start, limit)
-
-        for u in users:
-            emp_no = u.get("employeeNo")
-            if not emp_no or emp_no in seen_ids:
-                continue
-
-            seen_ids.add(emp_no)
-            all_users[emp_no] = u
+        except Exception:
+            continue
 
         time.sleep(0.2)
 
