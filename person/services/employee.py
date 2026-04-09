@@ -21,10 +21,6 @@ class EmployeeService:
 
         db_ids = set(employee_map.keys())
         hk_ids = {u.get("employeeNo") for u in hk_users if u.get("employeeNo")}
-        to_delete = db_ids - hk_ids
-        if to_delete:
-            Employee.objects.filter(device=device, employee_no__in=to_delete).delete()
-
         added = 0
         download_tasks = []
 
