@@ -42,7 +42,7 @@ def fetch_all_employees(device):
         except (requests.exceptions.Timeout,
                 requests.exceptions.ConnectionError):
             logger.error("❌ TIMEOUT / CONNECTION ERROR → STOP")
-            break  # 🔥 ENG MUHIM (original kabi)
+            break
 
         logger.debug(f"⬅️ RESPONSE STATUS = {r.status_code}")
 
@@ -60,17 +60,17 @@ def fetch_all_employees(device):
                 )
             except Exception:
                 logger.exception("❌ RETRY FAILED")
-                break  # 🔥 originalga mos
+                break
 
         if r.status_code != 200:
             logger.error(f"❌ BAD STATUS CODE: {r.status_code}")
-            break  # 🔥 originalga mos
+            break
 
         try:
             data = r.json()
         except Exception:
             logger.exception("❌ JSON PARSE ERROR")
-            break  # 🔥 originalga mos
+            break
 
         block = data.get("UserInfoSearch", {})
         users = block.get("UserInfo", []) or []
@@ -92,7 +92,7 @@ def fetch_all_employees(device):
             logger.warning("🛑 STOP: last batch")
             break
 
-        time.sleep(0.2)
+        time.sleep(0.5)
 
     logger.warning(f"✅ DONE | TOTAL FETCHED = {len(all_users)}")
 
