@@ -31,7 +31,7 @@ class HikvisionService:
     @staticmethod
     def create_user(device, data):
         url = HikvisionService._url(device, "AccessControl/UserInfo/Record")
-        return requests.post(url, json=data, auth=HikvisionService._auth(device), timeout=10)
+        return requests.post(url, json=data, auth=HikvisionService._auth(device), timeout=20)
 
     @staticmethod
     def update_user(device, data):
