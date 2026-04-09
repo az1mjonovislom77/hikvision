@@ -27,22 +27,30 @@ def fetch_all_employees(device):
 
         r = session.post(url, json=payload, timeout=15)
         if r.status_code != 200:
+            print("❌ Request error:", r.status_code)
             break
 
         data = r.json()
         block = data.get("UserInfoSearch", {})
         users = block.get("UserInfo", []) or []
-        status = block.get("responseStatusStrg", "")
+
+        print(f"OFFSET={offset} | KELDI={len(users)}")
 
         if block.get("searchID") and block["searchID"] != "0":
             search_id = block["searchID"]
 
-        all_users.extend(users)
-
-        if status != "MORE" or not users:
+        if not users:
             break
 
-        offset += len(users)
+        all_users.extend(users)
+
+        # 👇 ENG MUHIM O‘ZGARISH
+        offset += limit
+
+        # 👇 fallback himoya (infinite loopdan saqlaydi)
+        if len(users) < limit:
+            break
+
         time.sleep(0.2)
 
     return all_users
