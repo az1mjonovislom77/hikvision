@@ -1,6 +1,10 @@
 import time
 import requests
+import logging
 from requests.auth import HTTPDigestAuth
+
+logger = logging.getLogger("hikvision_fetch")
+logger.setLevel(logging.DEBUG)
 
 
 def fetch_all_employees(device):
@@ -16,6 +20,8 @@ def fetch_all_employees(device):
 
     all_users = []
 
+    logger.warning(f"🚀 START FETCH | device={device.ip}")
+
     while True:
         payload = {
             "UserInfoSearchCond": {
@@ -25,32 +31,53 @@ def fetch_all_employees(device):
             }
         }
 
-        r = session.post(url, json=payload, timeout=15)
-        if r.status_code != 200:
-            print("❌ Request error:", r.status_code)
+        logger.debug(f"➡️ REQUEST | offset={offset} | limit={limit} | search_id={search_id}")
+
+        try:
+            r = session.post(url, json=payload, timeout=15)
+        except Exception as e:
+            logger.exception(f"❌ REQUEST FAILED | offset={offset}")
             break
 
-        data = r.json()
+        logger.debug(f"⬅️ RESPONSE STATUS = {r.status_code}")
+
+        if r.status_code != 200:
+            logger.error(f"❌ BAD STATUS CODE: {r.status_code}")
+            break
+
+        try:
+            data = r.json()
+        except Exception:
+            logger.exception("❌ JSON PARSE ERROR")
+            break
+
         block = data.get("UserInfoSearch", {})
         users = block.get("UserInfo", []) or []
+        status = block.get("responseStatusStrg", "")
 
-        print(f"OFFSET={offset} | KELDI={len(users)}")
+        logger.warning(
+            f"📦 BATCH | offset={offset} | count={len(users)} | status={status} | total_collected={len(all_users)}"
+        )
 
         if block.get("searchID") and block["searchID"] != "0":
+            logger.debug(f"🔁 NEW search_id: {block['searchID']}")
             search_id = block["searchID"]
 
-        if not users:
-            break
+        # sample 1-2 user ko‘rib olish
+        if users:
+            logger.debug(f"👤 SAMPLE USER: {users[0].get('employeeNo')}")
 
         all_users.extend(users)
 
-        # 👇 ENG MUHIM O‘ZGARISH
-        offset += limit
-
-        # 👇 fallback himoya (infinite loopdan saqlaydi)
-        if len(users) < limit:
+        if status != "MORE" or not users:
+            logger.warning(
+                f"🛑 STOP CONDITION | status={status} | users_empty={not users}"
+            )
             break
 
+        offset += len(users)
         time.sleep(0.2)
+
+    logger.warning(f"✅ DONE | TOTAL FETCHED = {len(all_users)}")
 
     return all_users
