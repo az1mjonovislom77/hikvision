@@ -15,7 +15,7 @@ def fetch_all_employees(device):
     limit = 50
 
     all_users = []
-    max_loops = 1000  # safety
+    max_loops = 1000
 
     logger.warning(f"🚀 START FETCH | device={device.ip}")
 
@@ -44,7 +44,6 @@ def fetch_all_employees(device):
 
         logger.debug(f"⬅️ RESPONSE STATUS = {r.status_code}")
 
-        # 🔐 401 retry (ENG MUHIM FIX)
         if r.status_code == 401:
             logger.warning("🔐 401 detected → retrying...")
             time.sleep(0.5)
@@ -75,11 +74,8 @@ def fetch_all_employees(device):
         users = block.get("UserInfo", []) or []
         status = block.get("responseStatusStrg", "")
 
-        logger.warning(
-            f"📦 BATCH | offset={offset} | count={len(users)} | status={status} | total={len(all_users)}"
-        )
+        logger.warning(f"📦 BATCH | offset={offset} | count={len(users)} | status={status} | total={len(all_users)}")
 
-        # search_id update
         if block.get("searchID") and block["searchID"] != "0":
             search_id = block["searchID"]
 
@@ -88,11 +84,8 @@ def fetch_all_employees(device):
             break
 
         all_users.extend(users)
-
-        # 👇 pagination (device 30 qaytaryapti)
         offset += len(users)
 
-        # 👇 stop condition (statusga ishonmaymiz)
         if len(users) < 30:
             logger.warning("🛑 STOP: last batch")
             break
