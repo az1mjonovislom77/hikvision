@@ -21,6 +21,8 @@ class EmployeeService:
 
         db_ids = set(employee_map.keys())
         hk_ids = {u.get("employeeNo") for u in hk_users if u.get("employeeNo")}
+
+
         added = 0
         download_tasks = []
 
@@ -74,6 +76,6 @@ class EmployeeService:
 
         return {
             "added": added,
-            "deleted": len(to_delete),
+            "deleted": 0,
             "device_ip": device.ip,
         }
