@@ -1,6 +1,5 @@
 import time
 import uuid
-
 import requests
 from requests.auth import HTTPDigestAuth
 
@@ -12,36 +11,39 @@ def fetch_all_employees(device):
     session.auth = HTTPDigestAuth(device.username, device.password)
     session.headers.update({"Content-Type": "application/json"})
 
-    search_id = str(uuid.uuid4())
-    offset = 0
-    limit = 50
+    all_users = {}
+    seen = set()
 
-    all_users = []
+    offsets = [0, 20, 40, 60, 80, 100, 120, 150, 200]
 
-    while True:
+    for offset in offsets:
         payload = {
             "UserInfoSearchCond": {
-                "searchID": search_id,
+                "searchID": str(uuid.uuid4()),
                 "searchResultPosition": offset,
-                "maxResults": limit,
+                "maxResults": 50,
             }
         }
 
-        r = session.post(url, json=payload, timeout=15)
-        if r.status_code != 200:
-            break
+        try:
+            r = session.post(url, json=payload, timeout=10)
+            if r.status_code != 200:
+                continue
 
-        data = r.json()
-        block = data.get("UserInfoSearch", {})
-        users = block.get("UserInfo", []) or []
-        status = block.get("responseStatusStrg", "")
+            data = r.json()
+            users = data.get("UserInfoSearch", {}).get("UserInfo", []) or []
 
-        all_users.extend(users)
+            for u in users:
+                emp_no = u.get("employeeNo")
+                if not emp_no or emp_no in seen:
+                    continue
 
-        if status != "MORE" or not users:
-            break
+                seen.add(emp_no)
+                all_users[emp_no] = u
 
-        offset += len(users)
+        except Exception:
+            continue
+
         time.sleep(0.2)
 
-    return all_users
+    return list(all_users.values())
