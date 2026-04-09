@@ -10,6 +10,10 @@ logger.setLevel(logging.DEBUG)
 def fetch_all_employees(device):
     url = f"http://{device.ip}/ISAPI/AccessControl/UserInfo/Search?format=json"
 
+    session = requests.Session()
+    session.auth = HTTPDigestAuth(device.username, device.password)
+    session.headers.update({"Content-Type": "application/json"})
+
     search_id = "0"
     offset = 0
     limit = 50
@@ -31,11 +35,9 @@ def fetch_all_employees(device):
         logger.debug(f"➡️ REQUEST | offset={offset} | limit={limit} | search_id={search_id}")
 
         try:
-            r = requests.post(
+            r = session.post(   # 🔥 session ishlatyapmiz
                 url,
                 json=payload,
-                auth=HTTPDigestAuth(device.username, device.password),
-                headers={"Content-Type": "application/json"},
                 timeout=15
             )
         except (requests.exceptions.Timeout,
@@ -50,11 +52,9 @@ def fetch_all_employees(device):
             time.sleep(0.5)
 
             try:
-                r = requests.post(
+                r = session.post(   # 🔥 bu ham session
                     url,
                     json=payload,
-                    auth=HTTPDigestAuth(device.username, device.password),
-                    headers={"Content-Type": "application/json"},
                     timeout=15
                 )
             except Exception:
