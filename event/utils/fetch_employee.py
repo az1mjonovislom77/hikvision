@@ -10,6 +10,7 @@ logger.setLevel(logging.DEBUG)
 def fetch_all_employees(device):
     url = f"http://{device.ip}/ISAPI/AccessControl/UserInfo/Search?format=json"
 
+    # 🔥 FAQAT SHU QO‘SHILDI (connection reuse)
     session = requests.Session()
     session.auth = HTTPDigestAuth(device.username, device.password)
     session.headers.update({"Content-Type": "application/json"})
@@ -17,6 +18,7 @@ def fetch_all_employees(device):
     search_id = "0"
     offset = 0
     limit = 50
+
     all_users = []
     max_loops = 1000
 
@@ -34,12 +36,13 @@ def fetch_all_employees(device):
         logger.debug(f"➡️ REQUEST | offset={offset} | limit={limit} | search_id={search_id}")
 
         try:
-            r = session.post(
+            r = session.post(   # 🔥 session ishlatyapmiz
                 url,
                 json=payload,
                 timeout=15
             )
-        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+        except (requests.exceptions.Timeout,
+                requests.exceptions.ConnectionError):
             logger.error("❌ TIMEOUT / CONNECTION ERROR → STOP")
             break
 
@@ -50,7 +53,7 @@ def fetch_all_employees(device):
             time.sleep(0.5)
 
             try:
-                r = session.post(
+                r = session.post(   # 🔥 bu ham session
                     url,
                     json=payload,
                     timeout=15
@@ -73,9 +76,7 @@ def fetch_all_employees(device):
         users = block.get("UserInfo", []) or []
         status = block.get("responseStatusStrg", "")
 
-        logger.warning(
-            f"📦 BATCH | offset={offset} | count={len(users)} | status={status} | total={len(all_users)}"
-        )
+        logger.warning(f"📦 BATCH | offset={offset} | count={len(users)} | status={status} | total={len(all_users)}")
 
         if block.get("searchID") and block["searchID"] != "0":
             search_id = block["searchID"]
@@ -94,4 +95,5 @@ def fetch_all_employees(device):
         time.sleep(0.5)
 
     logger.warning(f"✅ DONE | TOTAL FETCHED = {len(all_users)}")
+
     return all_users
