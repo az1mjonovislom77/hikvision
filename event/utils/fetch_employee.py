@@ -30,7 +30,6 @@ def fetch_all_employees(device):
 
         logger.debug(f"➡️ REQUEST | offset={offset} | limit={limit} | search_id={search_id}")
 
-        # ✅ XUDDI ORIGINALDEK — timeout bo‘lsa chiqadi
         try:
             r = requests.post(
                 url,

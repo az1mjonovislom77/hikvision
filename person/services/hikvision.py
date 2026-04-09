@@ -34,19 +34,23 @@ class HikvisionService:
     def create_user(device, data):
         url = HikvisionService._url(device, "AccessControl/UserInfo/Record")
 
+        session = requests.Session() 
+        session.auth = HTTPDigestAuth(device.username, device.password)
+
         for i in range(6):
             try:
                 time.sleep(1.5)
 
-                r = requests.post(
+                r = session.post(
                     url,
                     json=data,
-                    auth=HikvisionService._auth(device),
                     timeout=10
                 )
 
                 if r.status_code == 200:
                     return r
+
+                print(f"Bad status: {r.status_code} → retry {i + 1}")
 
             except requests.exceptions.ConnectionError:
                 print(f"Connection refused → retry {i + 1}")
