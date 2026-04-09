@@ -1,8 +1,7 @@
 import time
+
 import requests
 from requests.auth import HTTPDigestAuth
-
-from person.services.hikvision_lock import hikvision_lock
 
 
 class HikvisionService:
@@ -36,21 +35,22 @@ class HikvisionService:
         url = HikvisionService._url(device, "AccessControl/UserInfo/Record")
 
         session = requests.Session()
-        session.auth = HikvisionService._auth(device)
+        session.auth = HTTPDigestAuth(device.username, device.password)
 
-        for i in range(5):
+        for i in range(6):
             try:
-                time.sleep(1)
+                time.sleep(1.5)
 
-                with hikvision_lock:
-                    r = session.post(
-                        url,
-                        json=data,
-                        timeout=10
-                    )
+                r = session.post(
+                    url,
+                    json=data,
+                    timeout=10
+                )
 
                 if r.status_code == 200:
                     return r
+
+                print(f"Bad status: {r.status_code} → retry {i + 1}")
 
             except requests.exceptions.ConnectionError:
                 print(f"Connection refused → retry {i + 1}")
@@ -63,29 +63,10 @@ class HikvisionService:
     @staticmethod
     def update_user(device, data):
         url = HikvisionService._url(device, "AccessControl/UserInfo/Modify")
-
-        with hikvision_lock:
-            return requests.put(
-                url,
-                json=data,
-                auth=HikvisionService._auth(device),
-                timeout=10
-            )
+        return requests.put(url, json=data, auth=HikvisionService._auth(device), timeout=10)
 
     @staticmethod
     def delete_user(device, employee_no):
         url = HikvisionService._url(device, "AccessControl/UserInfo/Delete")
-
-        payload = {
-            "UserInfoDelCond": {
-                "EmployeeNoList": [{"employeeNo": employee_no}]
-            }
-        }
-
-        with hikvision_lock:
-            return requests.put(
-                url,
-                json=payload,
-                auth=HikvisionService._auth(device),
-                timeout=10
-            )
+        payload = {"UserInfoDelCond": {"EmployeeNoList": [{"employeeNo": employee_no}]}}
+        return requests.put(url, json=payload, auth=HikvisionService._auth(device), timeout=10)
