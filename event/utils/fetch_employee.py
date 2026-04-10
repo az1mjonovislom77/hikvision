@@ -73,7 +73,6 @@ def fetch_all_employees(device):
 
         block = data.get("UserInfoSearch", {})
         users = block.get("UserInfo", []) or []
-        status = block.get("responseStatusStrg", "")
 
         logger.warning(f"📦 BATCH | offset={offset} | got={len(users)} | total={len(all_users)}")
 
