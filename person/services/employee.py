@@ -1,4 +1,5 @@
 import logging
+import time
 from event.utils.fetch_employee import fetch_all_employees
 from person.models import Employee
 from person.utils import download_face_from_url
@@ -11,8 +12,24 @@ class EmployeeService:
 
     @staticmethod
     def sync_from_hikvision(device, hk_users=None):
+
+        logger.warning(f"🚀 SYNC START | device={device.ip}")
+
+        # 🔥 FETCH
         if hk_users is None:
             hk_users = fetch_all_employees(device)
+
+        # 🔥 DEBUG ENG MUHIM
+        logger.warning(f"👥 FETCH RESULT COUNT: {len(hk_users)}")
+
+        # ❌ agar fetch ishlamagan bo‘lsa
+        if not hk_users:
+            logger.error("❌ HK USERS EMPTY → FETCH FAILED")
+            return {
+                "added": 0,
+                "deleted": 0,
+                "device_ip": device.ip,
+            }
 
         device_employees = Employee.objects.filter(device=device).only(
             "id",
@@ -25,15 +42,16 @@ class EmployeeService:
         )
 
         employee_map = {e.employee_no: e for e in device_employees}
-        db_ids = set(employee_map.keys())
-        hk_ids = {u.get("employeeNo") for u in hk_users if u.get("employeeNo")}
 
         added = 0
         download_tasks = []
 
+        # 🔥 SYNC LOOP
         for u in hk_users:
             emp_no = u.get("employeeNo")
+
             if not emp_no:
+                logger.warning("⚠️ SKIP USER WITHOUT employeeNo")
                 continue
 
             defaults = {
@@ -65,10 +83,14 @@ class EmployeeService:
             if face_url:
                 download_tasks.append((emp_obj, face_url))
 
+        logger.warning(f"📊 USERS PROCESSED: {len(hk_users)} | ADDED: {added}")
+
+        # 🔥 FACE DOWNLOAD (SAFE MODE)
         def worker(face_url):
             return download_face_from_url(face_url)
 
-        with ThreadPoolExecutor(max_workers=5) as executor:
+        # ❗ thread kamaytirildi (device overload bo‘lmasin)
+        with ThreadPoolExecutor(max_workers=2) as executor:
             future_map = {
                 executor.submit(worker, face_url): emp_obj
                 for emp_obj, face_url in download_tasks
@@ -86,7 +108,12 @@ class EmployeeService:
                             save=True
                         )
                 except Exception:
-                    logger.exception("Employee fetch failed")
+                    logger.exception("❌ FACE DOWNLOAD FAILED")
+
+                # 🔥 device’ni asraymiz
+                time.sleep(0.2)
+
+        logger.warning(f"✅ SYNC DONE | added={added}")
 
         return {
             "added": added,
