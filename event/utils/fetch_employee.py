@@ -47,7 +47,6 @@ def fetch_all_employees(device):
 
         logger.debug(f"⬅️ STATUS = {r.status_code}")
 
-        # 🔥 401 FIX + LOG
         if r.status_code == 401:
             logger.warning(f"🔐 401 detected | offset={offset} → RESET SESSION")
 
@@ -76,9 +75,7 @@ def fetch_all_employees(device):
         users = block.get("UserInfo", []) or []
         status = block.get("responseStatusStrg", "")
 
-        logger.warning(
-            f"📦 BATCH | offset={offset} | got={len(users)} | total={len(all_users)}"
-        )
+        logger.warning(f"📦 BATCH | offset={offset} | got={len(users)} | total={len(all_users)}")
 
         if block.get("searchID") and block["searchID"] != "0":
             search_id = block["searchID"]

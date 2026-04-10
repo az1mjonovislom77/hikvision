@@ -15,14 +15,11 @@ class EmployeeService:
 
         logger.warning(f"🚀 SYNC START | device={device.ip}")
 
-        # 🔥 FETCH
         if hk_users is None:
             hk_users = fetch_all_employees(device)
 
-        # 🔥 DEBUG ENG MUHIM
         logger.warning(f"👥 FETCH RESULT COUNT: {len(hk_users)}")
 
-        # ❌ agar fetch ishlamagan bo‘lsa
         if not hk_users:
             logger.error("❌ HK USERS EMPTY → FETCH FAILED")
             return {
@@ -46,7 +43,6 @@ class EmployeeService:
         added = 0
         download_tasks = []
 
-        # 🔥 SYNC LOOP
         for u in hk_users:
             emp_no = u.get("employeeNo")
 
@@ -85,11 +81,9 @@ class EmployeeService:
 
         logger.warning(f"📊 USERS PROCESSED: {len(hk_users)} | ADDED: {added}")
 
-        # 🔥 FACE DOWNLOAD (SAFE MODE)
         def worker(face_url):
             return download_face_from_url(face_url)
 
-        # ❗ thread kamaytirildi (device overload bo‘lmasin)
         with ThreadPoolExecutor(max_workers=2) as executor:
             future_map = {
                 executor.submit(worker, face_url): emp_obj
@@ -110,7 +104,6 @@ class EmployeeService:
                 except Exception:
                     logger.exception("❌ FACE DOWNLOAD FAILED")
 
-                # 🔥 device’ni asraymiz
                 time.sleep(0.2)
 
         logger.warning(f"✅ SYNC DONE | added={added}")
