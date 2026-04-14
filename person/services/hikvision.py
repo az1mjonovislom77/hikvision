@@ -36,10 +36,10 @@ class HikvisionService:
     @staticmethod
     def update_user(device, data):
         url = HikvisionService._url(device, "AccessControl/UserInfo/Modify")
-        return requests.put(url, json=data, auth=HikvisionService._auth(device), timeout=30)
+        return requests.put(url, json=data, auth=HikvisionService._auth(device), timeout=50)
 
     @staticmethod
     def delete_user(device, employee_no):
         url = HikvisionService._url(device, "AccessControl/UserInfo/Delete")
         payload = {"UserInfoDelCond": {"EmployeeNoList": [{"employeeNo": employee_no}]}}
-        return requests.put(url, json=payload, auth=HikvisionService._auth(device), timeout=30)
+        return requests.put(url, json=payload, auth=HikvisionService._auth(device), timeout=50)
