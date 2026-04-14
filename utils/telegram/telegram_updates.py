@@ -29,10 +29,7 @@ def sync_channels_from_updates():
 
         logger.info(f"📡 Update from channel: {title} ({chat_id})")
 
-        channel = TelegramChannel.objects.filter(
-            name=title,
-            resolved_id__isnull=True
-        ).first()
+        channel = TelegramChannel.objects.filter(name=title, resolved_id__isnull=True).first()
 
         if channel:
             channel.resolved_id = chat_id

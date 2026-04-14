@@ -1,7 +1,6 @@
 from celery import shared_task
 import logging
 import time
-
 from event.models import AccessEvent
 from utils.models import TelegramChannel, Devices
 from utils.telegram.telegram import download_image, send_telegram
@@ -32,20 +31,13 @@ def send_event_to_telegram(self, event_id, msg, picture_url, device_id):
         except Exception:
             logger.exception("IMAGE DOWNLOAD FAILED")
 
-    channels = TelegramChannel.objects.filter(
-        device=device,
-        resolved_id__isnull=False
-    )
+    channels = TelegramChannel.objects.filter(device=device, resolved_id__isnull=False)
 
     success_count = 0
 
     for channel in channels:
         try:
-            send_telegram(
-                chat_id=channel.resolved_id,
-                text=msg,
-                image_bytes=image_bytes
-            )
+            send_telegram(chat_id=channel.resolved_id, text=msg, image_bytes=image_bytes)
             success_count += 1
 
             time.sleep(0.3)

@@ -45,26 +45,19 @@ def send_telegram(chat_id, text, image_bytes=None):
             file_obj = BytesIO(image_bytes)
             file_obj.name = "event.jpg"
 
-            r = session.post(
-                f"{BASE_URL}/sendPhoto",
-                data={
-                    "chat_id": chat_id,
-                    "caption": text,
-                    "parse_mode": "HTML"
-                },
-                files={"photo": file_obj},
-                timeout=20
-            )
+            r = session.post(f"{BASE_URL}/sendPhoto",
+                             data={
+                                 "chat_id": chat_id,
+                                 "caption": text,
+                                 "parse_mode": "HTML"
+                             }, files={"photo": file_obj}, timeout=20)
         else:
-            r = session.post(
-                f"{BASE_URL}/sendMessage",
-                json={
-                    "chat_id": chat_id,
-                    "text": text,
-                    "parse_mode": "HTML"
-                },
-                timeout=20
-            )
+            r = session.post(f"{BASE_URL}/sendMessage",
+                             json={
+                                 "chat_id": chat_id,
+                                 "text": text,
+                                 "parse_mode": "HTML"
+                             }, timeout=20)
 
         logger.info(f"Telegram response: {r.text}")
 
