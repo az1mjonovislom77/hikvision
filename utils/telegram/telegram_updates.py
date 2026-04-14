@@ -1,18 +1,22 @@
 import logging
-import requests
 from decouple import config
 from utils.models import TelegramChannel
+from utils.telegram.telegram import session, BASE_URL
 
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = config("BOT_TOKEN")
-BASE_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 
 def sync_channels_from_updates():
-    r = requests.get(f"{BASE_URL}/getUpdates", timeout=10)
-    r.raise_for_status()
-    data = r.json()
+    try:
+        r = session.get(f"{BASE_URL}/getUpdates", timeout=20)
+        r.raise_for_status()
+        data = r.json()
+
+    except Exception:
+        logger.exception("TELEGRAM GET UPDATES ERROR")
+        return
 
     for update in data.get("result", []):
         message = update.get("channel_post")
@@ -22,9 +26,13 @@ def sync_channels_from_updates():
         chat = message.get("chat")
         chat_id = str(chat["id"])
         title = chat.get("title")
+
         logger.info(f"📡 Update from channel: {title} ({chat_id})")
 
-        channel = TelegramChannel.objects.filter(name=title, resolved_id__isnull=True).first()
+        channel = TelegramChannel.objects.filter(
+            name=title,
+            resolved_id__isnull=True
+        ).first()
 
         if channel:
             channel.resolved_id = chat_id
