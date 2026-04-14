@@ -24,22 +24,22 @@ class HikvisionService:
             }
         }
 
-        result = requests.post(url, json=payload, auth=HikvisionService._auth(device), timeout=10)
+        result = requests.post(url, json=payload, auth=HikvisionService._auth(device), timeout=20)
 
         return result.json().get("UserInfoSearch", {}).get("UserInfo", [])
 
     @staticmethod
     def create_user(device, data):
         url = HikvisionService._url(device, "AccessControl/UserInfo/Record")
-        return requests.post(url, json=data, auth=HikvisionService._auth(device), timeout=10)
+        return requests.post(url, json=data, auth=HikvisionService._auth(device), timeout=20)
 
     @staticmethod
     def update_user(device, data):
         url = HikvisionService._url(device, "AccessControl/UserInfo/Modify")
-        return requests.put(url, json=data, auth=HikvisionService._auth(device), timeout=10)
+        return requests.put(url, json=data, auth=HikvisionService._auth(device), timeout=30)
 
     @staticmethod
     def delete_user(device, employee_no):
         url = HikvisionService._url(device, "AccessControl/UserInfo/Delete")
         payload = {"UserInfoDelCond": {"EmployeeNoList": [{"employeeNo": employee_no}]}}
-        return requests.put(url, json=payload, auth=HikvisionService._auth(device), timeout=10)
+        return requests.put(url, json=payload, auth=HikvisionService._auth(device), timeout=30)

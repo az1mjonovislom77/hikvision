@@ -40,8 +40,7 @@ def fetch_all_employees(device):
 
         try:
             r = session.post(url, json=payload, timeout=20)
-        except (requests.exceptions.Timeout,
-                requests.exceptions.ConnectionError):
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
             logger.error(f"❌ REQUEST FAILED | offset={offset}")
             break
 
