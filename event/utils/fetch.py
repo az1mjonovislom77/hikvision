@@ -6,6 +6,7 @@ from datetime import timezone as dt_timezone
 import requests
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from requests.exceptions import RequestException, Timeout
+from django.core.cache import cache
 from django.utils import timezone as django_timezone
 from person.utils import UZ_TZ
 from event.models import AccessEvent
@@ -43,6 +44,15 @@ def fetch_face_events(devices, since=None):
     saved = 0
 
     for device in devices:
+        lock_key = f"hikvision:event-sync:{device.id}"
+        if not cache.add(lock_key, "1", timeout=120):
+            logger.warning(
+                "AcsEvent skip: boshqa sync ishlayapti device_id=%s ip=%s",
+                device.id,
+                device.ip,
+            )
+            continue
+
         url = f"http://{device.ip}/ISAPI/AccessControl/AcsEvent?format=json"
         start_local = _hikvision_start_time_str(since)
         since_utc = (
@@ -294,5 +304,7 @@ def fetch_face_events(devices, since=None):
                 pages_done,
                 saved_this_device,
             )
+
+        cache.delete(lock_key)
 
     return saved
