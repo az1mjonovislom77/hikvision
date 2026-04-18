@@ -69,19 +69,28 @@ class EventSyncService:
                 logger.error(f"{device.ip} delete error: {e}")
 
     @staticmethod
-    def sync_events(devices):
+    def sync_events(devices, full=False):
+        """
+        full=False: faqat DB dagi eng so‘nggi yozuvdan keyingi eventlar (incremental).
+        full=True: startTime yuborilmaydi — qurilmadagi buffergacha bo‘lgan barcha mavjud
+        yozuvlar so‘raladi (get_or_create takrorlarni olib tashlaydi).
+        """
         device_since_map = {}
 
         for device in devices:
-            latest = AccessEvent.objects.filter(device=device, major=5, minor=75).order_by("-time").first()
-
-            if latest:
-                device_since_map[device.id] = latest.time - timedelta(seconds=5)
-            else:
+            if full:
                 device_since_map[device.id] = None
+            else:
+                latest = AccessEvent.objects.filter(device=device, major=5, minor=75).order_by("-time").first()
+
+                if latest:
+                    device_since_map[device.id] = latest.time - timedelta(seconds=5)
+                else:
+                    device_since_map[device.id] = None
 
         logger.info(
-            "EventSyncService.sync_events: qurilmalar=%s | since_map=%s",
+            "EventSyncService.sync_events: full=%s qurilmalar=%s | since_map=%s",
+            full,
             [d.id for d in devices],
             {k: (v.isoformat() if v else None) for k, v in device_since_map.items()},
         )

@@ -4,7 +4,7 @@ from person.models import Employee
 from event.models import AccessEvent
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.generics import ListAPIView
 from utils.utils.schema import user_extend_schema
 from event.serializers import AccessEventSerializer
@@ -18,7 +18,29 @@ class CustomPagination(PageNumberPagination):
     page_size_query_param = None
 
 
-@user_extend_schema("Event")
+def _truthy_param(val):
+    if val is None:
+        return False
+    if isinstance(val, bool):
+        return val
+    return str(val).strip().lower() in ("1", "true", "yes", "on")
+
+
+@extend_schema(
+    tags=["Event"],
+    parameters=[
+        OpenApiParameter(name="user_id", type=int, required=False, description="Faqat superadmin uchun"),
+        OpenApiParameter(
+            name="full",
+            type=bool,
+            required=False,
+            description=(
+                "True bo‘lsa qurilmadagi event bufferidan to‘liq yuklaydi (eski yozuvlar ham). "
+                "Standart: faqat DB da oxirgi yozuvdan keyingi yangi eventlar."
+            ),
+        ),
+    ],
+)
 class EventSyncView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -41,9 +63,13 @@ class EventSyncView(APIView):
         if not devices.exists():
             return Response({"error": "Device topilmadi"}, status=400)
 
-        added = EventSyncService.sync_events(devices)
+        full = _truthy_param(request.query_params.get("full"))
+        if not full and isinstance(getattr(request, "data", None), dict):
+            full = _truthy_param(request.data.get("full"))
 
-        return Response({"success": True, "added": added})
+        added = EventSyncService.sync_events(devices, full=full)
+
+        return Response({"success": True, "added": added, "full": full})
 
 
 @extend_schema(tags=["Event"])
