@@ -1,7 +1,5 @@
 import logging
-
 from celery import shared_task
-
 from event.services.event_sync import EventSyncService
 from utils.models import Devices
 
