@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 import time
+from uuid import uuid4
 from datetime import timezone as dt_timezone
 import requests
 from requests.exceptions import ConnectionError as RequestsConnectionError
@@ -72,7 +73,7 @@ def fetch_face_events(devices, since=None):
         session.auth = HTTPDigestAuth(device.username, device.password)
         session.headers.update({"Content-Type": "application/json"})
 
-        search_id = "0"
+        search_id = uuid4().hex
         offset = 0
         limit = 100
         max_pages = 500
