@@ -3,6 +3,8 @@ import json
 import logging
 import time
 import requests
+from requests.exceptions import ConnectionError as RequestsConnectionError
+from requests.exceptions import RequestException, Timeout
 from person.utils import UZ_TZ
 from event.models import AccessEvent
 from requests.auth import HTTPDigestAuth
@@ -46,6 +48,7 @@ def fetch_face_events(devices, since=None):
         max_pages = 500
         pages_done = 0
         saved_this_device = 0
+        stop_reason = "ok"
 
         for page_idx in range(max_pages):
             payload = {
@@ -73,16 +76,60 @@ def fetch_face_events(devices, since=None):
                         search_id,
                         (r.text or "")[:800],
                     )
+                    stop_reason = f"http_{r.status_code}"
                     break
-                data = r.json()
+                try:
+                    data = r.json()
+                except ValueError:
+                    logger.warning(
+                        "AcsEvent JSON emas: device_id=%s ip=%s offset=%s body=%s",
+                        device.id,
+                        device.ip,
+                        offset,
+                        (r.text or "")[:800],
+                    )
+                    stop_reason = "json_parse"
+                    break
+            except Timeout as e:
+                logger.warning(
+                    "AcsEvent timeout (qurilma javob bermadi): device_id=%s ip=%s offset=%s: %s",
+                    device.id,
+                    device.ip,
+                    offset,
+                    e,
+                )
+                stop_reason = "timeout"
+                break
+            except RequestsConnectionError as e:
+                logger.warning(
+                    "AcsEvent ulanish yo‘q: device_id=%s ip=%s offset=%s — "
+                    "VPS odatda 192.168.* ga bevosita chiqa olmaydi (VPN/tunnel yoki ochiq IP kerak): %s",
+                    device.id,
+                    device.ip,
+                    offset,
+                    e,
+                )
+                stop_reason = "connection"
+                break
+            except RequestException as e:
+                logger.warning(
+                    "AcsEvent HTTP kutilmagan xato: device_id=%s ip=%s offset=%s: %s",
+                    device.id,
+                    device.ip,
+                    offset,
+                    e,
+                )
+                stop_reason = "request"
+                break
             except Exception:
                 logger.exception(
-                    "AcsEvent so‘rov xatosi: device_id=%s ip=%s offset=%s searchID=%s",
+                    "AcsEvent so‘rov (noma’lum) xatosi: device_id=%s ip=%s offset=%s searchID=%s",
                     device.id,
                     device.ip,
                     offset,
                     search_id,
                 )
+                stop_reason = "unexpected"
                 break
 
             if not isinstance(data, dict):
@@ -92,6 +139,7 @@ def fetch_face_events(devices, since=None):
                     device.ip,
                     type(data).__name__,
                 )
+                stop_reason = "json_shape"
                 break
 
             access = data.get("AcsEvent", {})
@@ -197,6 +245,7 @@ def fetch_face_events(devices, since=None):
                 break
             time.sleep(0.2)
         else:
+            stop_reason = "max_pages"
             logger.warning(
                 "AcsEvent max_pages (%s) yetildi, boshqa sahifalar bo‘lishi mumkin: device_id=%s ip=%s",
                 max_pages,
@@ -204,12 +253,22 @@ def fetch_face_events(devices, since=None):
                 device.ip,
             )
 
-        logger.info(
-            "AcsEvent tugadi: device_id=%s ip=%s sahifalar=%s yangi_saqlangan=%s",
-            device.id,
-            device.ip,
-            pages_done,
-            saved_this_device,
-        )
+        if stop_reason == "ok":
+            logger.info(
+                "AcsEvent tugadi: device_id=%s ip=%s sahifalar=%s yangi_saqlangan=%s",
+                device.id,
+                device.ip,
+                pages_done,
+                saved_this_device,
+            )
+        else:
+            logger.warning(
+                "AcsEvent to‘xtatildi: sabab=%s device_id=%s ip=%s sahifalar=%s yangi_saqlangan=%s",
+                stop_reason,
+                device.id,
+                device.ip,
+                pages_done,
+                saved_this_device,
+            )
 
     return saved
