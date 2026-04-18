@@ -40,7 +40,8 @@ class EventSyncService:
             r = requests.get(url, auth=HTTPDigestAuth(device.username, device.password), timeout=8)
             return int(r.json().get("AcsEventTotal", {}).get("total", 0))
 
-        except:
+        except Exception as e:
+            logger.warning("AcsEventTotal o‘qilmadi: device_id=%s ip=%s: %s", device.id, device.ip, e)
             return 0
 
     @staticmethod
@@ -79,7 +80,14 @@ class EventSyncService:
             else:
                 device_since_map[device.id] = None
 
-        return fetch(devices=devices, since_map=device_since_map)
+        logger.info(
+            "EventSyncService.sync_events: qurilmalar=%s | since_map=%s",
+            [d.id for d in devices],
+            {k: (v.isoformat() if v else None) for k, v in device_since_map.items()},
+        )
+        total = fetch(devices=devices, since_map=device_since_map)
+        logger.info("EventSyncService.sync_events tugadi: jami_yangi=%s", total)
+        return total
 
     @staticmethod
     def get_events_queryset():

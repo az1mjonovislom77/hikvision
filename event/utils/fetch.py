@@ -1,3 +1,6 @@
+import hashlib
+import json
+import logging
 import time
 import requests
 from person.utils import UZ_TZ
@@ -7,12 +10,31 @@ from django.utils.dateparse import parse_datetime
 from person.models import Employee, EmployeeHistory
 from event.utils.events_name import major_name, minor_name
 
+logger = logging.getLogger(__name__)
+
+
+def _event_serial_no(device, ev):
+    """Hikvision serialNo bo‘sh bo‘lsa, bir vaqtdagi turli eventlar bitta qotib qolmasligi uchun barqaror kalit."""
+    sn = ev.get("serialNo")
+    if sn is not None and str(sn).strip() != "":
+        return str(sn).strip()[:100]
+    payload = json.dumps(ev, sort_keys=True, ensure_ascii=False, default=str)
+    digest = hashlib.sha256(f"{device.id}:{payload}".encode()).hexdigest()[:40]
+    return f"h{digest}"
+
 
 def fetch_face_events(devices, since=None):
     saved = 0
 
     for device in devices:
         url = f"http://{device.ip}/ISAPI/AccessControl/AcsEvent?format=json"
+        since_str = since.strftime("%Y-%m-%d %H:%M:%S") if since else None
+        logger.info(
+            "AcsEvent boshlandi: device_id=%s ip=%s startTime=%s",
+            device.id,
+            device.ip,
+            since_str or "(barcha)",
+        )
 
         session = requests.Session()
         session.auth = HTTPDigestAuth(device.username, device.password)
@@ -21,8 +43,11 @@ def fetch_face_events(devices, since=None):
         search_id = "0"
         offset = 0
         limit = 100
+        max_pages = 500
+        pages_done = 0
+        saved_this_device = 0
 
-        while True:
+        for page_idx in range(max_pages):
             payload = {
                 "AcsEventCond": {
                     "searchID": search_id,
@@ -39,17 +64,63 @@ def fetch_face_events(devices, since=None):
             try:
                 r = session.post(url, json=payload, timeout=15)
                 if r.status_code != 200:
+                    logger.warning(
+                        "AcsEvent HTTP xato: device_id=%s ip=%s status=%s offset=%s searchID=%s body=%s",
+                        device.id,
+                        device.ip,
+                        r.status_code,
+                        offset,
+                        search_id,
+                        (r.text or "")[:800],
+                    )
                     break
                 data = r.json()
             except Exception:
+                logger.exception(
+                    "AcsEvent so‘rov xatosi: device_id=%s ip=%s offset=%s searchID=%s",
+                    device.id,
+                    device.ip,
+                    offset,
+                    search_id,
+                )
+                break
+
+            if not isinstance(data, dict):
+                logger.error(
+                    "AcsEvent JSON kutilmagan format: device_id=%s ip=%s type=%s",
+                    device.id,
+                    device.ip,
+                    type(data).__name__,
+                )
                 break
 
             access = data.get("AcsEvent", {})
             events = access.get("InfoList", []) or []
-            status = access.get("responseStatusStrg", "")
 
             if access.get("searchID") and access["searchID"] != "0":
                 search_id = access["searchID"]
+
+            if not events:
+                logger.debug(
+                    "AcsEvent bo‘sh sahifa, tugadi: device_id=%s ip=%s offset=%s",
+                    device.id,
+                    device.ip,
+                    offset,
+                )
+                break
+
+            pages_done += 1
+            status_raw = access.get("responseStatusStrg") or ""
+            logger.debug(
+                "AcsEvent sahifa: device_id=%s ip=%s page=%s offset=%s len=%s status=%r searchID=%s",
+                device.id,
+                device.ip,
+                page_idx,
+                offset,
+                len(events),
+                status_raw,
+                search_id,
+            )
 
             for ev in events:
                 t = parse_datetime(ev.get("time"))
@@ -64,7 +135,7 @@ def fetch_face_events(devices, since=None):
                 if since and t <= since:
                     continue
 
-                serial_no = ev.get("serialNo")
+                serial_no = _event_serial_no(device, ev)
                 employee_no = ev.get("employeeNoString", "")
                 label_name = (
                         ev.get("labelName")
@@ -77,32 +148,68 @@ def fetch_face_events(devices, since=None):
                 if employee_no:
                     employee = Employee.objects.filter(employee_no=employee_no, device=device).first()
 
-                event_obj, created = AccessEvent.objects.get_or_create(
-                    device=device, serial_no=serial_no,
-                    defaults={
-                        "employee": employee,
-                        "time": t,
-                        "major": 5,
-                        "minor": 75,
-                        "major_name": major_name(5),
-                        "minor_name": minor_name(75),
-                        "label_name": label_name,
-                        "name": ev.get("name", ""),
-                        "employee_no": employee_no,
-                        "picture_url": ev.get("pictureURL") or ev.get("faceURL"),
-                        "raw_json": ev,
-                    }
-                )
+                try:
+                    event_obj, created = AccessEvent.objects.get_or_create(
+                        device=device, serial_no=serial_no,
+                        defaults={
+                            "employee": employee,
+                            "time": t,
+                            "major": 5,
+                            "minor": 75,
+                            "major_name": major_name(5),
+                            "minor_name": minor_name(75),
+                            "label_name": label_name,
+                            "name": ev.get("name", ""),
+                            "employee_no": employee_no,
+                            "picture_url": ev.get("pictureURL") or ev.get("faceURL"),
+                            "raw_json": ev,
+                        }
+                    )
+                except Exception:
+                    logger.exception(
+                        "AccessEvent DB xatosi: device_id=%s ip=%s serial_no=%s time=%s employee_no=%s",
+                        device.id,
+                        device.ip,
+                        serial_no,
+                        t,
+                        employee_no,
+                    )
+                    continue
 
                 if created and employee:
-                    EmployeeHistory.objects.create(employee=employee, event=event_obj, event_time=t)
+                    try:
+                        EmployeeHistory.objects.create(employee=employee, event=event_obj, event_time=t)
+                    except Exception:
+                        logger.exception(
+                            "EmployeeHistory yaratish xatosi: device_id=%s event_id=%s employee_id=%s",
+                            device.id,
+                            getattr(event_obj, "id", None),
+                            getattr(employee, "id", None),
+                        )
 
-                saved += 1
-
-            if status != "MORE" or not events:
-                break
+                if created:
+                    saved += 1
+                    saved_this_device += 1
 
             offset += len(events)
+            status = (access.get("responseStatusStrg") or "").upper()
+            if len(events) < limit and status != "MORE":
+                break
             time.sleep(0.2)
+        else:
+            logger.warning(
+                "AcsEvent max_pages (%s) yetildi, boshqa sahifalar bo‘lishi mumkin: device_id=%s ip=%s",
+                max_pages,
+                device.id,
+                device.ip,
+            )
+
+        logger.info(
+            "AcsEvent tugadi: device_id=%s ip=%s sahifalar=%s yangi_saqlangan=%s",
+            device.id,
+            device.ip,
+            pages_done,
+            saved_this_device,
+        )
 
     return saved
