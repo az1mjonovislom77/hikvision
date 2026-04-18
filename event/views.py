@@ -8,7 +8,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.generics import ListAPIView
 from utils.utils.schema import user_extend_schema
 from event.serializers import AccessEventSerializer
-from event.services.event_sync import EventSyncService
+from event.tasks import sync_events_task
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 
@@ -69,9 +69,12 @@ class EventSyncView(APIView):
 
         full = True if full_param is None else _truthy_param(full_param)
 
-        added = EventSyncService.sync_events(devices, full=full)
+        task = sync_events_task.delay(list(devices.values_list("id", flat=True)), full=full)
 
-        return Response({"success": True, "added": added, "full": full})
+        return Response(
+            {"success": True, "queued": True, "task_id": task.id, "full": full},
+            status=202,
+        )
 
 
 @extend_schema(tags=["Event"])
