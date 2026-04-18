@@ -6,7 +6,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.generics import ListAPIView
-from utils.utils.schema import user_extend_schema
 from event.serializers import AccessEventSerializer
 from event.tasks import sync_events_task
 from rest_framework.permissions import IsAuthenticated
@@ -36,7 +35,7 @@ def _truthy_param(val):
             required=False,
             description=(
                 "True bo‘lsa qurilmadagi event bufferidan to‘liq yuklaydi (eski yozuvlar ham). "
-                "Standart: true. full=false yuborilsa faqat DB da oxirgi yozuvdan keyingi yangi eventlar."
+                "Standart: false. full=true yuborilsa qurilmadagi eski eventlar ham olinadi."
             ),
         ),
     ],
@@ -67,7 +66,7 @@ class EventSyncView(APIView):
         if full_param is None and isinstance(getattr(request, "data", None), dict):
             full_param = request.data.get("full")
 
-        full = True if full_param is None else _truthy_param(full_param)
+        full = False if full_param is None else _truthy_param(full_param)
 
         task = sync_events_task.delay(list(devices.values_list("id", flat=True)), full=full)
 
