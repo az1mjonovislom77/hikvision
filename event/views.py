@@ -36,7 +36,7 @@ def _truthy_param(val):
             required=False,
             description=(
                 "True bo‘lsa qurilmadagi event bufferidan to‘liq yuklaydi (eski yozuvlar ham). "
-                "Standart: faqat DB da oxirgi yozuvdan keyingi yangi eventlar."
+                "Standart: true. full=false yuborilsa faqat DB da oxirgi yozuvdan keyingi yangi eventlar."
             ),
         ),
     ],
@@ -63,9 +63,11 @@ class EventSyncView(APIView):
         if not devices.exists():
             return Response({"error": "Device topilmadi"}, status=400)
 
-        full = _truthy_param(request.query_params.get("full"))
-        if not full and isinstance(getattr(request, "data", None), dict):
-            full = _truthy_param(request.data.get("full"))
+        full_param = request.query_params.get("full")
+        if full_param is None and isinstance(getattr(request, "data", None), dict):
+            full_param = request.data.get("full")
+
+        full = True if full_param is None else _truthy_param(full_param)
 
         added = EventSyncService.sync_events(devices, full=full)
 
