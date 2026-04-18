@@ -69,10 +69,6 @@ def fetch_face_events(devices, since=None):
             since_utc or "—",
         )
 
-        session = requests.Session()
-        session.auth = HTTPDigestAuth(device.username, device.password)
-        session.headers.update({"Content-Type": "application/json"})
-
         search_id = uuid4().hex
         offset = 0
         limit = 100
@@ -96,7 +92,13 @@ def fetch_face_events(devices, since=None):
                 payload["AcsEventCond"]["startTime"] = _hikvision_start_time_str(since)
 
             try:
-                r = session.post(url, json=payload, timeout=15)
+                r = requests.post(
+                    url,
+                    json=payload,
+                    auth=HTTPDigestAuth(device.username, device.password),
+                    headers={"Content-Type": "application/json"},
+                    timeout=15,
+                )
                 if r.status_code != 200:
                     logger.warning(
                         "AcsEvent HTTP xato: device_id=%s ip=%s status=%s offset=%s searchID=%s body=%s",
