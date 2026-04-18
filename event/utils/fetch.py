@@ -2,9 +2,11 @@ import hashlib
 import json
 import logging
 import time
+from datetime import timezone as dt_timezone
 import requests
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from requests.exceptions import RequestException, Timeout
+from django.utils import timezone as django_timezone
 from person.utils import UZ_TZ
 from event.models import AccessEvent
 from requests.auth import HTTPDigestAuth
@@ -13,6 +15,18 @@ from person.models import Employee, EmployeeHistory
 from event.utils.events_name import major_name, minor_name
 
 logger = logging.getLogger(__name__)
+
+
+def _hikvision_start_time_str(since):
+    """
+    Hikvision AcsEvent startTime odatda vaqt zonasiz qator — qurilma sozlamasidagi mahalliy vaqt.
+    DB dagi aware vaqtni Asia/Tashkent ga o‘girib yuboramiz (settings.TIME_ZONE bilan mos).
+    """
+    if since is None:
+        return None
+    if django_timezone.is_naive(since):
+        since = django_timezone.make_aware(since, UZ_TZ)
+    return since.astimezone(UZ_TZ).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _event_serial_no(device, ev):
@@ -30,12 +44,18 @@ def fetch_face_events(devices, since=None):
 
     for device in devices:
         url = f"http://{device.ip}/ISAPI/AccessControl/AcsEvent?format=json"
-        since_str = since.strftime("%Y-%m-%d %H:%M:%S") if since else None
+        start_local = _hikvision_start_time_str(since)
+        since_utc = (
+            since.astimezone(dt_timezone.utc).strftime("%Y-%m-%d %H:%M:%S %Z")
+            if since
+            else None
+        )
         logger.info(
-            "AcsEvent boshlandi: device_id=%s ip=%s startTime=%s",
+            "AcsEvent boshlandi: device_id=%s ip=%s startTime_mahalliy=%s (DB_UTC=%s)",
             device.id,
             device.ip,
-            since_str or "(barcha)",
+            start_local or "(barcha)",
+            since_utc or "—",
         )
 
         session = requests.Session()
@@ -62,7 +82,7 @@ def fetch_face_events(devices, since=None):
             }
 
             if since:
-                payload["AcsEventCond"]["startTime"] = since.strftime("%Y-%m-%d %H:%M:%S")
+                payload["AcsEventCond"]["startTime"] = _hikvision_start_time_str(since)
 
             try:
                 r = session.post(url, json=payload, timeout=15)
@@ -254,12 +274,16 @@ def fetch_face_events(devices, since=None):
             )
 
         if stop_reason == "ok":
+            note = ""
+            if pages_done > 0 and saved_this_device == 0:
+                note = " | yangi hodisa yo‘q (qurilma javobi DB dagi yozuvlar bilan mos yoki filtr ostida)"
             logger.info(
-                "AcsEvent tugadi: device_id=%s ip=%s sahifalar=%s yangi_saqlangan=%s",
+                "AcsEvent tugadi: device_id=%s ip=%s sahifalar=%s yangi_saqlangan=%s%s",
                 device.id,
                 device.ip,
                 pages_done,
                 saved_this_device,
+                note,
             )
         else:
             logger.warning(
