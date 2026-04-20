@@ -5,7 +5,7 @@ from datetime import datetime, time
 from event.models import AccessEvent
 from rest_framework.views import APIView
 from utils.models import Devices, Branch
-from person.utils import fix_hikvision_time
+from person.utils import fix_hikvision_time, normalize_employee_no
 from rest_framework.response import Response
 from django.utils.dateparse import parse_date
 from rest_framework.generics import ListAPIView
@@ -297,9 +297,16 @@ class EmployeeHistoryListView(ListAPIView):
 
         if not qs.exists():
 
-            events = list(AccessEvent.objects
-                          .filter(employee_no=employee.employee_no, time__range=(start, end))
-                          .only("id", "time", "label_name"))
+            employee_no = normalize_employee_no(employee.employee_no)
+            events = list(
+                AccessEvent.objects
+                .filter(
+                    employee_no=employee_no,
+                    device=employee.device,
+                    time__range=(start, end),
+                )
+                .only("id", "time", "label_name")
+            )
 
             existing_event_ids = set(
                 EmployeeHistory.objects.filter(

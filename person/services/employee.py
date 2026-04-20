@@ -2,7 +2,7 @@ import logging
 import time
 from event.utils.fetch_employee import fetch_all_employees
 from person.models import Employee
-from person.utils import download_face_from_url
+from person.utils import download_face_from_url, normalize_employee_no
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
@@ -38,13 +38,13 @@ class EmployeeService:
             "face_url"
         )
 
-        employee_map = {e.employee_no: e for e in device_employees}
+        employee_map = {normalize_employee_no(e.employee_no): e for e in device_employees}
 
         added = 0
         download_tasks = []
 
         for u in hk_users:
-            emp_no = u.get("employeeNo")
+            emp_no = normalize_employee_no(u.get("employeeNo"))
 
             if not emp_no:
                 logger.warning("⚠️ SKIP USER WITHOUT employeeNo")

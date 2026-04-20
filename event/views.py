@@ -1,6 +1,5 @@
 from user.models import User
 from utils.models import Devices
-from person.models import Employee
 from event.models import AccessEvent
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -89,6 +88,4 @@ class AccessEventListView(ListAPIView):
             return qs
 
         devices = Devices.objects.filter(user=user)
-        employees = Employee.objects.filter(device__in=devices)
-
-        return qs.filter(employee__in=employees)
+        return qs.filter(device__in=devices)

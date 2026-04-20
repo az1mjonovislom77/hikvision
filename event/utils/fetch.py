@@ -13,9 +13,23 @@ from event.models import AccessEvent
 from requests.auth import HTTPDigestAuth
 from django.utils.dateparse import parse_datetime
 from person.models import Employee, EmployeeHistory
+from person.utils import normalize_employee_no
 from event.utils.events_name import major_name, minor_name
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_employee(device, employee_no):
+    employee_no = normalize_employee_no(employee_no)
+    if not employee_no:
+        return None
+
+    employee = Employee.objects.filter(device=device, employee_no=employee_no).first()
+    if employee:
+        return employee
+
+    # Fallback: some devices return employee numbers in different primitive formats.
+    return Employee.objects.filter(device=device).filter(employee_no__iexact=employee_no).first()
 
 
 def _hikvision_start_time_str(since):
@@ -118,12 +132,10 @@ def fetch_face_events(devices, since=None):
                     continue
 
                 serial_no = _event_serial_no(device, ev)
-                employee_no = ev.get("employeeNoString", "")
+                employee_no = normalize_employee_no(ev.get("employeeNoString") or ev.get("employeeNo"))
                 label_name = ev.get("labelName") or ev.get("label") or ev.get("name") or ""
 
-                employee = None
-                if employee_no:
-                    employee = Employee.objects.filter(employee_no=employee_no, device=device).first()
+                employee = _resolve_employee(device, employee_no)
 
                 try:
                     event_obj, created = AccessEvent.objects.get_or_create(
