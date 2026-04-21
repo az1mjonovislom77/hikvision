@@ -28,7 +28,6 @@ def _resolve_employee(device, employee_no):
     if employee:
         return employee
 
-    # Fallback: some devices return employee numbers in different primitive formats.
     return Employee.objects.filter(device=device).filter(employee_no__iexact=employee_no).first()
 
 

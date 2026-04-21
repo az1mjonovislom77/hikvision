@@ -27,13 +27,7 @@ class AttendanceDaily(models.Model):
                 .only("status", "fine_amount").first()
 
         with transaction.atomic():
-            if old and old.status == "szk" and self.status == "sbk":
-                if old.fine_amount:
-                    emp.fine -= old.fine_amount
-                    emp.save(update_fields=["fine"])
-                self.fine_amount = 0
-
-            elif self.status == "szk":
+            if self.status == "szk" and emp.is_fine:
                 year = self.date.year
                 month = self.date.month
 
@@ -42,12 +36,17 @@ class AttendanceDaily(models.Model):
                 if workdays > 0:
                     day_salary = emp.salary / workdays
                     self.fine_amount = round(day_salary, 2)
-
-                    emp.fine += self.fine_amount
-                    emp.save(update_fields=["fine"])
+                else:
+                    self.fine_amount = 0
 
             else:
                 self.fine_amount = 0
+
+            old_fine_amount = old.fine_amount if old and old.status == "szk" else 0
+            fine_diff = self.fine_amount - old_fine_amount
+            if fine_diff:
+                emp.fine += fine_diff
+                emp.save(update_fields=["fine"])
 
             super().save(*args, **kwargs)
 

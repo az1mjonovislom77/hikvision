@@ -8,8 +8,7 @@ from rest_framework.response import Response
 from attendance.models import AttendanceDaily
 from datetime import date, datetime, timedelta
 from django.utils.timezone import make_aware, now
-from utils.utils.constants import WEEKDAY_CODE_MAP
-from attendance.utils import count_workdays_in_month, minutes_to_hm
+from attendance.utils import count_workdays_in_month, is_employee_workday, minutes_to_hm
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
@@ -59,11 +58,7 @@ class AbsentEmployeesView(APIView):
             if not emp.work_day or not emp.work_day.days:
                 continue
 
-            day_code = WEEKDAY_CODE_MAP[target_date.weekday()]
-            is_workday = day_code in emp.work_day.days
-            is_day_off = emp.day_off and target_date.isoformat() in (emp.day_off.days or [])
-
-            if not is_workday or is_day_off:
+            if not is_employee_workday(emp.work_day, emp.day_off, target_date):
                 continue
 
             shift_end = make_aware(datetime.combine(target_date, emp.shift.end_time))
@@ -207,11 +202,7 @@ class MonthlyAttendanceReportView(APIView):
                 if not emp.shift or not emp.work_day:
                     continue
 
-                day_code = WEEKDAY_CODE_MAP[day.weekday()]
-                is_workday = emp.work_day.days and day_code in emp.work_day.days
-                is_day_off = emp.day_off and day.isoformat() in (emp.day_off.days or [])
-
-                if not is_workday or is_day_off:
+                if not is_employee_workday(emp.work_day, emp.day_off, day):
                     continue
 
                 shift_end = make_aware(datetime.combine(day, emp.shift.end_time))
@@ -235,7 +226,7 @@ class MonthlyAttendanceReportView(APIView):
                         })
                     else:
                         szk_count += 1
-                        penalty_amount = round(day_salary, 2)
+                        penalty_amount = round(day_salary, 2) if emp.is_fine else 0
 
                         if total_penalty + penalty_amount > emp.salary:
                             penalty_amount = max(0, emp.salary - total_penalty)
@@ -287,8 +278,10 @@ class MonthlyAttendanceReportView(APIView):
                 if diff > 0:
                     total_bonus += money
                     total_overtime += diff
-                elif diff < 0:
+                elif diff < 0 and emp.is_fine:
                     total_penalty += abs(money)
+                    total_undertime += abs(diff)
+                elif diff < 0:
                     total_undertime += abs(diff)
 
             reports.append({
