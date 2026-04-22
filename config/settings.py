@@ -173,6 +173,8 @@ if ENVIRON == 'production':
             'PASSWORD': config('DB_PASSWORD'),
             'HOST': config('DB_HOST'),
             'PORT': '5432',
+            'CONN_MAX_AGE': config('DB_CONN_MAX_AGE', default=60, cast=int),
+            'CONN_HEALTH_CHECKS': True,
             'OPTIONS': {
                 'sslmode': 'disable',
             },

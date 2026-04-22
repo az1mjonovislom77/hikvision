@@ -2,6 +2,7 @@ import time
 import logging
 from django.utils import timezone
 from django.core.management.base import BaseCommand
+from django.db import close_old_connections
 from event.models import AccessEvent
 from event.utils.wrappers import fetch
 from event.services.event_state import get_last_event_time, set_last_event_time
@@ -23,9 +24,10 @@ class Command(BaseCommand):
             last_event = AccessEvent.objects.order_by("-time").first()
             last_time = last_event.time if last_event else timezone.now()
 
-        devices = Devices.objects.all()
+        devices = list(Devices.objects.all())
         while True:
             try:
+                close_old_connections()
                 sync_channels_from_updates()
 
                 since_map = {d.id: last_time for d in devices}
@@ -81,5 +83,7 @@ class Command(BaseCommand):
 
             except Exception:
                 logger.exception("MAIN LOOP ERROR")
+            finally:
+                close_old_connections()
 
             time.sleep(5)

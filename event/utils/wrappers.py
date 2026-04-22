@@ -1,6 +1,7 @@
 import logging
 from event.utils.fetch import fetch_face_events
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from django.db import close_old_connections
 
 logger = logging.getLogger(__name__)
 
@@ -8,6 +9,7 @@ def fetch(devices, since_map=None):
     total_saved = 0
 
     def worker(device):
+        close_old_connections()
         since = None
         if since_map:
             since = since_map.get(device.id)
@@ -20,6 +22,8 @@ def fetch(devices, since_map=None):
                 getattr(device, "ip", None),
             )
             return 0
+        finally:
+            close_old_connections()
 
     with ThreadPoolExecutor(max_workers=5) as executor:
         futures = [executor.submit(worker, d) for d in devices]
