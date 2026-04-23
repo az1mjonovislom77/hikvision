@@ -70,32 +70,25 @@ class EventSyncService:
 
     @staticmethod
     def sync_events(devices, full=False):
-        """
-        full=False: faqat DB dagi eng so‘nggi yozuvdan keyingi eventlar (incremental).
-        full=True: startTime yuborilmaydi — qurilmadagi buffergacha bo‘lgan barcha mavjud
-        yozuvlar so‘raladi (get_or_create takrorlarni olib tashlaydi).
-        """
         device_since_map = {}
 
         for device in devices:
             if full:
                 device_since_map[device.id] = None
             else:
-                latest = AccessEvent.objects.filter(device=device, major=5, minor=75).order_by("-time").first()
+                latest = (
+                    AccessEvent.objects
+                    .filter(device=device, major=5, minor=75)
+                    .order_by("-time")
+                    .first()
+                )
 
                 if latest:
-                    device_since_map[device.id] = latest.time - timedelta(seconds=5)
+                    device_since_map[device.id] = latest.time
                 else:
                     device_since_map[device.id] = None
 
-        logger.info(
-            "EventSyncService.sync_events: full=%s qurilmalar=%s | since_map=%s",
-            full,
-            [d.id for d in devices],
-            {k: (v.isoformat() if v else None) for k, v in device_since_map.items()},
-        )
         total = fetch(devices=devices, since_map=device_since_map)
-        logger.info("EventSyncService.sync_events tugadi: jami_yangi=%s", total)
         return total
 
     @staticmethod

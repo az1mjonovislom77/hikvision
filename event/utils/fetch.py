@@ -4,15 +4,13 @@ import logging
 import time
 from uuid import uuid4
 import requests
-from requests.exceptions import ConnectionError as RequestsConnectionError
-from requests.exceptions import RequestException, Timeout
 from django.core.cache import cache
 from django.utils import timezone as django_timezone
 from person.utils import UZ_TZ
 from event.models import AccessEvent
 from requests.auth import HTTPDigestAuth
 from django.utils.dateparse import parse_datetime
-from person.models import Employee, EmployeeHistory
+from person.models import Employee
 from person.utils import normalize_employee_no
 from event.utils.events_name import major_name, minor_name
 
@@ -48,22 +46,24 @@ def _event_serial_no(device, ev):
     return f"h{digest}"
 
 
-def fetch_face_events(devices, since=None):
+def fetch_face_events(devices, since_map=None):
     saved = 0
 
     for device in devices:
+        since = None
+        if since_map:
+            since = since_map.get(device.id)
+
         lock_key = f"hikvision:event-sync:{device.id}"
         if not cache.add(lock_key, "1", timeout=120):
             continue
 
         url = f"http://{device.ip}/ISAPI/AccessControl/AcsEvent?format=json"
+
         search_id = uuid4().hex
         offset = 0
         limit = 100
-        max_pages = 500
-        pages_done = 0
-        saved_this_device = 0
-        stop_reason = "ok"
+        max_pages = 200
 
         for page_idx in range(max_pages):
             payload = {
@@ -76,37 +76,22 @@ def fetch_face_events(devices, since=None):
                 }
             }
 
-            if since:
-                payload["AcsEventCond"]["startTime"] = _hikvision_start_time_str(since)
-
             try:
                 r = requests.post(
-                    url, json=payload,
+                    url,
+                    json=payload,
                     auth=HTTPDigestAuth(device.username, device.password),
-                    headers={"Content-Type": "application/json"}, timeout=15)
+                    headers={"Content-Type": "application/json"},
+                    timeout=15
+                )
 
                 if r.status_code != 200:
-                    logger.warning("HTTP xato: device_id=%s status=%s", device.id, r.status_code, )
-                    stop_reason = f"http_{r.status_code}"
                     break
 
                 data = r.json()
 
-            except Timeout:
-                logger.warning("Timeout: device_id=%s", device.id)
-                stop_reason = "timeout"
-                break
-            except RequestsConnectionError:
-                logger.warning("Connection error: device_id=%s", device.id)
-                stop_reason = "connection"
-                break
-            except RequestException:
-                logger.warning("Request error: device_id=%s", device.id)
-                stop_reason = "request"
-                break
             except Exception:
-                logger.exception("Unexpected error: device_id=%s", device.id)
-                stop_reason = "unexpected"
+                logger.exception("Device error: %s", device.id)
                 break
 
             access = data.get("AcsEvent", {})
@@ -115,29 +100,28 @@ def fetch_face_events(devices, since=None):
             if not events:
                 break
 
-            pages_done += 1
-
             for ev in events:
                 t = parse_datetime(ev.get("time"))
                 if not t:
                     continue
 
+                # timezone normalize
                 if t.tzinfo is None:
                     t = UZ_TZ.localize(t)
                 else:
                     t = t.astimezone(UZ_TZ)
 
-                if since and t <= since:
+                if since and t < since:
                     continue
 
                 serial_no = _event_serial_no(device, ev)
+
                 employee_no = normalize_employee_no(ev.get("employeeNoString") or ev.get("employeeNo"))
-                label_name = ev.get("labelName") or ev.get("label") or ev.get("name") or ""
 
                 employee = _resolve_employee(device, employee_no)
 
                 try:
-                    event_obj, created = AccessEvent.objects.get_or_create(
+                    obj, created = AccessEvent.objects.get_or_create(
                         device=device,
                         serial_no=serial_no,
                         defaults={
@@ -147,26 +131,19 @@ def fetch_face_events(devices, since=None):
                             "minor": 75,
                             "major_name": major_name(5),
                             "minor_name": minor_name(75),
-                            "label_name": label_name,
-                            "name": ev.get("name", ""),
                             "employee_no": employee_no,
-                            "picture_url": ev.get("pictureURL") or ev.get("faceURL"),
+                            "label_name": ev.get("labelName") or "",
+                            "name": ev.get("name", ""),
+                            "picture_url": ev.get("pictureURL"),
                             "raw_json": ev,
                         }
                     )
                 except Exception:
-                    logger.exception("DB error: device_id=%s", device.id)
+                    logger.exception("DB error")
                     continue
-
-                if created and employee:
-                    try:
-                        EmployeeHistory.objects.create(employee=employee, event=event_obj, event_time=t)
-                    except Exception:
-                        logger.exception("History error: device_id=%s", device.id)
 
                 if created:
                     saved += 1
-                    saved_this_device += 1
 
             offset += len(events)
 
@@ -174,9 +151,6 @@ def fetch_face_events(devices, since=None):
                 break
 
             time.sleep(0.2)
-
-        if stop_reason != "ok":
-            logger.warning("Stopped: reason=%s device_id=%s", stop_reason, device.id, )
 
         cache.delete(lock_key)
 
