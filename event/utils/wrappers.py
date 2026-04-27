@@ -14,7 +14,7 @@ def fetch(devices, since_map=None):
         if since_map:
             since = since_map.get(device.id)
         try:
-            return fetch_face_events([device], since)
+            return fetch_face_events([device], {device.id: since} if since else None)
         except Exception:
             logger.exception(
                 "fetch_face_events (parallel) xato: device_id=%s ip=%s",
