@@ -58,100 +58,107 @@ def fetch_face_events(devices, since_map=None):
         if not cache.add(lock_key, "1", timeout=120):
             continue
 
-        url = f"http://{device.ip}/ISAPI/AccessControl/AcsEvent?format=json"
+        try:
+            url = f"http://{device.ip}/ISAPI/AccessControl/AcsEvent?format=json"
+            search_id = uuid4().hex
+            offset = 0
+            limit = 100
+            max_pages = 200
 
-        search_id = uuid4().hex
-        offset = 0
-        limit = 100
-        max_pages = 200
-
-        for page_idx in range(max_pages):
-            payload = {
-                "AcsEventCond": {
-                    "searchID": search_id,
-                    "searchResultPosition": offset,
-                    "maxResults": limit,
-                    "major": 5,
-                    "minor": 75,
+            for page_idx in range(max_pages):
+                payload = {
+                    "AcsEventCond": {
+                        "searchID": search_id,
+                        "searchResultPosition": offset,
+                        "maxResults": limit,
+                        "major": 5,
+                    }
                 }
-            }
-
-            try:
-                r = requests.post(
-                    url,
-                    json=payload,
-                    auth=HTTPDigestAuth(device.username, device.password),
-                    headers={"Content-Type": "application/json"},
-                    timeout=15
-                )
-
-                if r.status_code != 200:
-                    break
-
-                data = r.json()
-
-            except Exception:
-                logger.exception("Device error: %s", device.id)
-                break
-
-            access = data.get("AcsEvent", {})
-            events = access.get("InfoList", []) or []
-
-            if not events:
-                break
-
-            for ev in events:
-                t = parse_datetime(ev.get("time"))
-                if not t:
-                    continue
-
-                # timezone normalize
-                if t.tzinfo is None:
-                    t = UZ_TZ.localize(t)
-                else:
-                    t = t.astimezone(UZ_TZ)
-
-                if since and t < since:
-                    continue
-
-                serial_no = _event_serial_no(device, ev)
-
-                employee_no = normalize_employee_no(ev.get("employeeNoString") or ev.get("employeeNo"))
-
-                employee = _resolve_employee(device, employee_no)
+                if since:
+                    payload["AcsEventCond"]["startTime"] = _hikvision_start_time_str(since)
 
                 try:
-                    obj, created = AccessEvent.objects.get_or_create(
-                        device=device,
-                        serial_no=serial_no,
-                        defaults={
-                            "employee": employee,
-                            "time": t,
-                            "major": 5,
-                            "minor": 75,
-                            "major_name": major_name(5),
-                            "minor_name": minor_name(75),
-                            "employee_no": employee_no,
-                            "label_name": ev.get("labelName") or "",
-                            "name": ev.get("name", ""),
-                            "picture_url": ev.get("pictureURL"),
-                            "raw_json": ev,
-                        }
+                    r = requests.post(
+                        url,
+                        json=payload,
+                        auth=HTTPDigestAuth(device.username, device.password),
+                        headers={"Content-Type": "application/json"},
+                        timeout=15
                     )
+
+                    if r.status_code != 200:
+                        logger.warning(
+                            "AcsEvent error: device_id=%s ip=%s status=%s body=%s",
+                            device.id,
+                            device.ip,
+                            r.status_code,
+                            r.text[:300],
+                        )
+                        break
+
+                    data = r.json()
+
                 except Exception:
-                    logger.exception("DB error")
-                    continue
+                    logger.exception("Device error: %s", device.id)
+                    break
 
-                if created:
-                    saved += 1
+                access = data.get("AcsEvent", {})
+                events = access.get("InfoList", []) or []
 
-            offset += len(events)
+                if not events:
+                    break
 
-            if len(events) < limit:
-                break
+                for ev in events:
+                    t = parse_datetime(ev.get("time"))
+                    if not t:
+                        continue
 
-            time.sleep(0.2)
+                    if t.tzinfo is None:
+                        t = UZ_TZ.localize(t)
+                    else:
+                        t = t.astimezone(UZ_TZ)
 
-        cache.delete(lock_key)
+                    if since and t < since:
+                        continue
+
+                    serial_no = _event_serial_no(device, ev)
+                    employee_no = normalize_employee_no(ev.get("employeeNoString") or ev.get("employeeNo"))
+                    employee = _resolve_employee(device, employee_no)
+                    event_major = int(ev.get("major") or 5)
+                    event_minor = int(ev.get("minor") or 0)
+
+                    try:
+                        obj, created = AccessEvent.objects.get_or_create(
+                            device=device,
+                            serial_no=serial_no,
+                            defaults={
+                                "employee": employee,
+                                "time": t,
+                                "major": event_major,
+                                "minor": event_minor,
+                                "major_name": major_name(event_major),
+                                "minor_name": minor_name(event_minor),
+                                "employee_no": employee_no,
+                                "label_name": ev.get("labelName") or ev.get("label") or "",
+                                "name": ev.get("name", ""),
+                                "picture_url": ev.get("pictureURL") or ev.get("faceURL") or "",
+                                "raw_json": ev,
+                            }
+                        )
+                    except Exception:
+                        logger.exception("DB error")
+                        continue
+
+                    if created:
+                        saved += 1
+
+                offset += len(events)
+
+                if len(events) < limit:
+                    break
+
+                time.sleep(0.2)
+        finally:
+            cache.delete(lock_key)
 
     return saved

@@ -77,7 +77,7 @@ class EventSyncService:
             else:
                 latest = (
                     AccessEvent.objects
-                    .filter(device=device, major=5, minor=75)
+                    .filter(device=device, major=5)
                     .order_by("-time")
                     .first()
                 )
