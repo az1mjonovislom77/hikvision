@@ -49,7 +49,7 @@ class FetchFaceEventsTests(TestCase):
                                     "serialNo": "abc-1",
                                     "time": "2026-04-27T08:05:00+05:00",
                                     "major": 5,
-                                    "minor": 1,
+                                    "minor": 75,
                                     "employeeNoString": "E-1",
                                     "labelName": "KIRISH",
                                     "name": "Granted",
@@ -69,11 +69,11 @@ class FetchFaceEventsTests(TestCase):
         self.assertEqual(saved, 1)
         self.assertEqual(len(payloads), 1)
         self.assertEqual(payloads[0]["AcsEventCond"]["major"], 5)
-        self.assertNotIn("minor", payloads[0]["AcsEventCond"])
+        self.assertEqual(payloads[0]["AcsEventCond"]["minor"], 75)
         self.assertEqual(payloads[0]["AcsEventCond"]["startTime"], "2026-04-27 08:00:00")
 
         event = AccessEvent.objects.get()
         self.assertEqual(event.major, 5)
-        self.assertEqual(event.minor, 1)
-        self.assertEqual(event.minor_name, "AccessGranted")
+        self.assertEqual(event.minor, 75)
+        self.assertEqual(event.minor_name, "FaceRecognitionSuccess")
         self.assertEqual(event.employee_no, "E-1")
