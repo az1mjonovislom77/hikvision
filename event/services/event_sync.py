@@ -70,6 +70,7 @@ class EventSyncService:
     @staticmethod
     def sync_events(devices, full=False):
         device_since_map = {}
+        device_descriptions = []
 
         for device in devices:
             if full:
@@ -86,8 +87,27 @@ class EventSyncService:
                     device_since_map[device.id] = latest.time
                 else:
                     device_since_map[device.id] = None
+            device_descriptions.append(
+                {
+                    "id": device.id,
+                    "ip": device.ip,
+                    "name": device.name,
+                    "since": device_since_map[device.id].isoformat() if device_since_map[device.id] else None,
+                }
+            )
 
+        logger.info(
+            "event sync service started: full=%s devices=%s",
+            full,
+            device_descriptions,
+        )
         total = fetch(devices=devices, since_map=device_since_map)
+        logger.info(
+            "event sync service finished: full=%s total_saved=%s device_count=%s",
+            full,
+            total,
+            len(device_descriptions),
+        )
         return total
 
     @staticmethod
