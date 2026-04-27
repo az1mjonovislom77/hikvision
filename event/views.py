@@ -1,3 +1,4 @@
+from event.services.event_sync import EventSyncService
 from user.models import User
 from utils.models import Devices
 from event.models import AccessEvent
@@ -6,7 +7,6 @@ from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.generics import ListAPIView
 from event.serializers import AccessEventSerializer
-from event.tasks import sync_events_task
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 
@@ -33,8 +33,8 @@ def _truthy_param(val):
             type=bool,
             required=False,
             description=(
-                "True bo‘lsa qurilmadagi event bufferidan to‘liq yuklaydi (eski yozuvlar ham). "
-                "Standart: false. full=true yuborilsa qurilmadagi eski eventlar ham olinadi."
+                    "True bo‘lsa qurilmadagi event bufferidan to‘liq yuklaydi (eski yozuvlar ham). "
+                    "Standart: false. full=true yuborilsa qurilmadagi eski eventlar ham olinadi."
             ),
         ),
     ],
@@ -67,11 +67,16 @@ class EventSyncView(APIView):
 
         full = False if full_param is None else _truthy_param(full_param)
 
-        task = sync_events_task.delay(list(devices.values_list("id", flat=True)), full=full)
+        total_saved = EventSyncService.sync_events(devices, full=full)
 
         return Response(
-            {"success": True, "queued": True, "task_id": task.id, "full": full},
-            status=202,
+            {
+                "success": True,
+                "added": total_saved,
+                "deleted": 0,
+                "full": full,
+            },
+            status=200,
         )
 
 
