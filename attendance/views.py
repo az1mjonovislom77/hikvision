@@ -11,6 +11,7 @@ from django.utils.timezone import make_aware, now
 from attendance.utils import count_workdays_in_month, is_employee_workday, minutes_to_hm
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema, OpenApiParameter
+from django.utils.timezone import localtime
 
 
 class AbsentEmployeesView(APIView):
@@ -258,8 +259,8 @@ class MonthlyAttendanceReportView(APIView):
 
                 first_event = events.first()
                 last_event = events.last()
-                first_in = first_event.time.replace(tzinfo=None)
-                last_out = last_event.time.replace(tzinfo=None)
+                first_in = localtime(first_event.time)
+                last_out = localtime(last_event.time)
                 worked_min = int((last_out - first_in).total_seconds() / 60)
                 worked_min -= break_min
 
