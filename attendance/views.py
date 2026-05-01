@@ -324,7 +324,7 @@ class MonthlyAttendanceReportView(APIView):
                 "total_penalty": int(round(total_penalty)),
                 "net_adjustment": int(round(total_bonus - total_penalty)),
                 "employee_salary": emp.salary,
-                "new_salary": emp.salary - (int(round(total_bonus - total_penalty))),
+                "new_salary": emp.salary + (int(round(total_bonus - total_penalty))),
                 "details": details
             })
 
