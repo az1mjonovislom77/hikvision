@@ -56,17 +56,13 @@ def fetch_face_events(devices, since_map=None):
         skipped_invalid_time = 0
         skipped_existing = 0
         unresolved_employee = 0
-        since = None
-        if since_map:
-            since = since_map.get(device.id)
+        since = since_map.get(device.id) if since_map else None
 
         lock_key = f"hikvision:event-sync:{device.id}"
         if not cache.add(lock_key, "1", timeout=120):
             logger.warning(
                 "event fetch skipped by lock: device_id=%s ip=%s lock_key=%s",
-                device.id,
-                device.ip,
-                lock_key,
+                device.id, device.ip, lock_key
             )
             continue
 
@@ -74,17 +70,20 @@ def fetch_face_events(devices, since_map=None):
             url = f"http://{device.ip}/ISAPI/AccessControl/AcsEvent?format=json"
             search_id = uuid4().hex
             offset = 0
-            limit = 100
-            max_pages = 200
+            limit = 30   # debug uchun 30 qil
+            max_pages = 50
+
             logger.info(
-                "event fetch started: device_id=%s ip=%s since=%s search_id=%s max_pages=%s limit=%s forced_minor=75",
+                "event fetch started: device_id=%s ip=%s name=%s since=%s search_id=%s limit=%s max_pages=%s",
                 device.id,
                 device.ip,
+                device.name,
                 since.isoformat() if since else None,
                 search_id,
-                max_pages,
                 limit,
+                max_pages,
             )
+
             for page_idx in range(max_pages):
                 payload = {
                     "AcsEventCond": {
@@ -95,71 +94,93 @@ def fetch_face_events(devices, since_map=None):
                         "minor": 75,
                     }
                 }
+
                 if since:
                     payload["AcsEventCond"]["startTime"] = _hikvision_start_time_str(since)
 
+                logger.info(
+                    "event fetch request: device_id=%s page=%s offset=%s payload=%s",
+                    device.id,
+                    page_idx + 1,
+                    offset,
+                    payload["AcsEventCond"],
+                )
+
                 try:
-                    logger.info(
-                        "event fetch request: device_id=%s page=%s offset=%s payload=%s",
-                        device.id,
-                        page_idx + 1,
-                        offset,
-                        payload["AcsEventCond"],
-                    )
                     r = requests.post(
                         url,
                         json=payload,
                         auth=HTTPDigestAuth(device.username, device.password),
                         headers={"Content-Type": "application/json"},
-                        timeout=15
+                        timeout=15,
                     )
+
+                    logger.info(
+                        "event fetch http response: device_id=%s page=%s status=%s",
+                        device.id,
+                        page_idx + 1,
+                        r.status_code,
+                    )
+
                     if r.status_code != 200:
                         logger.warning(
-                            "AcsEvent error: device_id=%s ip=%s status=%s body=%s",
+                            "event fetch http error: device_id=%s page=%s status=%s body=%s",
                             device.id,
-                            device.ip,
+                            page_idx + 1,
                             r.status_code,
-                            r.text[:300],
+                            r.text[:500],
                         )
                         break
 
                     data = r.json()
 
                 except Exception:
-                    logger.exception("Device error: %s", device.id)
+                    logger.exception(
+                        "event fetch request failed: device_id=%s page=%s",
+                        device.id,
+                        page_idx + 1,
+                    )
                     break
 
                 access = data.get("AcsEvent", {})
                 events = access.get("InfoList", []) or []
+                total = access.get("totalMatches")
+                matched = access.get("numOfMatches")
+
                 logger.info(
-                    "event fetch response: device_id=%s page=%s status=%s forced_minor=75 events_count=%s totalMatches=%s numOfMatches=%s",
+                    "event fetch parsed response: device_id=%s page=%s totalMatches=%s numOfMatches=%s events_count=%s",
                     device.id,
                     page_idx + 1,
-                    r.status_code,
+                    total,
+                    matched,
                     len(events),
-                    access.get("totalMatches"),
-                    access.get("numOfMatches"),
                 )
 
                 if not events:
-                    logger.info(
-                        "event fetch stopped: device_id=%s reason=empty_page page=%s offset=%s forced_minor=75",
+                    logger.warning(
+                        "event fetch empty page: device_id=%s page=%s offset=%s totalMatches=%s raw=%s",
                         device.id,
                         page_idx + 1,
                         offset,
+                        total,
+                        str(data)[:700],
                     )
                     break
 
                 for ev in events:
                     device_seen += 1
-                    t = parse_datetime(ev.get("time"))
+
+                    raw_time = ev.get("time")
+                    t = parse_datetime(raw_time)
+
                     if not t:
                         skipped_invalid_time += 1
                         logger.warning(
-                            "event skipped: device_id=%s reason=invalid_time serial=%s raw_time=%s",
+                            "event skipped invalid_time: device_id=%s serial=%s raw_time=%s raw=%s",
                             device.id,
                             ev.get("serialNo"),
-                            ev.get("time"),
+                            raw_time,
+                            str(ev)[:400],
                         )
                         continue
 
@@ -175,13 +196,15 @@ def fetch_face_events(devices, since_map=None):
                     serial_no = _event_serial_no(device, ev)
                     employee_no = normalize_employee_no(ev.get("employeeNoString") or ev.get("employeeNo"))
                     employee = _resolve_employee(device, employee_no)
+
                     event_major = int(ev.get("major") or 5)
                     event_minor = int(ev.get("minor") or 75)
+
                     if employee is None and employee_no:
                         unresolved_employee += 1
 
                     try:
-                        obj, created = AccessEvent.objects.get_or_create(
+                        _, created = AccessEvent.objects.get_or_create(
                             device=device,
                             serial_no=serial_no,
                             defaults={
@@ -199,7 +222,12 @@ def fetch_face_events(devices, since_map=None):
                             }
                         )
                     except Exception:
-                        logger.exception("DB error")
+                        logger.exception(
+                            "event db save failed: device_id=%s serial=%s raw=%s",
+                            device.id,
+                            serial_no,
+                            str(ev)[:500],
+                        )
                         continue
 
                     if created:
@@ -219,13 +247,14 @@ def fetch_face_events(devices, since_map=None):
                         skipped_existing += 1
 
                 logger.info(
-                    "event fetch page summary: device_id=%s page=%s forced_minor=75 seen=%s saved=%s skipped_existing=%s skipped_older=%s unresolved_employee=%s",
+                    "event fetch page summary: device_id=%s page=%s seen=%s saved=%s skipped_existing=%s skipped_older=%s invalid_time=%s unresolved_employee=%s",
                     device.id,
                     page_idx + 1,
                     device_seen,
                     device_saved,
                     skipped_existing,
                     skipped_older,
+                    skipped_invalid_time,
                     unresolved_employee,
                 )
 
@@ -233,7 +262,7 @@ def fetch_face_events(devices, since_map=None):
 
                 if len(events) < limit:
                     logger.info(
-                        "event fetch stopped: device_id=%s reason=last_page page=%s events_count=%s limit=%s forced_minor=75",
+                        "event fetch last page: device_id=%s page=%s events_count=%s limit=%s",
                         device.id,
                         page_idx + 1,
                         len(events),
@@ -242,10 +271,11 @@ def fetch_face_events(devices, since_map=None):
                     break
 
                 time.sleep(0.2)
+
         finally:
             cache.delete(lock_key)
             logger.info(
-                "event fetch finished: device_id=%s ip=%s seen=%s saved=%s skipped_existing=%s skipped_older=%s skipped_invalid_time=%s unresolved_employee=%s",
+                "event fetch finished: device_id=%s ip=%s seen=%s saved=%s skipped_existing=%s skipped_older=%s invalid_time=%s unresolved_employee=%s",
                 device.id,
                 device.ip,
                 device_seen,
