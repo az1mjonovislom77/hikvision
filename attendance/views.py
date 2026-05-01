@@ -219,8 +219,8 @@ class MonthlyAttendanceReportView(APIView):
                 if emp.shift.break_time:
                     break_min = int(
                         (
-                            datetime.combine(day, emp.shift.break_time.end_time) -
-                            datetime.combine(day, emp.shift.break_time.start_time)
+                                datetime.combine(day, emp.shift.break_time.end_time) -
+                                datetime.combine(day, emp.shift.break_time.start_time)
                         ).total_seconds() / 60
                     )
 
@@ -323,6 +323,8 @@ class MonthlyAttendanceReportView(APIView):
                 "total_bonus": int(round(total_bonus)),
                 "total_penalty": int(round(total_penalty)),
                 "net_adjustment": int(round(total_bonus - total_penalty)),
+                "employee_salary": emp.salary,
+                "new_salary": emp.salary - (int(round(total_bonus - total_penalty))),
                 "details": details
             })
 
