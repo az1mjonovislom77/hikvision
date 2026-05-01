@@ -169,18 +169,18 @@ class MonthlyAttendanceReportView(APIView):
         current_dt = now()
 
         branch = Branch.objects.filter(id=branch_id, user=request.user).first()
-
         if not branch:
             return Response({"error": "Branch topilmadi yoki sizga tegishli emas"}, status=400)
 
-        employees = (Employee.objects.filter(id=employee_id, device=branch.device)
-                     if employee_id else
-                     Employee.objects.filter(device=branch.device).distinct())
+        employees = (
+            Employee.objects.filter(id=employee_id, device=branch.device)
+            if employee_id else
+            Employee.objects.filter(device=branch.device).distinct()
+        )
 
         reports = []
 
         for emp in employees:
-
             workdays = count_workdays_in_month(emp.work_day, emp.day_off, year, month)
             day_salary = emp.salary / workdays if workdays else 0
 
@@ -205,15 +205,18 @@ class MonthlyAttendanceReportView(APIView):
                 if not is_employee_workday(emp.work_day, emp.day_off, day):
                     continue
 
-                shift_end = make_aware(datetime.combine(day, emp.shift.end_time))
-                if day == today and current_dt < shift_end:
+                shift_start = datetime.combine(day, emp.shift.start_time)
+                shift_end = datetime.combine(day, emp.shift.end_time)
+
+                if day == today and current_dt < make_aware(shift_end):
                     continue
 
                 attendance = AttendanceDaily.objects.filter(employee=emp, date=day).first()
-                events = AccessEvent.objects.filter(employee=emp, time__date=day)
+                events = AccessEvent.objects.filter(employee=emp, time__date=day).order_by("time")
+
+                shift_min = int((shift_end - shift_start).total_seconds() / 60)
 
                 if not events.exists():
-
                     if attendance and attendance.status == "sbk":
                         sbk_count += 1
                         details.append({
@@ -222,7 +225,8 @@ class MonthlyAttendanceReportView(APIView):
                             "status_label": "Sababli kelmadi",
                             "worked": "0:00",
                             "difference": "0:00",
-                            "penalty": 0
+                            "penalty": 0,
+                            "bonus": 0,
                         })
                     else:
                         szk_count += 1
@@ -238,51 +242,68 @@ class MonthlyAttendanceReportView(APIView):
                             "status": "szk",
                             "status_label": "Sababsiz kelmadi",
                             "worked": "0:00",
-                            "difference": "0:00",
-                            "penalty": penalty_amount
+                            "difference": f"-{minutes_to_hm(shift_min)}",
+                            "penalty": penalty_amount,
+                            "bonus": 0,
                         })
-
                     continue
 
-                first_event = events.earliest("time")
-                last_event = events.latest("time")
+                first_event = events.first()
+                last_event = events.last()
 
-                first_in = first_event.time.time()
-                last_out = last_event.time.time()
+                first_in = first_event.time.replace(tzinfo=None)
+                last_out = last_event.time.replace(tzinfo=None)
 
-                shift_start_dt = datetime.combine(day, emp.shift.start_time)
-                first_in_dt = datetime.combine(day, first_in)
+                worked_min = int((last_out - first_in).total_seconds() / 60)
 
-                late_minutes = int((first_in_dt - shift_start_dt).total_seconds() / 60)
-                approved_late = emp.shift.approved_late_min or 0
+                if emp.shift.break_time:
+                    break_min = int(
+                        (
+                            datetime.combine(day, emp.shift.break_time.end_time) -
+                            datetime.combine(day, emp.shift.break_time.start_time)
+                        ).total_seconds() / 60
+                    )
+                    worked_min -= max(0, break_min)
 
-                if late_minutes <= approved_late:
-                    late_minutes = 0
+                if worked_min < 0:
+                    worked_min = 0
 
-                worked_min = int(
-                    (datetime.combine(day, last_out) - datetime.combine(day, first_in)).total_seconds() / 60)
-
-                worked_min -= late_minutes
                 worked_minutes += worked_min
 
-                shift_min = int(
-                    (datetime.combine(day, emp.shift.end_time) -
-                     datetime.combine(day, emp.shift.start_time)
-                     ).total_seconds() / 60
-                )
-
                 diff = worked_min - shift_min
-                minute_salary = day_salary / shift_min
-                money = round(diff * minute_salary, 2)
+                minute_salary = day_salary / shift_min if shift_min else 0
+                money = round(abs(diff) * minute_salary, 2)
+
+                bonus_amount = 0
+                penalty_amount = 0
 
                 if diff > 0:
-                    total_bonus += money
+                    bonus_amount = money
+                    total_bonus += bonus_amount
                     total_overtime += diff
-                elif diff < 0 and emp.is_fine:
-                    total_penalty += abs(money)
-                    total_undertime += abs(diff)
+
                 elif diff < 0:
                     total_undertime += abs(diff)
+
+                    if emp.is_fine:
+                        penalty_amount = money
+
+                        if total_penalty + penalty_amount > emp.salary:
+                            penalty_amount = max(0, emp.salary - total_penalty)
+
+                        total_penalty += penalty_amount
+
+                details.append({
+                    "date": day,
+                    "status": "worked",
+                    "status_label": "Ishlagan",
+                    "worked": minutes_to_hm(worked_min),
+                    "difference": (
+                        minutes_to_hm(diff) if diff >= 0 else f"-{minutes_to_hm(abs(diff))}"
+                    ),
+                    "penalty": round(penalty_amount, 2),
+                    "bonus": round(bonus_amount, 2),
+                })
 
             reports.append({
                 "employee_id": emp.id,
@@ -296,7 +317,7 @@ class MonthlyAttendanceReportView(APIView):
                 "total_undertime": minutes_to_hm(total_undertime),
                 "total_bonus": int(round(total_bonus)),
                 "total_penalty": int(round(total_penalty)),
-                "net_adjustment": int(round(abs(total_bonus - total_penalty))),
+                "net_adjustment": int(round(total_bonus - total_penalty)),
                 "details": details
             })
 

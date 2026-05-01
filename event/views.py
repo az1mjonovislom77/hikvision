@@ -31,17 +31,7 @@ def _truthy_param(val):
     tags=["Event"],
     parameters=[
         OpenApiParameter(name="user_id", type=int, required=False, description="Faqat superadmin uchun"),
-        OpenApiParameter(
-            name="full",
-            type=bool,
-            required=False,
-            description=(
-                    "True bo‘lsa qurilmadagi event bufferidan to‘liq yuklaydi (eski yozuvlar ham). "
-                    "Standart: false. full=true yuborilsa qurilmadagi eski eventlar ham olinadi."
-            ),
-        ),
-    ],
-)
+        OpenApiParameter(name="full", type=bool, required=False)])
 class EventSyncView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -49,10 +39,7 @@ class EventSyncView(APIView):
         user = request.user
         logger.info(
             "event sync request started: user_id=%s role=%s is_staff=%s query_params=%s body_keys=%s",
-            user.id,
-            getattr(user, "role", None),
-            user.is_staff,
-            dict(request.query_params),
+            user.id, getattr(user, "role", None), user.is_staff, dict(request.query_params),
             sorted(list(request.data.keys())) if isinstance(getattr(request, "data", None), dict) else [],
         )
 
@@ -81,21 +68,12 @@ class EventSyncView(APIView):
 
         full = False if full_param is None else _truthy_param(full_param)
         device_info = list(devices.values("id", "name", "ip", "status"))
-        logger.info(
-            "event sync devices resolved: user_id=%s full=%s devices=%s",
-            user.id,
-            full,
-            device_info,
-        )
+        logger.info("event sync devices resolved: user_id=%s full=%s devices=%s",
+                    user.id, full, device_info)
 
         total_saved = EventSyncService.sync_events(devices, full=full)
-        logger.info(
-            "event sync finished: user_id=%s full=%s total_saved=%s device_count=%s",
-            user.id,
-            full,
-            total_saved,
-            len(device_info),
-        )
+        logger.info("event sync finished: user_id=%s full=%s total_saved=%s device_count=%s",
+                    user.id, full, total_saved, len(device_info))
 
         return Response(
             {
@@ -103,9 +81,7 @@ class EventSyncView(APIView):
                 "added": total_saved,
                 "deleted": 0,
                 "full": full,
-            },
-            status=200,
-        )
+            }, status=200)
 
 
 @extend_schema(tags=["Event"])

@@ -55,8 +55,7 @@ class Command(BaseCommand):
                             raw.get("labelName")
                             or raw.get("label")
                             or raw.get("name")
-                            or ""
-                    ).strip().lower()
+                            or "").strip().lower()
 
                     direction = (
                         "🚪 KIRISH"
