@@ -161,10 +161,8 @@ class MonthlyAttendanceReportView(APIView):
         year = int(request.GET.get("year"))
         month = int(request.GET.get("month"))
         employee_id = request.GET.get("employee_id")
-
         start_date = date(year, month, 1)
         end_date = date(year, month, monthrange(year, month)[1])
-
         today = date.today()
         current_dt = now()
 
@@ -183,7 +181,6 @@ class MonthlyAttendanceReportView(APIView):
         for emp in employees:
             workdays = count_workdays_in_month(emp.work_day, emp.day_off, year, month)
             day_salary = emp.salary / workdays if workdays else 0
-
             total_bonus = 0
             total_penalty = 0
             total_overtime = 0
@@ -218,13 +215,9 @@ class MonthlyAttendanceReportView(APIView):
                 break_min = 0
                 if emp.shift.break_time:
                     break_min = int(
-                        (
-                                datetime.combine(day, emp.shift.break_time.end_time) -
-                                datetime.combine(day, emp.shift.break_time.start_time)
-                        ).total_seconds() / 60
-                    )
+                        (datetime.combine(day, emp.shift.break_time.end_time) -
+                         datetime.combine(day, emp.shift.break_time.start_time)).total_seconds() / 60)
 
-                # Real ish normasi
                 shift_min -= break_min
 
                 if not events.exists():
@@ -234,6 +227,8 @@ class MonthlyAttendanceReportView(APIView):
                             "date": day,
                             "status": "sbk",
                             "status_label": "Sababli kelmadi",
+                            "first_in": None,
+                            "last_out": None,
                             "worked": "0:00",
                             "difference": "0:00",
                             "penalty": 0,
@@ -252,6 +247,8 @@ class MonthlyAttendanceReportView(APIView):
                             "date": day,
                             "status": "szk",
                             "status_label": "Sababsiz kelmadi",
+                            "first_in": None,
+                            "last_out": None,
                             "worked": "0:00",
                             "difference": f"-{minutes_to_hm(shift_min)}",
                             "penalty": penalty_amount,
@@ -261,13 +258,9 @@ class MonthlyAttendanceReportView(APIView):
 
                 first_event = events.first()
                 last_event = events.last()
-
                 first_in = first_event.time.replace(tzinfo=None)
                 last_out = last_event.time.replace(tzinfo=None)
-
                 worked_min = int((last_out - first_in).total_seconds() / 60)
-
-                # Break time ayiramiz
                 worked_min -= break_min
 
                 if worked_min < 0:
@@ -302,6 +295,8 @@ class MonthlyAttendanceReportView(APIView):
                     "date": day,
                     "status": "worked",
                     "status_label": "Ishlagan",
+                    "first_in": first_in.strftime("%H:%M"),
+                    "last_out": last_out.strftime("%H:%M"),
                     "worked": minutes_to_hm(worked_min),
                     "difference": (
                         minutes_to_hm(diff) if diff >= 0 else f"-{minutes_to_hm(abs(diff))}"
