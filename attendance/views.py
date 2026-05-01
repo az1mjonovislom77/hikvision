@@ -213,8 +213,19 @@ class MonthlyAttendanceReportView(APIView):
 
                 attendance = AttendanceDaily.objects.filter(employee=emp, date=day).first()
                 events = AccessEvent.objects.filter(employee=emp, time__date=day).order_by("time")
-
                 shift_min = int((shift_end - shift_start).total_seconds() / 60)
+
+                break_min = 0
+                if emp.shift.break_time:
+                    break_min = int(
+                        (
+                            datetime.combine(day, emp.shift.break_time.end_time) -
+                            datetime.combine(day, emp.shift.break_time.start_time)
+                        ).total_seconds() / 60
+                    )
+
+                # Real ish normasi
+                shift_min -= break_min
 
                 if not events.exists():
                     if attendance and attendance.status == "sbk":
@@ -256,14 +267,8 @@ class MonthlyAttendanceReportView(APIView):
 
                 worked_min = int((last_out - first_in).total_seconds() / 60)
 
-                if emp.shift.break_time:
-                    break_min = int(
-                        (
-                            datetime.combine(day, emp.shift.break_time.end_time) -
-                            datetime.combine(day, emp.shift.break_time.start_time)
-                        ).total_seconds() / 60
-                    )
-                    worked_min -= max(0, break_min)
+                # Break time ayiramiz
+                worked_min -= break_min
 
                 if worked_min < 0:
                     worked_min = 0
