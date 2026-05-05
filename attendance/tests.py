@@ -110,5 +110,7 @@ class AttendanceCalculationTests(TestCase):
         response = MonthlyAttendanceReportView.as_view()(request)
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"][0]["shift_start_time"], "09:00")
+        self.assertEqual(response.data["results"][0]["shift_end_time"], "18:00")
         self.assertEqual(response.data["results"][0]["total_penalty"], 0)
         self.assertEqual(response.data["results"][0]["total_undertime"], "6:00")

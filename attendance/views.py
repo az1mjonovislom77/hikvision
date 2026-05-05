@@ -190,6 +190,8 @@ class MonthlyAttendanceReportView(APIView):
             sbk_count = 0
             szk_count = 0
             details = []
+            shift_start_time = emp.shift.start_time.strftime("%H:%M") if emp.shift else None
+            shift_end_time = emp.shift.end_time.strftime("%H:%M") if emp.shift else None
 
             for day in (start_date + timedelta(days=i)
                         for i in range((end_date - start_date).days + 1)):
@@ -309,6 +311,8 @@ class MonthlyAttendanceReportView(APIView):
             reports.append({
                 "employee_id": emp.id,
                 "employee_name": emp.name,
+                "shift_start_time": shift_start_time,
+                "shift_end_time": shift_end_time,
                 "year": year,
                 "month": month,
                 "sbk_count": sbk_count,
