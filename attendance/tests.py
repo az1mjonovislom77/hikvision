@@ -1,12 +1,10 @@
 from datetime import date, datetime, time
-
 from django.test import TestCase
 from django.utils.timezone import make_aware
 from rest_framework.test import APIRequestFactory, force_authenticate
-
 from attendance.models import AttendanceDaily
 from attendance.utils import count_workdays_in_month, is_employee_workday
-from attendance.views import MonthlyAttendanceReportView
+from attendance.api.views import MonthlyAttendanceReportView
 from day.models import DayOff, Shift, WorkDay
 from event.models import AccessEvent
 from person.models import Employee

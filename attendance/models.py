@@ -30,7 +30,6 @@ class AttendanceDaily(models.Model):
             if self.status == "szk" and emp.is_fine:
                 year = self.date.year
                 month = self.date.month
-
                 workdays = count_workdays_in_month(emp.work_day, emp.day_off, year, month)
 
                 if workdays > 0:
