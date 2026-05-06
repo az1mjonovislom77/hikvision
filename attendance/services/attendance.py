@@ -153,6 +153,7 @@ class AttendanceService:
                             "difference": "0:00",
                             "penalty": 0,
                             "bonus": 0,
+                            "att_comment": attendance.comment if attendance else "",
                         })
                     else:
                         szk_count += 1
@@ -173,6 +174,7 @@ class AttendanceService:
                             "difference": f"-{minutes_to_hm(shift_min)}",
                             "penalty": penalty_amount,
                             "bonus": 0,
+                            "att_comment": attendance.comment if attendance else "",
                         })
                     continue
 
@@ -242,7 +244,6 @@ class AttendanceService:
                 "net_adjustment": int(round(total_bonus - total_penalty)),
                 "employee_salary": emp.salary,
                 "new_salary": emp.salary + (int(round(total_bonus - total_penalty))),
-                "att_comment": attendance.comment if attendance else "",
                 "details": details
             })
 
