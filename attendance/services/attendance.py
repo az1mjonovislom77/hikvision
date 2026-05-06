@@ -190,23 +190,29 @@ class AttendanceService:
 
                 worked_minutes += worked_min
 
-                diff = worked_min - shift_min
                 minute_salary = day_salary / shift_min if shift_min else 0
-                money = round(abs(diff) * minute_salary, 2)
 
                 bonus_amount = 0
                 penalty_amount = 0
+                raw_late_minutes = int((first_in.replace(tzinfo=None) - shift_start).total_seconds() / 60)
+                approved_late = emp.shift.approved_late_min or 0
+                late_minutes = raw_late_minutes if raw_late_minutes > approved_late else 0
+                raw_departure_minutes = int((last_out.replace(tzinfo=None) - shift_end).total_seconds() / 60)
+                early_leave_minutes = abs(raw_departure_minutes) if raw_departure_minutes < 0 else 0
+                overtime_minutes = max(0, raw_departure_minutes)
+                penalty_minutes = late_minutes + early_leave_minutes
+                adjustment_minutes = overtime_minutes - penalty_minutes
 
-                if diff > 0:
-                    bonus_amount = money
+                if overtime_minutes > 0:
+                    bonus_amount = round(overtime_minutes * minute_salary, 2)
                     total_bonus += bonus_amount
-                    total_overtime += diff
+                    total_overtime += overtime_minutes
 
-                elif diff < 0:
-                    total_undertime += abs(diff)
+                if penalty_minutes > 0:
+                    total_undertime += penalty_minutes
 
                     if emp.is_fine:
-                        penalty_amount = money
+                        penalty_amount = round(penalty_minutes * minute_salary, 2)
 
                         if total_penalty + penalty_amount > emp.salary:
                             penalty_amount = max(0, emp.salary - total_penalty)
@@ -221,7 +227,9 @@ class AttendanceService:
                     "last_out": last_out.strftime("%H:%M"),
                     "worked": minutes_to_hm(worked_min),
                     "difference": (
-                        minutes_to_hm(diff) if diff >= 0 else f"-{minutes_to_hm(abs(diff))}"
+                        minutes_to_hm(adjustment_minutes)
+                        if adjustment_minutes >= 0
+                        else f"-{minutes_to_hm(abs(adjustment_minutes))}"
                     ),
                     "penalty": round(penalty_amount, 2),
                     "bonus": round(bonus_amount, 2),
