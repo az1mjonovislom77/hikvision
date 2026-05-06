@@ -242,6 +242,7 @@ class AttendanceService:
                 "net_adjustment": int(round(total_bonus - total_penalty)),
                 "employee_salary": emp.salary,
                 "new_salary": emp.salary + (int(round(total_bonus - total_penalty))),
+                "att_comment": attendance.comment if attendance else "",
                 "details": details
             })
 
