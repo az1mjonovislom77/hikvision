@@ -153,6 +153,7 @@ class AttendanceService:
                             "difference": "0:00",
                             "penalty": 0,
                             "bonus": 0,
+                            "daily_total": 0,
                             "att_comment": attendance.comment if attendance else "",
                         })
                     else:
@@ -174,6 +175,7 @@ class AttendanceService:
                             "difference": f"-{minutes_to_hm(shift_min)}",
                             "penalty": penalty_amount,
                             "bonus": 0,
+                            "daily_total": -penalty_amount,
                             "att_comment": attendance.comment if attendance else "",
                         })
                     continue
@@ -233,6 +235,7 @@ class AttendanceService:
                     ),
                     "penalty": round(penalty_amount, 2),
                     "bonus": round(bonus_amount, 2),
+                    "daily_total": round(bonus_amount - penalty_amount, 2),
                 })
 
             reports.append({
