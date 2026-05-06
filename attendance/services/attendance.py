@@ -39,7 +39,7 @@ class AttendanceService:
                 date=target_date,
                 defaults={
                     "status": "szk",
-                    "comment": "Auto: ish kuni, smena tugadi, kirish eventi yoвЂq"
+                    "comment": "Kirish yoki chiqish eventi yoq"
                 }
             )
 
