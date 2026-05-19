@@ -180,15 +180,15 @@ def fetch_face_events(devices, since_map=None):
 
                 except RequestException as e:
                     logger.error(
-                        "Hikvision request failed: device_id=%s ip=%s page=%s error=%s",
+                        "Hikvision request failed: device_id=%s ip=%s page=%s offset=%s error=%s",
                         device.id,
                         device.ip,
                         page_idx + 1,
+                        offset,
                         str(e)
                     )
 
-                    time.sleep(3)
-                    continue
+                    break
 
                 except ValueError as e:
                     logger.error(
