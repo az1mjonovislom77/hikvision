@@ -21,7 +21,6 @@ def fetch_all_employees(device):
     search_id = "0"
     offset = 0
     limit = 50
-
     all_users = []
     max_loops = 1000
 
@@ -50,7 +49,6 @@ def fetch_all_employees(device):
             logger.warning(f"🔐 401 detected | offset={offset} → RESET SESSION")
 
             time.sleep(1)
-
             session = create_session()
 
             try:
@@ -72,7 +70,6 @@ def fetch_all_employees(device):
 
         block = data.get("UserInfoSearch", {})
         users = block.get("UserInfo", []) or []
-
         logger.warning(f"📦 BATCH | offset={offset} | got={len(users)} | total={len(all_users)}")
 
         if block.get("searchID") and block["searchID"] != "0":

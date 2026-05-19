@@ -191,9 +191,7 @@ class AttendanceService:
                     worked_min = 0
 
                 worked_minutes += worked_min
-
                 minute_salary = day_salary / shift_min if shift_min else 0
-
                 bonus_amount = 0
                 penalty_amount = 0
                 raw_late_minutes = int((first_in.replace(tzinfo=None) - shift_start).total_seconds() / 60)

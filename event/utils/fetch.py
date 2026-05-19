@@ -3,18 +3,46 @@ import json
 import logging
 import time
 from uuid import uuid4
+
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+from requests.exceptions import RequestException
+
 from django.core.cache import cache
 from django.utils import timezone as django_timezone
-from person.utils import UZ_TZ
-from event.models import AccessEvent
-from requests.auth import HTTPDigestAuth
 from django.utils.dateparse import parse_datetime
+
+from requests.auth import HTTPDigestAuth
+
+from person.utils import UZ_TZ
 from person.models import Employee
 from person.utils import normalize_employee_no
+
+from event.models import AccessEvent
 from event.utils.events_name import major_name, minor_name
 
 logger = logging.getLogger(__name__)
+
+
+def get_session():
+    session = requests.Session()
+
+    retry = Retry(
+        total=3,
+        connect=3,
+        read=3,
+        backoff_factor=1,
+        status_forcelist=[500, 502, 503, 504],
+        allowed_methods=["POST"],
+        raise_on_status=False,
+    )
+
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+
+    return session
 
 
 def _resolve_employee(device, employee_no):
@@ -23,31 +51,50 @@ def _resolve_employee(device, employee_no):
         return None
 
     employee = Employee.objects.filter(device=device, employee_no=employee_no).first()
+
     if employee:
         return employee
 
-    return Employee.objects.filter(device=device).filter(employee_no__iexact=employee_no).first()
+    return Employee.objects.filter(
+        device=device
+    ).filter(
+        employee_no__iexact=employee_no
+    ).first()
 
 
 def _hikvision_start_time_str(since):
     if since is None:
         return None
+
     if django_timezone.is_naive(since):
         since = django_timezone.make_aware(since, UZ_TZ)
+
     return since.astimezone(UZ_TZ).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _event_serial_no(device, ev):
     sn = ev.get("serialNo")
+
     if sn is not None and str(sn).strip() != "":
         return str(sn).strip()[:100]
-    payload = json.dumps(ev, sort_keys=True, ensure_ascii=False, default=str)
-    digest = hashlib.sha256(f"{device.id}:{payload}".encode()).hexdigest()[:40]
+
+    payload = json.dumps(
+        ev,
+        sort_keys=True,
+        ensure_ascii=False,
+        default=str
+    )
+
+    digest = hashlib.sha256(
+        f"{device.id}:{payload}".encode()
+    ).hexdigest()[:40]
+
     return f"h{digest}"
 
 
 def fetch_face_events(devices, since_map=None):
     saved = 0
+    session = get_session()
 
     for device in devices:
         device_saved = 0
@@ -56,32 +103,33 @@ def fetch_face_events(devices, since_map=None):
         skipped_invalid_time = 0
         skipped_existing = 0
         unresolved_employee = 0
+
         since = since_map.get(device.id) if since_map else None
 
         lock_key = f"hikvision:event-sync:{device.id}"
+
         if not cache.add(lock_key, "1", timeout=120):
             logger.warning(
-                "event fetch skipped by lock: device_id=%s ip=%s lock_key=%s",
-                device.id, device.ip, lock_key
+                "event fetch skipped by lock: device_id=%s ip=%s",
+                device.id,
+                device.ip
             )
             continue
 
         try:
             url = f"http://{device.ip}/ISAPI/AccessControl/AcsEvent?format=json"
+
             search_id = uuid4().hex
             offset = 0
-            limit = 30   # debug uchun 30 qil
+            limit = 30
             max_pages = 50
 
             logger.info(
-                "event fetch started: device_id=%s ip=%s name=%s since=%s search_id=%s limit=%s max_pages=%s",
+                "event fetch started: device_id=%s ip=%s name=%s since=%s",
                 device.id,
                 device.ip,
                 device.name,
-                since.isoformat() if since else None,
-                search_id,
-                limit,
-                max_pages,
+                since.isoformat() if since else None
             )
 
             for page_idx in range(max_pages):
@@ -99,71 +147,79 @@ def fetch_face_events(devices, since_map=None):
                     payload["AcsEventCond"]["startTime"] = _hikvision_start_time_str(since)
 
                 logger.info(
-                    "event fetch request: device_id=%s page=%s offset=%s payload=%s",
+                    "event fetch request: device_id=%s page=%s offset=%s",
                     device.id,
                     page_idx + 1,
-                    offset,
-                    payload["AcsEventCond"],
+                    offset
                 )
 
                 try:
-                    r = requests.post(
+                    r = session.post(
                         url,
                         json=payload,
-                        auth=HTTPDigestAuth(device.username, device.password),
-                        headers={"Content-Type": "application/json"},
-                        timeout=15,
+                        auth=HTTPDigestAuth(
+                            device.username,
+                            device.password
+                        ),
+                        headers={
+                            "Content-Type": "application/json"
+                        },
+                        timeout=(5, 15),  # connect timeout, read timeout
                     )
 
                     logger.info(
-                        "event fetch http response: device_id=%s page=%s status=%s",
+                        "event fetch response: device_id=%s page=%s status=%s",
                         device.id,
                         page_idx + 1,
-                        r.status_code,
+                        r.status_code
                     )
 
-                    if r.status_code != 200:
-                        logger.warning(
-                            "event fetch http error: device_id=%s page=%s status=%s body=%s",
-                            device.id,
-                            page_idx + 1,
-                            r.status_code,
-                            r.text[:500],
-                        )
-                        break
+                    r.raise_for_status()
 
                     data = r.json()
 
-                except Exception:
-                    logger.exception(
-                        "event fetch request failed: device_id=%s page=%s",
+                except RequestException as e:
+                    logger.error(
+                        "Hikvision request failed: device_id=%s ip=%s page=%s error=%s",
+                        device.id,
+                        device.ip,
+                        page_idx + 1,
+                        str(e)
+                    )
+
+                    time.sleep(3)
+                    continue
+
+                except ValueError as e:
+                    logger.error(
+                        "Invalid JSON response: device_id=%s page=%s error=%s body=%s",
                         device.id,
                         page_idx + 1,
+                        str(e),
+                        r.text[:500]
                     )
                     break
 
                 access = data.get("AcsEvent", {})
                 events = access.get("InfoList", []) or []
+
                 total = access.get("totalMatches")
                 matched = access.get("numOfMatches")
 
                 logger.info(
-                    "event fetch parsed response: device_id=%s page=%s totalMatches=%s numOfMatches=%s events_count=%s",
+                    "parsed response: device_id=%s page=%s total=%s matched=%s events=%s",
                     device.id,
                     page_idx + 1,
                     total,
                     matched,
-                    len(events),
+                    len(events)
                 )
 
                 if not events:
-                    logger.warning(
-                        "event fetch empty page: device_id=%s page=%s offset=%s totalMatches=%s raw=%s",
+                    logger.info(
+                        "no more events: device_id=%s page=%s",
                         device.id,
-                        page_idx + 1,
-                        offset,
-                        total,
-                        str(data)[:700],
+                        page_idx + 1
                     )
                     break
 
@@ -175,13 +231,6 @@ def fetch_face_events(devices, since_map=None):
 
                     if not t:
                         skipped_invalid_time += 1
-                        logger.warning(
-                            "event skipped invalid_time: device_id=%s serial=%s raw_time=%s raw=%s",
-                            device.id,
-                            ev.get("serialNo"),
-                            raw_time,
-                            str(ev)[:400],
-                        )
                         continue
 
                     if t.tzinfo is None:
@@ -194,7 +243,11 @@ def fetch_face_events(devices, since_map=None):
                         continue
 
                     serial_no = _event_serial_no(device, ev)
-                    employee_no = normalize_employee_no(ev.get("employeeNoString") or ev.get("employeeNo"))
+
+                    employee_no = normalize_employee_no(
+                        ev.get("employeeNoString") or ev.get("employeeNo")
+                    )
+
                     employee = _resolve_employee(device, employee_no)
 
                     event_major = int(ev.get("major") or 5)
@@ -221,33 +274,23 @@ def fetch_face_events(devices, since_map=None):
                                 "raw_json": ev,
                             }
                         )
+
                     except Exception:
                         logger.exception(
-                            "event db save failed: device_id=%s serial=%s raw=%s",
+                            "db save failed: device_id=%s serial=%s",
                             device.id,
-                            serial_no,
-                            str(ev)[:500],
+                            serial_no
                         )
                         continue
 
                     if created:
                         saved += 1
                         device_saved += 1
-                        logger.info(
-                            "event saved: device_id=%s serial=%s major=%s minor=%s employee_no=%s employee_id=%s time=%s",
-                            device.id,
-                            serial_no,
-                            event_major,
-                            event_minor,
-                            employee_no,
-                            getattr(employee, "id", None),
-                            t.isoformat(),
-                        )
                     else:
                         skipped_existing += 1
 
                 logger.info(
-                    "event fetch page summary: device_id=%s page=%s seen=%s saved=%s skipped_existing=%s skipped_older=%s invalid_time=%s unresolved_employee=%s",
+                    "page summary: device_id=%s page=%s seen=%s saved=%s existing=%s older=%s invalid=%s unresolved=%s",
                     device.id,
                     page_idx + 1,
                     device_seen,
@@ -255,18 +298,16 @@ def fetch_face_events(devices, since_map=None):
                     skipped_existing,
                     skipped_older,
                     skipped_invalid_time,
-                    unresolved_employee,
+                    unresolved_employee
                 )
 
                 offset += len(events)
 
                 if len(events) < limit:
                     logger.info(
-                        "event fetch last page: device_id=%s page=%s events_count=%s limit=%s",
+                        "last page reached: device_id=%s page=%s",
                         device.id,
-                        page_idx + 1,
-                        len(events),
-                        limit,
+                        page_idx + 1
                     )
                     break
 
@@ -274,16 +315,13 @@ def fetch_face_events(devices, since_map=None):
 
         finally:
             cache.delete(lock_key)
+
             logger.info(
-                "event fetch finished: device_id=%s ip=%s seen=%s saved=%s skipped_existing=%s skipped_older=%s invalid_time=%s unresolved_employee=%s",
+                "event fetch finished: device_id=%s ip=%s seen=%s saved=%s",
                 device.id,
                 device.ip,
                 device_seen,
-                device_saved,
-                skipped_existing,
-                skipped_older,
-                skipped_invalid_time,
-                unresolved_employee,
+                device_saved
             )
 
     return saved
