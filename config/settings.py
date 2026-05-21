@@ -42,36 +42,9 @@ THIRD_PARTY_APPS = [
 
 INSTALLED_APPS = LOCAL_APPS + THIRD_PARTY_APPS
 
-CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
-
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://localhost:3002",
-    "http://localhost:3003",
-    "http://localhost:3004",
-    "https://45.55.129.34",
-    "https://faceidproject.vercel.app",
-    "https://hikvision.ugku.uz",
-    "https://185.191.141.213",
-    "https://api.timepro.uz",
-    "https://timepro.uz"
-]
-
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://localhost:3002",
-    "http://localhost:3003",
-    "http://localhost:3004",
-    "https://45.55.129.34",
-    "https://faceidproject.vercel.app",
-    "https://hikvision.ugku.uz",
-    "https://185.191.141.213",
-    "https://api.timepro.uz",
-    "https://timepro.uz"
-]
+CORS_ALLOWED_ORIGINS = config('TRUSTED_ORIGINS', cast=Csv())
+CSRF_TRUSTED_ORIGINS = config('TRUSTED_ORIGINS', cast=Csv())
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
