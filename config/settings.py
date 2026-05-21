@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from datetime import timedelta
 from decouple import config, Csv
+from django.template import defaulttags
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -43,8 +44,8 @@ THIRD_PARTY_APPS = [
 INSTALLED_APPS = LOCAL_APPS + THIRD_PARTY_APPS
 
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = config('TRUSTED_ORIGINS', cast=Csv())
-CSRF_TRUSTED_ORIGINS = config('TRUSTED_ORIGINS', cast=Csv())
+CORS_ALLOWED_ORIGINS = config('TRUSTED_ORIGINS', cast=Csv(), default='')
+CSRF_TRUSTED_ORIGINS = config('TRUSTED_ORIGINS', cast=Csv(), default='')
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
