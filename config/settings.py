@@ -11,7 +11,7 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
 ENVIRON = config('ENVIRON', default='local')
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv(), default='')
 
 AUTH_USER_MODEL = 'user.User'
 
