@@ -7,6 +7,13 @@ from openpyxl.utils import get_column_letter
 class AttendanceExcelExportService:
 
     @staticmethod
+    def format_money(value):
+        try:
+            return f"{int(value):,}".replace(",", " ")
+        except Exception:
+            return value
+
+    @staticmethod
     def auto_adjust_column_width(ws):
         for column_cells in ws.columns:
             max_length = 0
@@ -38,15 +45,9 @@ class AttendanceExcelExportService:
                 cell.alignment = Alignment(horizontal="center", vertical="center")
                 cell.border = thin_border
 
+        # Header bold
         for cell in ws[1]:
             cell.font = Font(bold=True)
-
-    @staticmethod
-    def format_number_columns(ws, columns):
-        for col in columns:
-            for cell in ws[col]:
-                if isinstance(cell.value, (int, float)):
-                    cell.number_format = '# ##0'
 
     @staticmethod
     def generate_monthly_excel(report, year, month):
@@ -81,27 +82,21 @@ class AttendanceExcelExportService:
                 row["employee_name"],
                 row["worked_time"],
                 f'{row["shift_start_time"]} - {row["shift_end_time"]}',
-                row["employee_salary"],
-                row["new_salary"],
+                AttendanceExcelExportService.format_money(row["employee_salary"]),
+                AttendanceExcelExportService.format_money(row["new_salary"]),
                 row["sbk_count"],
                 row["szk_count"],
-                row["total_bonus"],
-                row["total_penalty"],
-                row["net_adjustment"],
+                AttendanceExcelExportService.format_money(row["total_bonus"]),
+                AttendanceExcelExportService.format_money(row["total_penalty"]),
+                AttendanceExcelExportService.format_money(row["net_adjustment"]),
             ])
 
         ws.append([])
         ws.append(["Jami hodimlar", report["count"]])
-        ws.append(["Umumiy maosh", total_salary])
-        ws.append(["Jami bonus", total_bonus])
-        ws.append(["Jami jarima", total_penalty])
+        ws.append(["Umumiy maosh", AttendanceExcelExportService.format_money(total_salary)])
+        ws.append(["Jami bonus", AttendanceExcelExportService.format_money(total_bonus)])
+        ws.append(["Jami jarima", AttendanceExcelExportService.format_money(total_penalty)])
         AttendanceExcelExportService.style_sheet(ws)
-        AttendanceExcelExportService.format_number_columns(ws, ["E", "F", "I", "J", "K", "B"])
-        for row in range(ws.max_row - 3, ws.max_row + 1):
-            cell = ws[f"B{row}"]
-            if isinstance(cell.value, (int, float)):
-                cell.number_format = '# ##0'
-
         AttendanceExcelExportService.auto_adjust_column_width(ws)
         details_ws = wb.create_sheet("Daily Details")
         details_ws.append([
@@ -127,16 +122,22 @@ class AttendanceExcelExportService:
                     detail.get("last_out"),
                     detail.get("worked"),
                     detail.get("difference"),
-                    detail.get("penalty"),
-                    detail.get("bonus"),
-                    detail.get("daily_total"),
+                    AttendanceExcelExportService.format_money(
+                        detail.get("penalty")
+                    ),
+                    AttendanceExcelExportService.format_money(
+                        detail.get("bonus")
+                    ),
+                    AttendanceExcelExportService.format_money(
+                        detail.get("daily_total")
+                    ),
                 ])
 
         AttendanceExcelExportService.style_sheet(details_ws)
-        AttendanceExcelExportService.format_number_columns(details_ws, ["H", "I", "J"])
         AttendanceExcelExportService.auto_adjust_column_width(details_ws)
         response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         response["Content-Disposition"] = (
             f'attachment; filename=attendance_{year}_{month}.xlsx')
+
         wb.save(response)
         return response
