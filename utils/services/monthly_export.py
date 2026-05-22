@@ -1,8 +1,47 @@
 import openpyxl
 from django.http import HttpResponse
+from openpyxl.styles import Font, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 
 
 class AttendanceExcelExportService:
+
+    @staticmethod
+    def auto_adjust_column_width(ws):
+        for column_cells in ws.columns:
+            max_length = 0
+            column = column_cells[0].column
+            column_letter = get_column_letter(column)
+
+            for cell in column_cells:
+                try:
+                    if cell.value:
+                        cell_length = len(str(cell.value))
+                        if cell_length > max_length:
+                            max_length = cell_length
+                except Exception:
+                    pass
+
+            adjusted_width = max_length + 3
+            ws.column_dimensions[column_letter].width = adjusted_width
+
+    @staticmethod
+    def style_sheet(ws):
+        thin_border = Border(
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin")
+        )
+
+        for row in ws.iter_rows():
+            for cell in row:
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+                cell.border = thin_border
+
+        # Header style
+        for cell in ws[1]:
+            cell.font = Font(bold=True)
 
     @staticmethod
     def generate_monthly_excel(report, year, month):
@@ -13,7 +52,7 @@ class AttendanceExcelExportService:
 
         ws.append([
             "ID",
-            "Employee Name",
+            "Employee",
             "Work Time",
             "Shift",
             "Salary",
@@ -48,13 +87,19 @@ class AttendanceExcelExportService:
                 row["net_adjustment"],
             ])
 
+        # Summary
         ws.append([])
         ws.append(["Jami hodimlar", report["count"]])
         ws.append(["Umumiy maosh", total_salary])
         ws.append(["Jami bonus", total_bonus])
         ws.append(["Jami jarima", total_penalty])
 
-        # ================= DETAILS SHEET =================
+        AttendanceExcelExportService.style_sheet(ws)
+        AttendanceExcelExportService.auto_adjust_column_width(ws)
+
+        # =========================
+        # DETAILS SHEET
+        # =========================
         details_ws = wb.create_sheet("Daily Details")
 
         details_ws.append([
@@ -85,6 +130,12 @@ class AttendanceExcelExportService:
                     detail.get("daily_total"),
                 ])
 
+        AttendanceExcelExportService.style_sheet(details_ws)
+        AttendanceExcelExportService.auto_adjust_column_width(details_ws)
+
+        # =========================
+        # RESPONSE
+        # =========================
         response = HttpResponse(
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
