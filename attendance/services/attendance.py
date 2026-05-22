@@ -203,26 +203,35 @@ class AttendanceService:
                 penalty_minutes = late_minutes + early_leave_minutes
                 adjustment_minutes = overtime_minutes - penalty_minutes
 
-                if overtime_minutes > 0:
-                    bonus_amount = round(overtime_minutes * minute_salary, 2)
-                    total_bonus += bonus_amount
-                    total_overtime += overtime_minutes
+                if attendance and attendance.status == 'sbk':
+                    sbk_count += 1
+                    status = "sbk"
+                    status_label = "Sababli kelmadi"
+                    bonus_amount = 0
+                    penalty_amount = 0
+                else:
+                    status = "worked"
+                    status_label = "Ishlagan"
+                    if overtime_minutes > 0:
+                        bonus_amount = round(overtime_minutes * minute_salary, 2)
+                        total_bonus += bonus_amount
+                        total_overtime += overtime_minutes
 
-                if penalty_minutes > 0:
-                    total_undertime += penalty_minutes
+                    if penalty_minutes > 0:
+                        total_undertime += penalty_minutes
 
-                    if emp.is_fine:
-                        penalty_amount = round(penalty_minutes * minute_salary, 2)
+                        if emp.is_fine:
+                            penalty_amount = round(penalty_minutes * minute_salary, 2)
 
-                        if total_penalty + penalty_amount > emp.salary:
-                            penalty_amount = max(0, emp.salary - total_penalty)
+                            if total_penalty + penalty_amount > emp.salary:
+                                penalty_amount = max(0, emp.salary - total_penalty)
 
-                        total_penalty += penalty_amount
-
+                            total_penalty += penalty_amount
+                
                 details.append({
                     "date": day,
-                    "status": "worked",
-                    "status_label": "Ishlagan",
+                    "status": status,
+                    "status_label": status_label,
                     "first_in": first_in.strftime("%H:%M"),
                     "last_out": last_out.strftime("%H:%M"),
                     "worked": minutes_to_hm(worked_min),
@@ -234,6 +243,7 @@ class AttendanceService:
                     "penalty": round(penalty_amount, 2),
                     "bonus": round(bonus_amount, 2),
                     "daily_total": round(bonus_amount - penalty_amount, 2),
+                    "att_comment": attendance.comment if attendance else ""
                 })
 
             reports.append({
