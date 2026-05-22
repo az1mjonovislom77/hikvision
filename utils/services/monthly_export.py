@@ -15,15 +15,14 @@ class AttendanceExcelExportService:
 
             for cell in column_cells:
                 try:
-                    if cell.value:
+                    if cell.value is not None:
                         cell_length = len(str(cell.value))
                         if cell_length > max_length:
                             max_length = cell_length
                 except Exception:
                     pass
 
-            adjusted_width = max_length + 3
-            ws.column_dimensions[column_letter].width = adjusted_width
+            ws.column_dimensions[column_letter].width = max_length + 3
 
     @staticmethod
     def style_sheet(ws):
@@ -39,17 +38,21 @@ class AttendanceExcelExportService:
                 cell.alignment = Alignment(horizontal="center", vertical="center")
                 cell.border = thin_border
 
-        # Header style
         for cell in ws[1]:
             cell.font = Font(bold=True)
 
     @staticmethod
+    def format_number_columns(ws, columns):
+        for col in columns:
+            for cell in ws[col]:
+                if isinstance(cell.value, (int, float)):
+                    cell.number_format = '# ##0'
+
+    @staticmethod
     def generate_monthly_excel(report, year, month):
         wb = openpyxl.Workbook()
-
         ws = wb.active
         ws.title = "Monthly Report"
-
         ws.append([
             "ID",
             "Employee",
@@ -87,21 +90,20 @@ class AttendanceExcelExportService:
                 row["net_adjustment"],
             ])
 
-        # Summary
         ws.append([])
         ws.append(["Jami hodimlar", report["count"]])
         ws.append(["Umumiy maosh", total_salary])
         ws.append(["Jami bonus", total_bonus])
         ws.append(["Jami jarima", total_penalty])
-
         AttendanceExcelExportService.style_sheet(ws)
+        AttendanceExcelExportService.format_number_columns(ws, ["E", "F", "I", "J", "K", "B"])
+        for row in range(ws.max_row - 3, ws.max_row + 1):
+            cell = ws[f"B{row}"]
+            if isinstance(cell.value, (int, float)):
+                cell.number_format = '# ##0'
+
         AttendanceExcelExportService.auto_adjust_column_width(ws)
-
-        # =========================
-        # DETAILS SHEET
-        # =========================
         details_ws = wb.create_sheet("Daily Details")
-
         details_ws.append([
             "Employee",
             "Date",
@@ -131,18 +133,10 @@ class AttendanceExcelExportService:
                 ])
 
         AttendanceExcelExportService.style_sheet(details_ws)
+        AttendanceExcelExportService.format_number_columns(details_ws, ["H", "I", "J"])
         AttendanceExcelExportService.auto_adjust_column_width(details_ws)
-
-        # =========================
-        # RESPONSE
-        # =========================
-        response = HttpResponse(
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
+        response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         response["Content-Disposition"] = (
-            f'attachment; filename=attendance_{year}_{month}.xlsx'
-        )
-
+            f'attachment; filename=attendance_{year}_{month}.xlsx')
         wb.save(response)
         return response
