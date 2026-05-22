@@ -45,7 +45,6 @@ class AttendanceExcelExportService:
                 cell.alignment = Alignment(horizontal="center", vertical="center")
                 cell.border = thin_border
 
-        # Header bold
         for cell in ws[1]:
             cell.font = Font(bold=True)
 
@@ -53,19 +52,19 @@ class AttendanceExcelExportService:
     def generate_monthly_excel(report, year, month):
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = "Monthly Report"
+        ws.title = "Oylik hisobot"
         ws.append([
             "ID",
-            "Employee",
-            "Work Time",
-            "Shift",
-            "Salary",
-            "New Salary",
+            "Hodimlar",
             "Sababli kelmadi",
             "Sababsiz kelmadi",
+            "Ishlagan soati",
+            "Smena",
+            "Maosh",
             "Bonus",
-            "Penalty",
-            "Net Adjustment"
+            "Jarima",
+            "Hisoblangan miqdor",
+            "Yangi maosh",
         ])
 
         total_salary = 0
@@ -80,15 +79,15 @@ class AttendanceExcelExportService:
             ws.append([
                 row["employee_id"],
                 row["employee_name"],
+                row["sbk_count"],
+                row["szk_count"],
                 row["worked_time"],
                 f'{row["shift_start_time"]} - {row["shift_end_time"]}',
                 AttendanceExcelExportService.format_money(row["employee_salary"]),
-                AttendanceExcelExportService.format_money(row["new_salary"]),
-                row["sbk_count"],
-                row["szk_count"],
                 AttendanceExcelExportService.format_money(row["total_bonus"]),
                 AttendanceExcelExportService.format_money(row["total_penalty"]),
                 AttendanceExcelExportService.format_money(row["net_adjustment"]),
+                AttendanceExcelExportService.format_money(row["new_salary"]),
             ])
 
         ws.append([])
@@ -100,16 +99,16 @@ class AttendanceExcelExportService:
         AttendanceExcelExportService.auto_adjust_column_width(ws)
         details_ws = wb.create_sheet("Daily Details")
         details_ws.append([
-            "Employee",
-            "Date",
+            "Hodimlar",
+            "Sana",
             "Status",
-            "First In",
-            "Last Out",
-            "Worked",
-            "Difference",
-            "Penalty",
+            "Birinchi kirish",
+            "Oxirgi chiqish",
+            "Ishladi",
+            "Farq",
+            "Jarima",
             "Bonus",
-            "Daily Total"
+            "Kunlik Jami"
         ])
 
         for emp in report["results"]:
