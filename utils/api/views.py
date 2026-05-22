@@ -1,7 +1,10 @@
+from django.http import HttpResponse
 from rest_framework import status
 from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
+
+from utils.services.monthly_export import AttendanceExcelExportService
 from utils.utils.schema import user_extend_schema
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from drf_spectacular.utils import extend_schema, OpenApiParameter
@@ -11,7 +14,8 @@ from utils.api.serializers import DevicesSerializer, TelegramChannelSerializer, 
     PlanSerializer, SubscriptionCreateSerializer, SubscriptionDetailSerializer, NotificationSerializer, \
     AdminNotificationSerializer
 from utils.selectors.utils import branch_queryset, department_queryset, devices_queryset, notification_queryset, \
-    notification_queryset_for_user, plan_queryset, subscription_queryset, telegram_channel_queryset
+    notification_queryset_for_user, plan_queryset, subscription_queryset, telegram_channel_queryset, \
+    get_monthly_report_for_excel
 from utils.services.api import AdminNotificationAPIService, SmartCityAPIService, SubscriptionAPIService
 
 
@@ -160,4 +164,44 @@ class SmartCityDailyAPIView(APIView):
                 "message": "Daily stats fetched successfully",
                 "data": data
             }, status=status.HTTP_200_OK
+        )
+
+
+class MonthlyAttendanceExcelExportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Attendance"],
+        parameters=[
+            OpenApiParameter(name="branch_id", type=int, location=OpenApiParameter.QUERY, required=True),
+            OpenApiParameter(name="year", type=int, location=OpenApiParameter.QUERY, required=True),
+            OpenApiParameter(name="month", type=int, location=OpenApiParameter.QUERY, required=True),
+            OpenApiParameter(name="employee_id", type=int, location=OpenApiParameter.QUERY, required=False)])
+    def get(self, request):
+        branch_id = request.GET.get("branch_id")
+        year = request.GET.get("year")
+        month = request.GET.get("month")
+        employee_id = request.GET.get("employee_id")
+
+        if not branch_id:
+            return HttpResponse("branch_id required", status=400)
+
+        if not year or not month:
+            return HttpResponse("year and month required", status=400)
+
+        report = get_monthly_report_for_excel(
+            user=request.user,
+            branch_id=branch_id,
+            year=int(year),
+            month=int(month),
+            employee_id=employee_id
+        )
+
+        if not report:
+            return HttpResponse("Branch not found", status=400)
+
+        return AttendanceExcelExportService.generate_monthly_excel(
+            report=report,
+            year=int(year),
+            month=int(month),
         )

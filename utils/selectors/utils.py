@@ -1,3 +1,5 @@
+from attendance.selectors.selectors import get_user_branch
+from attendance.services.attendance import AttendanceService
 from user.models import User
 from utils.models import Branch, Department, Devices, Notification, Plan, Subscription, TelegramChannel
 
@@ -38,3 +40,16 @@ def notification_queryset_for_user(*, user):
 
     return qs.filter(user=user).order_by("-created_at")
 
+
+def get_monthly_report_for_excel(*, user, branch_id, year, month, employee_id=None):
+    branch = get_user_branch(branch_id=branch_id, user=user)
+
+    if not branch:
+        return None
+
+    return AttendanceService.monthly_report_payload(
+        branch=branch,
+        employee_id=employee_id,
+        year=year,
+        month=month,
+    )

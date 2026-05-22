@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from utils.api.views import DevicesViewSet, DepartmentViewSet, BranchViewSet, TelegramChannelViewSet, \
     SubscriptionViewSet, PlanViewSet, NotificationViewSet, AdminNotificationViewSet, SmartCityAPIView, \
-    SmartCityDailyAPIView
+    SmartCityDailyAPIView, MonthlyAttendanceExcelExportView
 
 router = DefaultRouter()
 router.register('devices', DevicesViewSet)
@@ -17,5 +17,6 @@ router.register("admin/notification", AdminNotificationViewSet, basename="admin-
 urlpatterns = [
     path('', include(router.urls)),
     path('smartcity_stats/', SmartCityAPIView.as_view(), name="smart-city-stats"),
-    path('smartcity_stats/daily/', SmartCityDailyAPIView.as_view(), name="smart-city-daily")
+    path('smartcity_stats/daily/', SmartCityDailyAPIView.as_view(), name="smart-city-daily"),
+    path("monthly-report-excel/", MonthlyAttendanceExcelExportView.as_view(), name="monthly-report-excel"),
 ]
