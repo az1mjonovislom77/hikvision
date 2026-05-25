@@ -1,9 +1,11 @@
 from calendar import monthrange
-from datetime import date, datetime, timedelta
+from collections import defaultdict
+from datetime import date, datetime, timedelta, time as dt_time
 from django.utils.timezone import localtime, make_aware, now
 from attendance.models import AttendanceDaily
+from event.models import AccessEvent
 from attendance.selectors.selectors import get_absent_attendance_records, get_branch_employee, get_branch_employees, \
-    get_employee, get_employee_attendance, get_employee_day_events, has_employee_entry_event
+    get_employee, has_employee_entry_event
 from attendance.utils import count_workdays_in_month, is_employee_workday, minutes_to_hm
 
 
@@ -58,7 +60,7 @@ class AttendanceService:
                     "comment": r.comment,
                     "fine": r.fine_amount,
                     "date": r.date
-                }for r in records
+                } for r in records
             ]
         }
 
@@ -92,7 +94,35 @@ class AttendanceService:
             get_branch_employee(employee_id=employee_id, branch=branch)
             if employee_id else
             get_branch_employees(branch=branch)
-        )
+        ).select_related("shift", "shift__break_time", "work_day", "day_off")
+
+        employees = list(employees)
+        employee_ids = [emp.id for emp in employees]
+
+        if not employee_ids:
+            return {"year": year, "month": month, "count": 0, "results": []}
+
+        attendance_map = {
+            attendance_key: attendance
+            for attendance_key, attendance in (
+                ((item.employee_id, item.date), item)
+                for item in AttendanceDaily.objects.filter(
+                employee_id__in=employee_ids,
+                date__range=(start_date, end_date),
+            )
+            )
+        }
+
+        event_start = make_aware(datetime.combine(start_date, dt_time.min))
+        event_end = make_aware(datetime.combine(end_date + timedelta(days=1), dt_time.min))
+
+        events_map = defaultdict(list)
+        for event in AccessEvent.objects.filter(
+                employee_id__in=employee_ids,
+                time__gte=event_start,
+                time__lt=event_end,
+        ).order_by("employee_id", "time"):
+            events_map[(event.employee_id, localtime(event.time).date())].append(event)
 
         reports = []
 
@@ -128,8 +158,8 @@ class AttendanceService:
                 if day == today and current_dt < make_aware(shift_end):
                     continue
 
-                attendance = get_employee_attendance(employee=emp, target_date=day)
-                events = get_employee_day_events(employee=emp, target_date=day)
+                attendance = attendance_map.get((emp.id, day))
+                events = events_map.get((emp.id, day), [])
                 shift_min = int((shift_end - shift_start).total_seconds() / 60)
 
                 break_min = 0
@@ -140,7 +170,7 @@ class AttendanceService:
 
                 shift_min -= break_min
 
-                if not events.exists():
+                if not events:
                     if attendance and attendance.status == "sbk":
                         sbk_count += 1
                         details.append({
@@ -180,8 +210,8 @@ class AttendanceService:
                         })
                     continue
 
-                first_event = events.first()
-                last_event = events.last()
+                first_event = events[0]
+                last_event = events[-1]
                 first_in = localtime(first_event.time)
                 last_out = localtime(last_event.time)
                 worked_min = int((last_out - first_in).total_seconds() / 60)
@@ -227,7 +257,7 @@ class AttendanceService:
                                 penalty_amount = max(0, emp.salary - total_penalty)
 
                             total_penalty += penalty_amount
-                
+
                 details.append({
                     "date": day,
                     "status": status,
