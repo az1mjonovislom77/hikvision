@@ -41,7 +41,7 @@ class EmployeeSyncView(APIView):
         branch_id = request.query_params.get("branch_id")
 
         if not branch_id:
-            return Response({"error": "branch_id majburiy"}, status=400)
+            return Response({"error": "branch_id majburi"}, status=400)
 
         branch, error, status_code = EmployeeAPIService.resolve_branch(
             user=request.user,
