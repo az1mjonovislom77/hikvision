@@ -37,7 +37,6 @@ class AttendanceDaily(models.Model):
                     self.fine_amount = round(day_salary, 2)
                 else:
                     self.fine_amount = 0
-
             else:
                 self.fine_amount = 0
 

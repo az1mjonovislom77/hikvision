@@ -4,18 +4,29 @@ from django.utils.timezone import localdate, make_aware
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.generics import ListAPIView
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from person.api.serializers import (
-    EmployeeCreateSerializer,
-    EmployeeHistorySerializer,
-    EmployeeSerializer,
-    EmployeeUpdateSerializer,
-)
+from person.api.serializers import EmployeeCreateSerializer, EmployeeHistorySerializer, EmployeeSerializer, \
+    EmployeeUpdateSerializer
 from person.selectors.person import get_branch_employees, get_device, get_employee_with_device_user
 from person.services.api import EmployeeAPIService, EmployeeHistoryService
 from user.models import User
+
+
+class EmployeePagination(PageNumberPagination):
+    page_size = 200
+    page_size_query_param = "page_size"
+    max_page_size = 1000
+
+    def get_paginated_response(self, data):
+        return Response({
+            "count": self.page.paginator.count,
+            "next": self.get_next_link(),
+            "previous": self.get_previous_link(),
+            "results": data
+        })
 
 
 @extend_schema(tags=['Employee'],
@@ -52,11 +63,14 @@ class EmployeeSyncView(APIView):
 @extend_schema(tags=['Employee'],
                parameters=[
                    OpenApiParameter(name="branch_id", type=int, description="Branch ID (majburiy)", required=True),
-                   OpenApiParameter(name="user_id", type=int, required=False, description="Faqat superadmin uchun")
+                   OpenApiParameter(name="user_id", type=int, required=False, description="Faqat superadmin uchun"),
+                   OpenApiParameter(name="page", type=int, required=False, description="Sahifa raqami"),
+                   OpenApiParameter(name="page_size", type=int, required=False, description="Sahifadagi employee soni"),
                ])
 class EmployeeListView(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = EmployeeSerializer
+    pagination_class = EmployeePagination
 
     def get(self, request):
         branch_id = request.query_params.get("branch_id")
@@ -76,8 +90,10 @@ class EmployeeListView(APIView):
             return Response({"error": "Branch topilmadi yoki sizga tegishli emas"}, status=400)
 
         employees = get_branch_employees(branch=branch)
-        serializer = EmployeeSerializer(employees, many=True, context={"request": request})
-        return Response(serializer.data)
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(employees, request, view=self)
+        serializer = EmployeeSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)
 
 
 @extend_schema(tags=["Employee"], responses={200: EmployeeSerializer})
