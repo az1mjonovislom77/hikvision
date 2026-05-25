@@ -124,12 +124,8 @@ class AttendanceExcelExportService:
                     AttendanceExcelExportService.format_money(
                         detail.get("penalty")
                     ),
-                    AttendanceExcelExportService.format_money(
-                        detail.get("bonus")
-                    ),
-                    AttendanceExcelExportService.format_money(
-                        detail.get("daily_total")
-                    ),
+                    AttendanceExcelExportService.format_money(detail.get("bonus")),
+                    AttendanceExcelExportService.format_money(detail.get("daily_total")),
                 ])
 
         AttendanceExcelExportService.style_sheet(details_ws)
