@@ -16,7 +16,7 @@ from user.models import User
 
 
 class EmployeePagination(PageNumberPagination):
-    page_size = 200
+    page_size = 20
     page_size_query_param = "page_size"
     max_page_size = 1000
 
@@ -41,7 +41,7 @@ class EmployeeSyncView(APIView):
         branch_id = request.query_params.get("branch_id")
 
         if not branch_id:
-            return Response({"error": "branch_id majburi"}, status=400)
+            return Response({"error": "branch_id majburiy"}, status=400)
 
         branch, error, status_code = EmployeeAPIService.resolve_branch(
             user=request.user,
@@ -63,14 +63,11 @@ class EmployeeSyncView(APIView):
 @extend_schema(tags=['Employee'],
                parameters=[
                    OpenApiParameter(name="branch_id", type=int, description="Branch ID (majburiy)", required=True),
-                   OpenApiParameter(name="user_id", type=int, required=False, description="Faqat superadmin uchun"),
-                   OpenApiParameter(name="page", type=int, required=False, description="Sahifa raqami"),
-                   OpenApiParameter(name="page_size", type=int, required=False, description="Sahifadagi employee soni"),
+                   OpenApiParameter(name="user_id", type=int, required=False, description="Faqat superadmin uchun")
                ])
 class EmployeeListView(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = EmployeeSerializer
-    pagination_class = EmployeePagination
 
     def get(self, request):
         branch_id = request.query_params.get("branch_id")
@@ -90,10 +87,8 @@ class EmployeeListView(APIView):
             return Response({"error": "Branch topilmadi yoki sizga tegishli emas"}, status=400)
 
         employees = get_branch_employees(branch=branch)
-        paginator = self.pagination_class()
-        page = paginator.paginate_queryset(employees, request, view=self)
-        serializer = EmployeeSerializer(page, many=True, context={"request": request})
-        return paginator.get_paginated_response(serializer.data)
+        serializer = EmployeeSerializer(employees, many=True, context={"request": request})
+        return Response(serializer.data)
 
 
 @extend_schema(tags=["Employee"], responses={200: EmployeeSerializer})

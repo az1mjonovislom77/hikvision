@@ -25,7 +25,7 @@ def get_branch_device_queryset(*, branch):
 
 
 def get_branch_employees(*, branch):
-    return Employee.objects.filter(device=branch.device).select_related("device").order_by("id")
+    return Employee.objects.filter(device=branch.device).select_related("device")
 
 
 def get_user_employees_with_events(*, user):
@@ -70,3 +70,4 @@ def get_existing_employee_history_event_ids(*, employee, events):
             event_id__in=[e.id for e in events],
         ).values_list("event_id", flat=True)
     )
+
