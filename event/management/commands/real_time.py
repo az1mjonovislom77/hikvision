@@ -20,11 +20,16 @@ class Command(BaseCommand):
         self.stdout.write("🚀 Realtime event listener started")
 
         last_time = get_last_event_time()
+        logger.info("real_time start: last_time_from_cache=%s", last_time)
+
         if last_time is None:
             last_event = AccessEvent.objects.order_by("-time").first()
             last_time = last_event.time if last_event else timezone.now()
+            logger.info("real_time start: cache empty, fallback last_time=%s", last_time)
 
         devices = list(Devices.objects.all())
+        logger.info("real_time start: devices_count=%s device_ids=%s", len(devices), [d.id for d in devices])
+
         while True:
             try:
                 close_old_connections()
@@ -40,11 +45,26 @@ class Command(BaseCommand):
                     .order_by("time")
                 )
 
-                for event in events:
+                event_list = list(events)
+                logger.info(
+                    "real_time telegram query: last_time=%s unsent_count=%s",
+                    last_time,
+                    len(event_list),
+                )
+
+                for event in event_list:
                     employee = event.employee
                     device = event.device
 
                     if not employee or not device or not device.user:
+                        logger.info(
+                            "real_time skip event: event_id=%s time=%s reason=no_employee_or_device employee=%s device=%s device_user=%s",
+                            event.id,
+                            event.time,
+                            bool(employee),
+                            bool(device),
+                            bool(device.user) if device else None,
+                        )
                         event.sent_to_telegram = True
                         event.save(update_fields=["sent_to_telegram"])
                         continue
@@ -76,6 +96,15 @@ class Command(BaseCommand):
                     )
 
                     picture_url = raw.get("pictureURL") or raw.get("faceURL")
+
+                    logger.info(
+                        "real_time dispatch telegram: event_id=%s employee_id=%s device_id=%s time=%s",
+                        event.id,
+                        employee.id,
+                        device.id,
+                        event.time,
+                    )
+
                     send_event_to_telegram.delay(event.id, msg, picture_url, device.id)
                     last_time = event.time
                     set_last_event_time(last_time)
