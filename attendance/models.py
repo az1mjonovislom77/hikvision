@@ -17,6 +17,10 @@ class AttendanceDaily(models.Model):
 
     class Meta:
         unique_together = ("employee", "date")
+        indexes = [
+            models.Index(fields=["status"], name="attendance_status_idx"),
+            models.Index(fields=["date"], name="attendance_date_idx"),
+        ]
 
     def save(self, *args, **kwargs):
         emp = self.employee

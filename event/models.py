@@ -22,8 +22,12 @@ class AccessEvent(models.Model):
     class Meta:
         unique_together = ("device", "serial_no")
         ordering = ['-time']
-        indexes = [models.Index(fields=['-time']), models.Index(fields=['serial_no']),
-                   models.Index(fields=['major', 'minor']), ]
+        indexes = [
+            models.Index(fields=['-time']),
+            models.Index(fields=['serial_no']),
+            models.Index(fields=['major', 'minor']),
+            models.Index(fields=['employee'], name='event_acces_employe_idx'),
+        ]
 
     def __str__(self):
         return f"{self.name} - {self.time}"

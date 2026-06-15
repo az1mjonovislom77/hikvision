@@ -31,6 +31,9 @@ class Employee(TimeStampedModel):
 
     class Meta:
         unique_together = ("device", "employee_no")
+        indexes = [
+            models.Index(fields=["device"], name="person_emp_device_idx"),
+        ]
 
     def __str__(self):
         return f"{self.employee_no} - {self.name}"
