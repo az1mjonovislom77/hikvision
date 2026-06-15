@@ -5,9 +5,9 @@ from django.core.management.base import BaseCommand
 from event.models import AccessEvent
 from event.utils.wrappers import fetch
 from event.services.event_state import get_last_event_time, set_last_event_time
-from utils.models import Devices
+from utils.models import Devices, TelegramChannel
 from utils.telegram.telegram_updates import sync_channels_from_updates
-from utils.tasks import send_event_to_telegram
+from utils.telegram.telegram import download_image, send_telegram
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,23 @@ class Command(BaseCommand):
                     )
 
                     picture_url = raw.get("pictureURL") or raw.get("faceURL")
-                    send_event_to_telegram.delay(event.id, msg, picture_url, device.id)
+
+                    image_bytes = None
+                    if picture_url and device.username and device.password:
+                        image_bytes = download_image(picture_url, device)
+
+                    channels = TelegramChannel.objects.filter(device=device, resolved_id__isnull=False)
+
+                    for channel in channels:
+                        try:
+                            send_telegram(chat_id=channel.resolved_id, text=msg, image_bytes=image_bytes)
+                            time.sleep(0.3)
+                        except Exception:
+                            logger.exception("Telegram send failed: %s", channel.resolved_id)
+                            raise
+
+                    event.sent_to_telegram = True
+                    event.save(update_fields=["sent_to_telegram"])
 
                     last_time = event.time
                     set_last_event_time(last_time)
