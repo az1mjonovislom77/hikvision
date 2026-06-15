@@ -7,3 +7,4 @@ class AttendanceDailyAdmin(admin.ModelAdmin):
     list_display = ("employee__name", "date", "status", "comment")
     list_filter = ("status", "date", "employee")
     search_fields = ("employee__name",)
+    list_select_related = ("employee",)

@@ -14,7 +14,7 @@ class AttendanceService:
     def create_missing_absent_records(*, branch, target_date):
         today = date.today()
         current_dt = now()
-        employees = get_branch_employees(branch=branch)
+        employees = get_branch_employees(branch=branch).select_related("shift", "shift__break_time", "work_day", "day_off")
 
         for emp in employees:
             if not emp.shift or not emp.shift.start_time or not emp.shift.end_time:

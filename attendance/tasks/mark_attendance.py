@@ -1,22 +1,33 @@
+import logging
 from datetime import date
-from django.db.models import Min
+from celery import shared_task
 from person.models import Employee
 from event.models import AccessEvent
 from attendance.models import AttendanceDaily
 
+logger = logging.getLogger(__name__)
 
-def mark_daily_attendance(target_date=None):
-    target_date = target_date or date.today()
 
-    for emp in Employee.objects.all():
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=5, retry_kwargs={"max_retries": 3})
+def mark_daily_attendance(self, target_date_str=None):
+    target_date = date.fromisoformat(target_date_str) if target_date_str else date.today()
 
-        first_event = (
-            AccessEvent.objects.filter(employee=emp, time__date=target_date)
-            .aggregate(first_in=Min("time")))["first_in"]
+    logger.info("mark_daily_attendance started: date=%s", target_date)
 
-        if first_event:
-            status = "present"
-        else:
-            status = "absent_unexcused"
+    employees_with_events = set(
+        AccessEvent.objects
+        .filter(time__date=target_date)
+        .values_list("employee_id", flat=True)
+        .distinct()
+    )
 
-        AttendanceDaily.objects.update_or_create(employee=emp, date=target_date, defaults={"status": status})
+    count = 0
+    for emp in Employee.objects.only("id"):
+        status = "present" if emp.id in employees_with_events else "absent_unexcused"
+        AttendanceDaily.objects.update_or_create(
+            employee=emp, date=target_date, defaults={"status": status}
+        )
+        count += 1
+
+    logger.info("mark_daily_attendance done: date=%s processed=%d", target_date, count)
+    return {"date": str(target_date), "processed": count}

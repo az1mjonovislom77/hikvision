@@ -25,7 +25,10 @@ class AbsentEmployeesView(APIView):
         if not branch_id:
             return Response({"error": "branch_id majburiy"}, status=400)
 
-        target_date = date.fromisoformat(q_date) if q_date else date.today()
+        try:
+            target_date = date.fromisoformat(q_date) if q_date else date.today()
+        except ValueError:
+            return Response({"error": "Noto'g'ri sana formati. YYYY-MM-DD ko'rinishida yuboring"}, status=400)
 
         if target_date > date.today():
             return Response({
@@ -65,9 +68,14 @@ class AbsentEmployeesView(APIView):
         if not (employee_id and q_date and status_value):
             return Response({"detail": "employee_id, date va status majburiy"}, status=status.HTTP_400_BAD_REQUEST)
 
+        try:
+            parsed_date = date.fromisoformat(q_date)
+        except ValueError:
+            return Response({"error": "Noto'g'ri sana formati. YYYY-MM-DD ko'rinishida yuboring"}, status=400)
+
         payload = AttendanceService.update_daily_status(
             employee_id=employee_id,
-            target_date=date.fromisoformat(q_date),
+            target_date=parsed_date,
             status_value=status_value,
             comment=comment,
         )
@@ -91,8 +99,11 @@ class MonthlyAttendanceReportView(APIView):
         if not branch_id:
             return Response({"error": "branch_id majburiy"}, status=400)
 
-        year = int(request.GET.get("year"))
-        month = int(request.GET.get("month"))
+        try:
+            year = int(request.GET.get("year"))
+            month = int(request.GET.get("month"))
+        except (TypeError, ValueError):
+            return Response({"error": "year va month to'g'ri son bo'lishi kerak"}, status=400)
         employee_id = request.GET.get("employee_id")
 
         branch = get_user_branch(branch_id=branch_id, user=request.user)

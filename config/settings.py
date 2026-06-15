@@ -85,8 +85,8 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20
-
+    'PAGE_SIZE': 20,
+    'EXCEPTION_HANDLER': 'utils.exceptions.custom_exception_handler',
 }
 
 SPECTACULAR_SETTINGS = {
@@ -147,10 +147,10 @@ if ENVIRON == 'production':
             'PASSWORD': config('DB_PASSWORD'),
             'HOST': config('DB_HOST'),
             'PORT': '5432',
-            'CONN_MAX_AGE': config('DB_CONN_MAX_AGE', default=60, cast=int),
+            'CONN_MAX_AGE': config('DB_CONN_MAX_AGE', default=300, cast=int),
             'CONN_HEALTH_CHECKS': True,
             'OPTIONS': {
-                'sslmode': 'disable',
+                'sslmode': config('DB_SSLMODE', default='disable'),
             },
         }
     }
@@ -202,12 +202,15 @@ JAZZMIN_SETTINGS = {
     "show_ui_builder": True,
 }
 
+REDIS_URL = config('REDIS_URL', default='redis://127.0.0.1:6379')
+
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",
+        "LOCATION": f"{REDIS_URL}/1",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "KEY_PREFIX": "hikvision",
         }
     }
 }
@@ -237,14 +240,19 @@ LOGGING = {
         "level": "INFO",
     },
     "loggers": {
-        "event": {
-            "handlers": ["console"],
-            "level": "INFO",
-            "propagate": False,
-        },
+        "event": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "attendance": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "person": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "utils": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "user": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "day": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "celery": {"handlers": ["console"], "level": "INFO", "propagate": False},
     },
 }
 
-CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
+CELERY_BROKER_URL = f"{REDIS_URL}/0"
+CELERY_RESULT_BACKEND = f"{REDIS_URL}/2"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TASK_TRACK_STARTED = False

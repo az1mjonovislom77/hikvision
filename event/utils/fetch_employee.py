@@ -3,8 +3,7 @@ import requests
 import logging
 from requests.auth import HTTPDigestAuth
 
-logger = logging.getLogger("hikvision_fetch")
-logger.setLevel(logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 def fetch_all_employees(device):
@@ -24,7 +23,7 @@ def fetch_all_employees(device):
     all_users = []
     max_loops = 1000
 
-    logger.warning(f"🚀 START FETCH | device={device.ip}")
+    logger.info("fetch_all_employees started: device=%s", device.ip)
 
     for i in range(max_loops):
         payload = {
@@ -35,59 +34,53 @@ def fetch_all_employees(device):
             }
         }
 
-        logger.debug(f"➡️ REQUEST | offset={offset} | limit={limit}")
-
         try:
             r = session.post(url, json=payload, timeout=20)
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
-            logger.error(f"❌ REQUEST FAILED | offset={offset}")
+            logger.error("fetch_all_employees: request failed device=%s offset=%d", device.ip, offset)
             break
 
-        logger.debug(f"⬅️ STATUS = {r.status_code}")
-
         if r.status_code == 401:
-            logger.warning(f"🔐 401 detected | offset={offset} → RESET SESSION")
-
+            logger.warning("fetch_all_employees: 401 at offset=%d, resetting session device=%s", offset, device.ip)
             time.sleep(1)
             session = create_session()
-
             try:
                 r = session.post(url, json=payload, timeout=20)
-                logger.warning("🔄 NEW SESSION CREATED")
             except Exception:
-                logger.exception("❌ RETRY FAILED AFTER 401")
+                logger.exception("fetch_all_employees: retry failed after 401 device=%s", device.ip)
                 break
 
         if r.status_code != 200:
-            logger.error(f"❌ BAD STATUS CODE: {r.status_code} | offset={offset}")
+            logger.error(
+                "fetch_all_employees: unexpected status=%d device=%s offset=%d", r.status_code, device.ip, offset
+            )
             break
 
         try:
             data = r.json()
         except Exception:
-            logger.exception("❌ JSON PARSE ERROR")
+            logger.exception("fetch_all_employees: json parse error device=%s offset=%d", device.ip, offset)
             break
 
         block = data.get("UserInfoSearch", {})
         users = block.get("UserInfo", []) or []
-        logger.warning(f"📦 BATCH | offset={offset} | got={len(users)} | total={len(all_users)}")
+
+        logger.debug("fetch_all_employees: batch device=%s offset=%d got=%d total=%d",
+                     device.ip, offset, len(users), len(all_users))
 
         if block.get("searchID") and block["searchID"] != "0":
             search_id = block["searchID"]
 
         if not users:
-            logger.warning("🛑 STOP: empty users")
             break
 
         all_users.extend(users)
         offset += len(users)
 
         if len(users) < 30:
-            logger.warning("🛑 STOP: last batch")
             break
 
         time.sleep(0.5)
 
-    logger.warning(f"✅ DONE | TOTAL FETCHED = {len(all_users)}")
-
+    logger.info("fetch_all_employees done: device=%s total=%d", device.ip, len(all_users))
     return all_users

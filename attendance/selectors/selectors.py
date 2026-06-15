@@ -25,7 +25,7 @@ def has_employee_entry_event(*, employee, target_date):
 
 
 def get_absent_attendance_records(*, target_date):
-    return AttendanceDaily.objects.filter(date=target_date, status__in=["sbk", "szk"])
+    return AttendanceDaily.objects.filter(date=target_date, status__in=["sbk", "szk"]).select_related("employee")
 
 
 def get_employee_attendance(*, employee, target_date):

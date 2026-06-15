@@ -10,9 +10,31 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterField(
-            model_name='shift',
-            name='approved_late_min',
-            field=models.PositiveIntegerField(default=15),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL(
+                    sql="""
+                        ALTER TABLE "day_shift"
+                        ALTER COLUMN "approved_late_min" TYPE integer
+                        USING CASE
+                            WHEN "approved_late_min" IS NULL THEN 15
+                            ELSE (
+                                EXTRACT(HOUR FROM "approved_late_min")::integer * 60 +
+                                EXTRACT(MINUTE FROM "approved_late_min")::integer
+                            )
+                        END;
+                        ALTER TABLE "day_shift" ALTER COLUMN "approved_late_min" SET NOT NULL;
+                        ALTER TABLE "day_shift" ALTER COLUMN "approved_late_min" SET DEFAULT 15;
+                    """,
+                    reverse_sql=migrations.RunSQL.noop,
+                ),
+            ],
+            state_operations=[
+                migrations.AlterField(
+                    model_name='shift',
+                    name='approved_late_min',
+                    field=models.PositiveIntegerField(default=15),
+                ),
+            ],
         ),
     ]
