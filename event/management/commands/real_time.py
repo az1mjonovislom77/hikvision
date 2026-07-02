@@ -19,10 +19,9 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         self.stdout.write("🚀 Realtime event listener started")
 
-        last_time = get_last_event_time()
-        if last_time is None:
-            last_event = AccessEvent.objects.order_by("-time").first()
-            last_time = last_event.time if last_event else timezone.now()
+        # Har bir qurilma o'z soati bilan yuradi — global last_time ishlatilsa
+        # soati orqada qolgan qurilmalarning eventlari butunlay tushib qoladi
+        last_times = {}
 
         while True:
             try:
@@ -30,76 +29,96 @@ class Command(BaseCommand):
 
                 sync_channels_from_updates()
 
-                devices = Devices.objects.all()
-                since_map = {d.id: last_time for d in devices}
+                devices = list(Devices.objects.all())
+
+                for device in devices:
+                    if device.id not in last_times:
+                        last_time = get_last_event_time(device.id)
+                        if last_time is None:
+                            last_event = (
+                                AccessEvent.objects
+                                .filter(device=device)
+                                .order_by("-time")
+                                .first()
+                            )
+                            last_time = last_event.time if last_event else timezone.now()
+                        last_times[device.id] = last_time
+
+                since_map = {d.id: last_times[d.id] for d in devices}
                 fetch(devices=devices, since_map=since_map)
 
-                events = (
-                    AccessEvent.objects
-                    .filter(time__gt=last_time, sent_to_telegram=False)
-                    .select_related("employee", "device", "device__user")
-                    .order_by("time")
-                )
-
-                for event in events:
-                    employee = event.employee
-                    device = event.device
-
-                    if not employee or not device or not device.user:
-                        event.sent_to_telegram = True
-                        event.save(update_fields=["sent_to_telegram"])
-                        continue
-
-                    raw = event.raw_json or {}
-
-                    label = (
-                            raw.get("labelName")
-                            or raw.get("label")
-                            or raw.get("name")
-                            or ""
-                    ).strip().lower()
-
-                    direction = (
-                        "🚪 KIRISH"
-                        if label in {"kirish", "in", "entry", "enter"}
-                        else "🚷 CHIQISH"
-                        if label in {"chiqish", "out", "exit", "leave"}
-                        else "❓ NOMAʼLUM"
-                    )
-
-                    local_time = timezone.localtime(event.time)
-
-                    msg = (
-                        f"<b>{direction}</b>\n\n"
-                        f"👤 <b>Ism:</b> {employee.name}\n"
-                        f"🆔 <b>Employee №:</b> {employee.employee_no}\n"
-                        f"🕒 <b>Vaqt:</b> {local_time:%Y-%m-%d %H:%M:%S}\n"
-                        f"📍 <b>Qurilma:</b> {device.name}"
-                    )
-
-                    picture_url = raw.get("pictureURL") or raw.get("faceURL")
-
-                    image_bytes = None
-                    if picture_url and device.username and device.password:
-                        image_bytes = download_image(picture_url, device)
-
-                    channels = TelegramChannel.objects.filter(device=device, resolved_id__isnull=False)
-
-                    for channel in channels:
-                        try:
-                            send_telegram(chat_id=channel.resolved_id, text=msg, image_bytes=image_bytes)
-                            time.sleep(0.3)
-                        except Exception:
-                            logger.exception("Telegram send failed: %s", channel.resolved_id)
-                            raise
-
-                    event.sent_to_telegram = True
-                    event.save(update_fields=["sent_to_telegram"])
-
-                    last_time = event.time
-                    set_last_event_time(last_time)
+                for device in devices:
+                    try:
+                        self._process_device_events(device, last_times)
+                    except Exception:
+                        logger.exception("Device events failed: device_id=%s", device.id)
 
             except Exception:
                 logger.exception("MAIN LOOP ERROR")
 
             time.sleep(5)
+
+    def _process_device_events(self, device, last_times):
+        events = (
+            AccessEvent.objects
+            .filter(device=device, time__gt=last_times[device.id], sent_to_telegram=False)
+            .select_related("employee", "device", "device__user")
+            .order_by("time")
+        )
+
+        for event in events:
+            employee = event.employee
+
+            if not employee or not device.user:
+                event.sent_to_telegram = True
+                event.save(update_fields=["sent_to_telegram"])
+                continue
+
+            raw = event.raw_json or {}
+
+            label = (
+                    raw.get("labelName")
+                    or raw.get("label")
+                    or raw.get("name")
+                    or ""
+            ).strip().lower()
+
+            direction = (
+                "🚪 KIRISH"
+                if label in {"kirish", "in", "entry", "enter"}
+                else "🚷 CHIQISH"
+                if label in {"chiqish", "out", "exit", "leave"}
+                else "❓ NOMAʼLUM"
+            )
+
+            local_time = timezone.localtime(event.time)
+
+            msg = (
+                f"<b>{direction}</b>\n\n"
+                f"👤 <b>Ism:</b> {employee.name}\n"
+                f"🆔 <b>Employee №:</b> {employee.employee_no}\n"
+                f"🕒 <b>Vaqt:</b> {local_time:%Y-%m-%d %H:%M:%S}\n"
+                f"📍 <b>Qurilma:</b> {device.name}"
+            )
+
+            picture_url = raw.get("pictureURL") or raw.get("faceURL")
+
+            image_bytes = None
+            if picture_url and device.username and device.password:
+                image_bytes = download_image(picture_url, device)
+
+            channels = TelegramChannel.objects.filter(device=device, resolved_id__isnull=False)
+
+            for channel in channels:
+                try:
+                    send_telegram(chat_id=channel.resolved_id, text=msg, image_bytes=image_bytes)
+                    time.sleep(0.3)
+                except Exception:
+                    logger.exception("Telegram send failed: %s", channel.resolved_id)
+                    raise
+
+            event.sent_to_telegram = True
+            event.save(update_fields=["sent_to_telegram"])
+
+            last_times[device.id] = event.time
+            set_last_event_time(device.id, event.time)
