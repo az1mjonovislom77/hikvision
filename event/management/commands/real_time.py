@@ -1,5 +1,6 @@
 import time
 import logging
+from django.db import close_old_connections
 from django.utils import timezone
 from django.core.management.base import BaseCommand
 from event.models import AccessEvent
@@ -23,11 +24,13 @@ class Command(BaseCommand):
             last_event = AccessEvent.objects.order_by("-time").first()
             last_time = last_event.time if last_event else timezone.now()
 
-        devices = Devices.objects.all()
         while True:
             try:
+                close_old_connections()
+
                 sync_channels_from_updates()
 
+                devices = Devices.objects.all()
                 since_map = {d.id: last_time for d in devices}
                 fetch(devices=devices, since_map=since_map)
 
