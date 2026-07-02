@@ -107,15 +107,28 @@ class Command(BaseCommand):
             if picture_url and device.username and device.password:
                 image_bytes = download_image(picture_url, device)
 
-            channels = TelegramChannel.objects.filter(device=device, resolved_id__isnull=False)
+            channels = list(TelegramChannel.objects.filter(device=device, resolved_id__isnull=False))
 
+            if not channels:
+                logger.warning(
+                    "No resolved telegram channel for device_id=%s (%s) — event %s not sent",
+                    device.id, device.name, event.id,
+                )
+
+            sent_any = False
             for channel in channels:
                 try:
                     send_telegram(chat_id=channel.resolved_id, text=msg, image_bytes=image_bytes)
+                    sent_any = True
                     time.sleep(0.3)
                 except Exception:
                     logger.exception("Telegram send failed: %s", channel.resolved_id)
-                    raise
+
+            if channels and not sent_any:
+                # hech bir kanalga ketmadi — eventni unsent qoldirib, keyingi
+                # tsiklda shu joydan qayta urinamiz
+                logger.error("Event %s: all channel sends failed, will retry", event.id)
+                break
 
             event.sent_to_telegram = True
             event.save(update_fields=["sent_to_telegram"])

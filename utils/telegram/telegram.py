@@ -40,26 +40,27 @@ def download_image(url, device):
 
 
 def send_telegram(chat_id, text, image_bytes=None):
-    try:
-        if image_bytes:
-            file_obj = BytesIO(image_bytes)
-            file_obj.name = "event.jpg"
+    if image_bytes:
+        file_obj = BytesIO(image_bytes)
+        file_obj.name = "event.jpg"
 
-            r = session.post(f"{BASE_URL}/sendPhoto",
-                             data={
-                                 "chat_id": chat_id,
-                                 "caption": text,
-                                 "parse_mode": "HTML"
-                             }, files={"photo": file_obj}, timeout=20)
-        else:
-            r = session.post(f"{BASE_URL}/sendMessage",
-                             json={
-                                 "chat_id": chat_id,
-                                 "text": text,
-                                 "parse_mode": "HTML"
-                             }, timeout=20)
+        r = session.post(f"{BASE_URL}/sendPhoto",
+                         data={
+                             "chat_id": chat_id,
+                             "caption": text,
+                             "parse_mode": "HTML"
+                         }, files={"photo": file_obj}, timeout=20)
+    else:
+        r = session.post(f"{BASE_URL}/sendMessage",
+                         json={
+                             "chat_id": chat_id,
+                             "text": text,
+                             "parse_mode": "HTML"
+                         }, timeout=20)
 
-        logger.info(f"Telegram response: {r.text}")
+    logger.info(f"Telegram response: {r.text}")
 
-    except requests.exceptions.RequestException:
-        logger.exception("TELEGRAM SEND ERROR")
+    # ok:false (bot kanaldan chiqarilgan, chat not found, ...) jim ketmasligi kerak —
+    # aks holda event "yuborildi" deb belgilanib, habar yo'qolib qolyapti
+    if not r.ok or not r.json().get("ok"):
+        raise RuntimeError(f"Telegram send failed: chat_id={chat_id} response={r.text[:300]}")
