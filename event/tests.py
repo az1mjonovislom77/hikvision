@@ -70,7 +70,8 @@ class FetchFaceEventsTests(TestCase):
         self.assertEqual(len(payloads), 1)
         self.assertEqual(payloads[0]["AcsEventCond"]["major"], 5)
         self.assertEqual(payloads[0]["AcsEventCond"]["minor"], 75)
-        self.assertEqual(payloads[0]["AcsEventCond"]["startTime"], "2026-04-27 08:00:00")
+        self.assertEqual(payloads[0]["AcsEventCond"]["startTime"], "2026-04-27T08:00:00+05:00")
+        self.assertIn("endTime", payloads[0]["AcsEventCond"])
 
         event = AccessEvent.objects.get()
         self.assertEqual(event.major, 5)

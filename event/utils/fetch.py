@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 import time
+from datetime import date, datetime, timedelta
 from uuid import uuid4
 import requests
 from django.core.cache import cache
@@ -9,7 +10,7 @@ from django.utils import timezone as django_timezone
 from person.utils import UZ_TZ
 from event.models import AccessEvent
 from requests.auth import HTTPDigestAuth
-from django.utils.dateparse import parse_datetime
+from django.utils.dateparse import parse_date, parse_datetime
 from person.models import Employee
 from person.utils import normalize_employee_no
 from event.utils.events_name import major_name, minor_name
@@ -29,12 +30,38 @@ def _resolve_employee(device, employee_no):
     return Employee.objects.filter(device=device).filter(employee_no__iexact=employee_no).first()
 
 
-def _hikvision_start_time_str(since):
-    if since is None:
+def _coerce_datetime(value):
+    """since har qanday ko'rinishda kelishi mumkin: aware/naive datetime, date yoki string."""
+    if value is None:
         return None
-    if django_timezone.is_naive(since):
-        since = django_timezone.make_aware(since, UZ_TZ)
-    return since.astimezone(UZ_TZ).strftime("%Y-%m-%d %H:%M:%S")
+    if isinstance(value, str):
+        value = value.strip()
+        parsed = parse_datetime(value)
+        if parsed is None:
+            parsed_date = parse_date(value)
+            if parsed_date is None:
+                return None
+            parsed = datetime.combine(parsed_date, datetime.min.time())
+        value = parsed
+    elif isinstance(value, date) and not isinstance(value, datetime):
+        value = datetime.combine(value, datetime.min.time())
+    elif not isinstance(value, datetime):
+        return None
+    if django_timezone.is_naive(value):
+        value = django_timezone.make_aware(value, UZ_TZ)
+    return value.astimezone(UZ_TZ)
+
+
+def _hikvision_time_str(value, legacy=False):
+    # Yangi firmware ISO8601 talab qiladi (2024-06-24T22:09:03+05:00),
+    # eskilari esa faqat space formatni tushunadi — legacy flag shunga
+    dt = _coerce_datetime(value)
+    if dt is None:
+        return None
+    dt = dt.replace(microsecond=0)
+    if legacy:
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
+    return dt.isoformat()
 
 
 def _event_serial_no(device, ev):
@@ -58,7 +85,14 @@ def fetch_face_events(devices, since_map=None):
         unresolved_employee = 0
         since = None
         if since_map:
-            since = since_map.get(device.id)
+            raw_since = since_map.get(device.id)
+            since = _coerce_datetime(raw_since)
+            if raw_since is not None and since is None:
+                logger.warning(
+                    "event fetch since unparseable, syncing without startTime: device_id=%s raw_since=%r",
+                    device.id,
+                    raw_since,
+                )
 
         lock_key = f"hikvision:event-sync:{device.id}"
         if not cache.add(lock_key, "1", timeout=120):
@@ -73,6 +107,9 @@ def fetch_face_events(devices, since_map=None):
         try:
             url = f"http://{device.ip}/ISAPI/AccessControl/AcsEvent?format=json"
             search_id = uuid4().hex
+            # oldingi syncda legacy format kerak bo'lgan qurilma uchun 400 ni kutmasdan darhol legacy yuboramiz
+            time_format_cache_key = f"hikvision:time-format-legacy:{device.id}"
+            use_legacy_time = bool(cache.get(time_format_cache_key))
             offset = 0
             limit = 100
             max_pages = 200
@@ -96,7 +133,12 @@ def fetch_face_events(devices, since_map=None):
                     }
                 }
                 if since:
-                    payload["AcsEventCond"]["startTime"] = _hikvision_start_time_str(since)
+                    payload["AcsEventCond"]["startTime"] = _hikvision_time_str(since, legacy=use_legacy_time)
+                    # startTime bilan birga endTime ham majburiy; qurilma soati ilgarilab
+                    # ketgan bo'lsa ham yangi eventlar tushib qolmasligi uchun +1 kun buffer
+                    payload["AcsEventCond"]["endTime"] = _hikvision_time_str(
+                        django_timezone.now() + timedelta(days=1), legacy=use_legacy_time
+                    )
 
                 try:
                     logger.info(
@@ -114,6 +156,22 @@ def fetch_face_events(devices, since_map=None):
                         timeout=15
                     )
                     if r.status_code != 200:
+                        # ISO formatni tushunmaydigan eski firmware — legacy formatga o'tib qayta urinamiz
+                        if (
+                            since
+                            and not use_legacy_time
+                            and r.status_code == 400
+                            and "badJsonContent" in r.text
+                        ):
+                            use_legacy_time = True
+                            cache.set(time_format_cache_key, "1", timeout=7 * 24 * 3600)
+                            logger.warning(
+                                "AcsEvent rejected ISO time format, retrying with legacy format: device_id=%s ip=%s body=%s",
+                                device.id,
+                                device.ip,
+                                r.text[:300],
+                            )
+                            continue
                         logger.warning(
                             "AcsEvent error: device_id=%s ip=%s status=%s body=%s",
                             device.id,
