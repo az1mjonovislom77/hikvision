@@ -1,5 +1,6 @@
 import logging
 import requests
+from django.db.models import Max
 from event.models import AccessEvent
 from requests.auth import HTTPDigestAuth
 from event.utils.wrappers import fetch
@@ -72,21 +73,23 @@ class EventSyncService:
         device_since_map = {}
         device_descriptions = []
 
+        latest_by_device = {}
+        if not full:
+            latest_by_device = {
+                row["device"]: row["latest_time"]
+                for row in (
+                    AccessEvent.objects
+                    .filter(device__in=devices, major=5, minor=75)
+                    .values("device")
+                    .annotate(latest_time=Max("time"))
+                )
+            }
+
         for device in devices:
             if full:
                 device_since_map[device.id] = None
             else:
-                latest = (
-                    AccessEvent.objects
-                    .filter(device=device, major=5, minor=75)
-                    .order_by("-time")
-                    .first()
-                )
-
-                if latest:
-                    device_since_map[device.id] = latest.time
-                else:
-                    device_since_map[device.id] = None
+                device_since_map[device.id] = latest_by_device.get(device.id)
             device_descriptions.append(
                 {
                     "id": device.id,
@@ -98,15 +101,12 @@ class EventSyncService:
 
         logger.info(
             "event sync service started: full=%s devices=%s",
-            full,
-            device_descriptions,
+            full, device_descriptions,
         )
         total = fetch(devices=devices, since_map=device_since_map)
         logger.info(
             "event sync service finished: full=%s total_saved=%s device_count=%s",
-            full,
-            total,
-            len(device_descriptions),
+            full, total, len(device_descriptions),
         )
         return total
 

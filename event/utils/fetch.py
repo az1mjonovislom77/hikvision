@@ -18,20 +18,7 @@ from event.utils.events_name import major_name, minor_name
 logger = logging.getLogger(__name__)
 
 
-def _resolve_employee(device, employee_no):
-    employee_no = normalize_employee_no(employee_no)
-    if not employee_no:
-        return None
-
-    employee = Employee.objects.filter(device=device, employee_no=employee_no).first()
-    if employee:
-        return employee
-
-    return Employee.objects.filter(device=device).filter(employee_no__iexact=employee_no).first()
-
-
 def _coerce_datetime(value):
-    """since har qanday ko'rinishda kelishi mumkin: aware/naive datetime, date yoki string."""
     if value is None:
         return None
     if isinstance(value, str):
@@ -53,8 +40,6 @@ def _coerce_datetime(value):
 
 
 def _hikvision_time_str(value, legacy=False):
-    # Yangi firmware ISO8601 talab qiladi (2024-06-24T22:09:03+05:00),
-    # eskilari esa faqat space formatni tushunadi — legacy flag shunga
     dt = _coerce_datetime(value)
     if dt is None:
         return None
@@ -90,24 +75,32 @@ def fetch_face_events(devices, since_map=None):
             if raw_since is not None and since is None:
                 logger.warning(
                     "event fetch since unparseable, syncing without startTime: device_id=%s raw_since=%r",
-                    device.id,
-                    raw_since,
+                    device.id, raw_since,
                 )
 
         lock_key = f"hikvision:event-sync:{device.id}"
         if not cache.add(lock_key, "1", timeout=120):
             logger.warning(
                 "event fetch skipped by lock: device_id=%s ip=%s lock_key=%s",
-                device.id,
-                device.ip,
-                lock_key,
+                device.id, device.ip, lock_key,
             )
             continue
 
         try:
             url = f"http://{device.ip}/ISAPI/AccessControl/AcsEvent?format=json"
             search_id = uuid4().hex
-            # oldingi syncda legacy format kerak bo'lgan qurilma uchun 400 ni kutmasdan darhol legacy yuboramiz
+
+            # Qurilma xodimlarini bir marta yuklab olamiz — aks holda har bir
+            # event uchun alohida DB so'rovi ketardi (N+1).
+            employee_exact_map = {}
+            employee_iexact_map = {}
+            for emp in Employee.objects.filter(device=device).only("id", "employee_no"):
+                emp_key = normalize_employee_no(emp.employee_no)
+                if not emp_key:
+                    continue
+                employee_exact_map.setdefault(emp_key, emp)
+                employee_iexact_map.setdefault(emp_key.lower(), emp)
+
             time_format_cache_key = f"hikvision:time-format-legacy:{device.id}"
             use_legacy_time = bool(cache.get(time_format_cache_key))
             offset = 0
@@ -115,13 +108,7 @@ def fetch_face_events(devices, since_map=None):
             max_pages = 200
             logger.info(
                 "event fetch started: device_id=%s ip=%s since=%s search_id=%s max_pages=%s limit=%s forced_minor=75",
-                device.id,
-                device.ip,
-                since.isoformat() if since else None,
-                search_id,
-                max_pages,
-                limit,
-            )
+                device.id, device.ip, since.isoformat() if since else None, search_id, max_pages, limit)
             for page_idx in range(max_pages):
                 payload = {
                     "AcsEventCond": {
@@ -134,50 +121,33 @@ def fetch_face_events(devices, since_map=None):
                 }
                 if since:
                     payload["AcsEventCond"]["startTime"] = _hikvision_time_str(since, legacy=use_legacy_time)
-                    # startTime bilan birga endTime ham majburiy; qurilma soati ilgarilab
-                    # ketgan bo'lsa ham yangi eventlar tushib qolmasligi uchun +1 kun buffer
                     payload["AcsEventCond"]["endTime"] = _hikvision_time_str(
                         django_timezone.now() + timedelta(days=1), legacy=use_legacy_time
                     )
 
                 try:
-                    logger.info(
-                        "event fetch request: device_id=%s page=%s offset=%s payload=%s",
-                        device.id,
-                        page_idx + 1,
-                        offset,
-                        payload["AcsEventCond"],
-                    )
-                    r = requests.post(
-                        url,
-                        json=payload,
-                        auth=HTTPDigestAuth(device.username, device.password),
-                        headers={"Content-Type": "application/json"},
-                        timeout=15
-                    )
+                    logger.info("event fetch request: device_id=%s page=%s offset=%s payload=%s",
+                                device.id, page_idx + 1, offset, payload["AcsEventCond"])
+                    r = requests.post(url, json=payload,
+                                      auth=HTTPDigestAuth(device.username, device.password),
+                                      headers={"Content-Type": "application/json"}, timeout=15)
                     if r.status_code != 200:
-                        # ISO formatni tushunmaydigan eski firmware — legacy formatga o'tib qayta urinamiz
                         if (
-                            since
-                            and not use_legacy_time
-                            and r.status_code == 400
-                            and "badJsonContent" in r.text
+                                since
+                                and not use_legacy_time
+                                and r.status_code == 400
+                                and "badJsonContent" in r.text
                         ):
                             use_legacy_time = True
                             cache.set(time_format_cache_key, "1", timeout=7 * 24 * 3600)
                             logger.warning(
                                 "AcsEvent rejected ISO time format, retrying with legacy format: device_id=%s ip=%s body=%s",
-                                device.id,
-                                device.ip,
-                                r.text[:300],
+                                device.id, device.ip, r.text[:300],
                             )
                             continue
                         logger.warning(
                             "AcsEvent error: device_id=%s ip=%s status=%s body=%s",
-                            device.id,
-                            device.ip,
-                            r.status_code,
-                            r.text[:300],
+                            device.id, device.ip, r.status_code, r.text[:300],
                         )
                         break
 
@@ -232,7 +202,13 @@ def fetch_face_events(devices, since_map=None):
 
                     serial_no = _event_serial_no(device, ev)
                     employee_no = normalize_employee_no(ev.get("employeeNoString") or ev.get("employeeNo"))
-                    employee = _resolve_employee(device, employee_no)
+                    if employee_no:
+                        employee = (
+                            employee_exact_map.get(employee_no)
+                            or employee_iexact_map.get(employee_no.lower())
+                        )
+                    else:
+                        employee = None
                     event_major = int(ev.get("major") or 5)
                     event_minor = int(ev.get("minor") or 75)
                     if employee is None and employee_no:
@@ -265,13 +241,8 @@ def fetch_face_events(devices, since_map=None):
                         device_saved += 1
                         logger.info(
                             "event saved: device_id=%s serial=%s major=%s minor=%s employee_no=%s employee_id=%s time=%s",
-                            device.id,
-                            serial_no,
-                            event_major,
-                            event_minor,
-                            employee_no,
-                            getattr(employee, "id", None),
-                            t.isoformat(),
+                            device.id, serial_no, event_major, event_minor, employee_no,
+                            getattr(employee, "id", None), t.isoformat(),
                         )
                     else:
                         skipped_existing += 1
@@ -292,11 +263,7 @@ def fetch_face_events(devices, since_map=None):
                 if len(events) < limit:
                     logger.info(
                         "event fetch stopped: device_id=%s reason=last_page page=%s events_count=%s limit=%s forced_minor=75",
-                        device.id,
-                        page_idx + 1,
-                        len(events),
-                        limit,
-                    )
+                        device.id, page_idx + 1, len(events), limit)
                     break
 
                 time.sleep(0.2)
@@ -304,13 +271,7 @@ def fetch_face_events(devices, since_map=None):
             cache.delete(lock_key)
             logger.info(
                 "event fetch finished: device_id=%s ip=%s seen=%s saved=%s skipped_existing=%s skipped_older=%s skipped_invalid_time=%s unresolved_employee=%s",
-                device.id,
-                device.ip,
-                device_seen,
-                device_saved,
-                skipped_existing,
-                skipped_older,
-                skipped_invalid_time,
+                device.id, device.ip, device_seen, device_saved, skipped_existing, skipped_older, skipped_invalid_time,
                 unresolved_employee,
             )
 

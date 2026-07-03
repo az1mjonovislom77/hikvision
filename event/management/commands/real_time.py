@@ -66,6 +66,8 @@ class Command(BaseCommand):
             .order_by("time")
         )
 
+        channels = list(TelegramChannel.objects.filter(device=device, resolved_id__isnull=False))
+
         for event in events:
             employee = event.employee
 
@@ -106,8 +108,6 @@ class Command(BaseCommand):
             image_bytes = None
             if picture_url and device.username and device.password:
                 image_bytes = download_image(picture_url, device)
-
-            channels = list(TelegramChannel.objects.filter(device=device, resolved_id__isnull=False))
 
             if not channels:
                 logger.warning(

@@ -5,7 +5,7 @@ from django.utils.timezone import localtime, make_aware, now
 from attendance.models import AttendanceDaily
 from event.models import AccessEvent
 from attendance.selectors.selectors import get_absent_attendance_records, get_branch_employee, get_branch_employees, \
-    get_employee, has_employee_entry_event
+    get_employee
 from attendance.utils import count_workdays_in_month, is_employee_workday, minutes_to_hm
 
 
@@ -14,7 +14,20 @@ class AttendanceService:
     def create_missing_absent_records(*, branch, target_date):
         today = date.today()
         current_dt = now()
-        employees = get_branch_employees(branch=branch).select_related("shift", "shift__break_time", "work_day", "day_off")
+        employees = list(
+            get_branch_employees(branch=branch).select_related("shift", "shift__break_time", "work_day", "day_off")
+        )
+
+        # Kirish eventlari borligini har bir xodim uchun alohida so'ramasdan,
+        # bitta so'rovda oldindan yuklab olamiz (N+1 emas).
+        entry_event_employee_ids = set(
+            AccessEvent.objects.filter(
+                employee_id__in=[emp.id for emp in employees],
+                time__date=target_date,
+                major=5,
+                minor=75,
+            ).values_list("employee_id", flat=True)
+        )
 
         for emp in employees:
             if not emp.shift or not emp.shift.start_time or not emp.shift.end_time:
@@ -31,7 +44,7 @@ class AttendanceService:
             if target_date == today and current_dt < shift_end:
                 continue
 
-            has_event = has_employee_entry_event(employee=emp, target_date=target_date)
+            has_event = emp.id in entry_event_employee_ids
 
             if has_event:
                 continue

@@ -33,7 +33,7 @@ def get_user_employees_with_events(*, user):
         Employee.objects
         .filter(device__user=user)
         .select_related("shift", "device")
-        .prefetch_related(Prefetch("device__accessevent_set",
+        .prefetch_related(Prefetch("device__events",
                                    queryset=AccessEvent.objects.order_by("time"),
                                    to_attr="prefetched_events"))
     )

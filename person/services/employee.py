@@ -35,6 +35,8 @@ class EmployeeService:
 
         added = 0
         download_tasks = []
+        to_update = []
+        update_fields = ["name", "door_right", "user_type", "raw_json", "face_url"]
 
         for u in hk_users:
             emp_no = normalize_employee_no(u.get("employeeNo"))
@@ -55,7 +57,7 @@ class EmployeeService:
                 emp_obj = employee_map[emp_no]
                 for k, v in defaults.items():
                     setattr(emp_obj, k, v)
-                emp_obj.save(update_fields=list(defaults.keys()))
+                to_update.append(emp_obj)
             else:
                 emp_obj = Employee.objects.create(device=device, employee_no=emp_no, **defaults)
                 added += 1
@@ -64,6 +66,9 @@ class EmployeeService:
             face_url = u.get("faceURL")
             if face_url:
                 download_tasks.append((emp_obj, face_url))
+
+        if to_update:
+            Employee.objects.bulk_update(to_update, update_fields)
 
         logger.info(
             "sync_from_hikvision processed: device=%s total=%d added=%d faces=%d",
