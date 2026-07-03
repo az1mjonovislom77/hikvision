@@ -9,7 +9,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         target_date = localdate() + timedelta(days=7)
-
         subscriptions = Subscription.objects.filter(end_date__date=target_date, is_active=True)
 
         notifications = [

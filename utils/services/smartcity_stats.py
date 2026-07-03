@@ -98,6 +98,5 @@ class SmartCityStatsService:
                 "averageAttendance": self.average_attendance(),
                 "bestAttendanceMahalla": best,
                 "worstAttendanceMahalla": worst,
-            },
-            "attendance": attendance_data
+            }, "attendance": attendance_data
         }

@@ -36,7 +36,6 @@ class SignInAPIView(APIView):
             }, status=status.HTTP_200_OK)
 
         UserTokenService.set_refresh_cookie(response, tokens["refresh"])
-
         reset_login_rate_limit(ip, phone)
 
         return response

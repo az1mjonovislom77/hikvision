@@ -13,9 +13,7 @@ class DailyAccessService:
     def get_employees(user, branch_id=None):
 
         event_prefetch = Prefetch(
-            "device__events",
-            queryset=AccessEvent.objects.order_by("time"),
-            to_attr="prefetched_events"
+            "device__events", queryset=AccessEvent.objects.order_by("time"), to_attr="prefetched_events"
         )
 
         if user.is_staff or user.role == user.UserRoles.SUPERADMIN:
@@ -47,10 +45,8 @@ class DailyAccessService:
         if emp.shift and first:
             shift_start = emp.shift.start_time
             first_time = localtime(first.time).time()
-
             shift_minutes = shift_start.hour * 60 + shift_start.minute
             first_minutes = first_time.hour * 60 + first_time.minute
-
             raw_late = first_minutes - shift_minutes
             approved = emp.shift.approved_late_min or 0
 
@@ -73,9 +69,7 @@ class DailyAccessService:
 
     @staticmethod
     def build_excel_row(emp, date_obj):
-
         first, last = get_first_last_events(emp, date_obj)
-
         kirish = first.time.astimezone(UZ_TZ).strftime("%H:%M:%S") if first else ""
         chiqish = last.time.astimezone(UZ_TZ).strftime("%H:%M:%S") if last else ""
 

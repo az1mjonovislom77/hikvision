@@ -30,7 +30,6 @@ def send_event_to_telegram(self, event_id, msg, picture_url, device_id):
     for channel in channels:
         try:
             send_telegram(chat_id=channel.resolved_id, text=msg, image_bytes=image_bytes)
-
             time.sleep(0.3)
 
         except Exception:

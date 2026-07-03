@@ -54,18 +54,8 @@ class AttendanceExcelExportService:
         ws = wb.active
         ws.title = "Oylik hisobot"
         ws.append([
-            "ID",
-            "Hodimlar",
-            "Sababli kelmadi",
-            "Sababsiz kelmadi",
-            "Ishlagan soati",
-            "Smena",
-            "Maosh",
-            "Bonus",
-            "Jarima",
-            "Hisoblangan miqdor",
-            "Yangi maosh",
-        ])
+            "ID", "Hodimlar", "Sababli kelmadi", "Sababsiz kelmadi", "Ishlagan soati", "Smena", "Maosh", "Bonus",
+            "Jarima", "Hisoblangan miqdor", "Yangi maosh"])
 
         total_salary = 0
         total_bonus = 0
@@ -99,17 +89,8 @@ class AttendanceExcelExportService:
         AttendanceExcelExportService.auto_adjust_column_width(ws)
         details_ws = wb.create_sheet("Daily Details")
         details_ws.append([
-            "Hodimlar",
-            "Sana",
-            "Status",
-            "Birinchi kirish",
-            "Oxirgi chiqish",
-            "Ishladi",
-            "Farq",
-            "Jarima",
-            "Bonus",
-            "Kunlik Jami"
-        ])
+            "Hodimlar", "Sana", "Status", "Birinchi kirish", "Oxirgi chiqish", "Ishladi", "Farq", "Jarima", "Bonus",
+            "Kunlik Jami"])
 
         for emp in report["results"]:
             for detail in emp["details"]:
@@ -121,9 +102,7 @@ class AttendanceExcelExportService:
                     detail.get("last_out"),
                     detail.get("worked"),
                     detail.get("difference"),
-                    AttendanceExcelExportService.format_money(
-                        detail.get("penalty")
-                    ),
+                    AttendanceExcelExportService.format_money(detail.get("penalty")),
                     AttendanceExcelExportService.format_money(detail.get("bonus")),
                     AttendanceExcelExportService.format_money(detail.get("daily_total")),
                 ])

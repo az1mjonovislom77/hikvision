@@ -1,7 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.core.cache import cache
 from django.utils import timezone
-
 from event.models import AccessEvent
 from utils.models import Devices, TelegramChannel
 from utils.telegram.telegram import session, BASE_URL, send_telegram

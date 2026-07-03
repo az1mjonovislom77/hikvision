@@ -18,16 +18,10 @@ class AttendanceService:
             get_branch_employees(branch=branch).select_related("shift", "shift__break_time", "work_day", "day_off")
         )
 
-        # Kirish eventlari borligini har bir xodim uchun alohida so'ramasdan,
-        # bitta so'rovda oldindan yuklab olamiz (N+1 emas).
         entry_event_employee_ids = set(
             AccessEvent.objects.filter(
-                employee_id__in=[emp.id for emp in employees],
-                time__date=target_date,
-                major=5,
-                minor=75,
-            ).values_list("employee_id", flat=True)
-        )
+                employee_id__in=[emp.id for emp in employees], time__date=target_date, major=5, minor=75,
+            ).values_list("employee_id", flat=True))
 
         for emp in employees:
             if not emp.shift or not emp.shift.start_time or not emp.shift.end_time:
@@ -131,9 +125,7 @@ class AttendanceService:
 
         events_map = defaultdict(list)
         for event in AccessEvent.objects.filter(
-                employee_id__in=employee_ids,
-                time__gte=event_start,
-                time__lt=event_end,
+                employee_id__in=employee_ids, time__gte=event_start, time__lt=event_end,
         ).order_by("employee_id", "time"):
             events_map[(event.employee_id, localtime(event.time).date())].append(event)
 

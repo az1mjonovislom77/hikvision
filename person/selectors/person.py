@@ -66,8 +66,6 @@ def get_access_events_for_history(*, employee_no, device, start, end):
 def get_existing_employee_history_event_ids(*, employee, events):
     return set(
         EmployeeHistory.objects.filter(
-            employee=employee,
-            event_id__in=[e.id for e in events],
+            employee=employee, event_id__in=[e.id for e in events],
         ).values_list("event_id", flat=True)
     )
-

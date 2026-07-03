@@ -18,11 +18,8 @@ def force_ipv4():
 
 
 requests.packages.urllib3.util.connection.allowed_gai_family = force_ipv4
-
 session = requests.Session()
-
 retries = Retry(total=5, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
-
 adapter = HTTPAdapter(max_retries=retries)
 session.mount("https://", adapter)
 session.mount("http://", adapter)
@@ -59,8 +56,5 @@ def send_telegram(chat_id, text, image_bytes=None):
                          }, timeout=20)
 
     logger.info(f"Telegram response: {r.text}")
-
-    # ok:false (bot kanaldan chiqarilgan, chat not found, ...) jim ketmasligi kerak —
-    # aks holda event "yuborildi" deb belgilanib, habar yo'qolib qolyapti
     if not r.ok or not r.json().get("ok"):
         raise RuntimeError(f"Telegram send failed: chat_id={chat_id} response={r.text[:300]}")

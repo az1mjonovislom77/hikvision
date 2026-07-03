@@ -1,8 +1,6 @@
 import time
 import logging
-
 from django.utils import timezone
-
 from utils.models import TelegramChannel
 from utils.telegram.telegram import download_image, send_telegram
 

@@ -209,9 +209,4 @@ class EmployeeHistoryListView(ListAPIView):
         employee = get_employee_with_device_user(employee_id=employee_id)
 
         return EmployeeHistoryService.build_queryset(
-            user=self.request.user,
-            employee=employee,
-            employee_id=employee_id,
-            start=start,
-            end=end,
-        )
+            user=self.request.user, employee=employee, employee_id=employee_id, start=start, end=end)

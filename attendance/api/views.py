@@ -74,10 +74,7 @@ class AbsentEmployeesView(APIView):
             return Response({"error": "Noto'g'ri sana formati. YYYY-MM-DD ko'rinishida yuboring"}, status=400)
 
         payload = AttendanceService.update_daily_status(
-            employee_id=employee_id,
-            target_date=parsed_date,
-            status_value=status_value,
-            comment=comment,
+            employee_id=employee_id, target_date=parsed_date, status_value=status_value, comment=comment,
         )
         return Response(payload)
 
@@ -111,8 +108,5 @@ class MonthlyAttendanceReportView(APIView):
             return Response({"error": "Branch topilmadi yoki sizga tegishli emas"}, status=400)
 
         return Response(AttendanceService.monthly_report_payload(
-            branch=branch,
-            employee_id=employee_id,
-            year=year,
-            month=month,
+            branch=branch, employee_id=employee_id, year=year, month=month,
         ))

@@ -47,9 +47,4 @@ def get_monthly_report_for_excel(*, user, branch_id, year, month, employee_id=No
     if not branch:
         return None
 
-    return AttendanceService.monthly_report_payload(
-        branch=branch,
-        employee_id=employee_id,
-        year=year,
-        month=month,
-    )
+    return AttendanceService.monthly_report_payload(branch=branch, employee_id=employee_id, year=year, month=month)

@@ -3,7 +3,6 @@ from rest_framework import status
 from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
-
 from utils.services.monthly_export import AttendanceExcelExportService
 from utils.utils.schema import user_extend_schema
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -71,10 +70,7 @@ class SubscriptionViewSet(BaseUserViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         subscription = SubscriptionAPIService.create_from_serializer(
-            serializer=serializer,
-            request_user=request.user,
-            user_id=request.query_params.get("user_id"),
-        )
+            serializer=serializer, request_user=request.user, user_id=request.query_params.get("user_id"))
         response = SubscriptionDetailSerializer(subscription, context=self.get_serializer_context())
 
         return Response(response.data, status=status.HTTP_201_CREATED)
@@ -190,18 +186,10 @@ class MonthlyAttendanceExcelExportView(APIView):
             return HttpResponse("year and month required", status=400)
 
         report = get_monthly_report_for_excel(
-            user=request.user,
-            branch_id=branch_id,
-            year=int(year),
-            month=int(month),
-            employee_id=employee_id
-        )
+            user=request.user, branch_id=branch_id, year=int(year), month=int(month), employee_id=employee_id)
 
         if not report:
             return HttpResponse("Branch not found", status=400)
 
         return AttendanceExcelExportService.generate_monthly_excel(
-            report=report,
-            year=int(year),
-            month=int(month),
-        )
+            report=report, year=int(year), month=int(month))

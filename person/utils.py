@@ -72,11 +72,8 @@ def get_first_last_events(employee, date_obj):
                   if normalize_employee_no(e.employee_no) == employee_no and start <= e.time <= end]
         events.sort(key=lambda x: x.time)
     else:
-        qs = AccessEvent.objects.filter(
-            employee_no=employee_no,
-            device=employee.device,
-            time__range=(start, end),
-        ).order_by("time")
+        qs = AccessEvent.objects.filter(employee_no=employee_no, device=employee.device,
+                                        time__range=(start, end)).order_by("time")
         events = list(qs)
 
     first_entry = next((e for e in events if e.label_name in ["KIRISH", "checkIn", "Kirish", "Keldim"]), None)

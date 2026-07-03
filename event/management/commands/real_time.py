@@ -18,17 +18,12 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         self.stdout.write("🚀 Realtime event listener started")
-
-        # Har bir qurilma o'z soati bilan yuradi — global last_time ishlatilsa
-        # soati orqada qolgan qurilmalarning eventlari butunlay tushib qoladi
         last_times = {}
 
         while True:
             try:
                 close_old_connections()
-
                 sync_channels_from_updates()
-
                 devices = list(Devices.objects.all())
 
                 for device in devices:
@@ -125,8 +120,6 @@ class Command(BaseCommand):
                     logger.exception("Telegram send failed: %s", channel.resolved_id)
 
             if channels and not sent_any:
-                # hech bir kanalga ketmadi — eventni unsent qoldirib, keyingi
-                # tsiklda shu joydan qayta urinamiz
                 logger.error("Event %s: all channel sends failed, will retry", event.id)
                 break
 

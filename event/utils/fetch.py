@@ -1,18 +1,18 @@
-import hashlib
 import json
-import logging
 import time
-from datetime import date, datetime, timedelta
-from uuid import uuid4
+import logging
+import hashlib
 import requests
-from django.core.cache import cache
-from django.utils import timezone as django_timezone
+from uuid import uuid4
 from person.utils import UZ_TZ
+from person.models import Employee
+from django.core.cache import cache
 from event.models import AccessEvent
 from requests.auth import HTTPDigestAuth
-from django.utils.dateparse import parse_date, parse_datetime
-from person.models import Employee
 from person.utils import normalize_employee_no
+from datetime import date, datetime, timedelta
+from django.utils import timezone as django_timezone
+from django.utils.dateparse import parse_date, parse_datetime
 from event.utils.events_name import major_name, minor_name
 
 logger = logging.getLogger(__name__)
@@ -89,9 +89,6 @@ def fetch_face_events(devices, since_map=None):
         try:
             url = f"http://{device.ip}/ISAPI/AccessControl/AcsEvent?format=json"
             search_id = uuid4().hex
-
-            # Qurilma xodimlarini bir marta yuklab olamiz — aks holda har bir
-            # event uchun alohida DB so'rovi ketardi (N+1).
             employee_exact_map = {}
             employee_iexact_map = {}
             for emp in Employee.objects.filter(device=device).only("id", "employee_no"):
@@ -161,21 +158,14 @@ def fetch_face_events(devices, since_map=None):
                 events = access.get("InfoList", []) or []
                 logger.info(
                     "event fetch response: device_id=%s page=%s status=%s forced_minor=75 events_count=%s totalMatches=%s numOfMatches=%s",
-                    device.id,
-                    page_idx + 1,
-                    r.status_code,
-                    len(events),
-                    access.get("totalMatches"),
+                    device.id, page_idx + 1, r.status_code, len(events), access.get("totalMatches"),
                     access.get("numOfMatches"),
                 )
 
                 if not events:
                     logger.info(
                         "event fetch stopped: device_id=%s reason=empty_page page=%s offset=%s forced_minor=75",
-                        device.id,
-                        page_idx + 1,
-                        offset,
-                    )
+                        device.id, page_idx + 1, offset)
                     break
 
                 for ev in events:
@@ -185,10 +175,7 @@ def fetch_face_events(devices, since_map=None):
                         skipped_invalid_time += 1
                         logger.warning(
                             "event skipped: device_id=%s reason=invalid_time serial=%s raw_time=%s",
-                            device.id,
-                            ev.get("serialNo"),
-                            ev.get("time"),
-                        )
+                            device.id, ev.get("serialNo"), ev.get("time"))
                         continue
 
                     if t.tzinfo is None:
@@ -203,10 +190,7 @@ def fetch_face_events(devices, since_map=None):
                     serial_no = _event_serial_no(device, ev)
                     employee_no = normalize_employee_no(ev.get("employeeNoString") or ev.get("employeeNo"))
                     if employee_no:
-                        employee = (
-                            employee_exact_map.get(employee_no)
-                            or employee_iexact_map.get(employee_no.lower())
-                        )
+                        employee = (employee_exact_map.get(employee_no) or employee_iexact_map.get(employee_no.lower()))
                     else:
                         employee = None
                     event_major = int(ev.get("major") or 5)
@@ -241,22 +225,16 @@ def fetch_face_events(devices, since_map=None):
                         device_saved += 1
                         logger.info(
                             "event saved: device_id=%s serial=%s major=%s minor=%s employee_no=%s employee_id=%s time=%s",
-                            device.id, serial_no, event_major, event_minor, employee_no,
-                            getattr(employee, "id", None), t.isoformat(),
+                            device.id, serial_no, event_major, event_minor, employee_no, getattr(employee, "id", None),
+                            t.isoformat(),
                         )
                     else:
                         skipped_existing += 1
 
                 logger.info(
                     "event fetch page summary: device_id=%s page=%s forced_minor=75 seen=%s saved=%s skipped_existing=%s skipped_older=%s unresolved_employee=%s",
-                    device.id,
-                    page_idx + 1,
-                    device_seen,
-                    device_saved,
-                    skipped_existing,
-                    skipped_older,
-                    unresolved_employee,
-                )
+                    device.id, page_idx + 1, device_seen, device_saved, skipped_existing, skipped_older,
+                    unresolved_employee)
 
                 offset += len(events)
 

@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 from datetime import timedelta
 from decouple import config, Csv
-from django.template import defaulttags
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 

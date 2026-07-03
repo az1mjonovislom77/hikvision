@@ -38,9 +38,7 @@ class SmartCityDailyStatsService:
             status = "ABSENT"
 
             if begin:
-
                 status = "PRESENT"
-
                 if emp.shift and emp.shift.start_time:
                     if begin.time() > emp.shift.start_time:
                         status = "LATE"

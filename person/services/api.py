@@ -4,16 +4,9 @@ from io import BytesIO
 import openpyxl
 from user.models import User
 from person.models import Employee, EmployeeHistory
-from person.selectors.person import (
-    empty_employee_history_queryset,
-    get_access_events_for_history,
-    get_branch_device_queryset,
-    get_existing_employee_history_event_ids,
-    get_employee_history_for_day,
-    get_user_employees_with_events,
-    get_target_user,
-    get_user_branch,
-)
+from person.selectors.person import empty_employee_history_queryset, get_access_events_for_history, \
+    get_branch_device_queryset, get_existing_employee_history_event_ids, get_employee_history_for_day, \
+    get_user_employees_with_events, get_target_user, get_user_branch
 from person.services.access import DailyAccessService
 from person.services.employee import EmployeeService
 from person.services.hikvision import HikvisionService

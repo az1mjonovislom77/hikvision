@@ -30,11 +30,7 @@ class UserTokenService:
 
     @classmethod
     def set_refresh_cookie(cls, response, refresh_token: str):
-        response.set_cookie(
-            key=cls.COOKIE_NAME,
-            value=refresh_token,
-            **cls.COOKIE_SETTINGS
-        )
+        response.set_cookie(key=cls.COOKIE_NAME, value=refresh_token, **cls.COOKIE_SETTINGS)
         return response
 
     @classmethod

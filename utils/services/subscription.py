@@ -19,9 +19,7 @@ class SubscriptionService:
     def create_subscription(serializer, user, plan):
         start = timezone.now()
         end = start + relativedelta(months=plan.duration_months)
-
         SubscriptionService.deactivate_previous(user)
-
         serializer.save(user=user, start_date=start, end_date=end, is_active=True, is_paid=True, )
 
         return serializer.instance
