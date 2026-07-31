@@ -15,4 +15,3 @@ def shift_queryset():
 
 def break_time_queryset():
     return BreakTime.objects.all()
-

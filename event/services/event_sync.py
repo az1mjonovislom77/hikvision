@@ -1,16 +1,17 @@
 import logging
+from datetime import datetime
+
 import requests
 from django.db.models import Max
-from event.models import AccessEvent
 from requests.auth import HTTPDigestAuth
+
+from event.models import AccessEvent
 from event.utils.wrappers import fetch
 
 logger = logging.getLogger(__name__)
 
 
 class EventSyncService:
-    last_sync_time = None
-
     @staticmethod
     def get_device_event_limit(device):
         url = f"http://{device.ip}/ISAPI/ContentMgmt/Storage"
@@ -27,8 +28,8 @@ class EventSyncService:
                 if s.get("type") == "EVENT":
                     return int(s.get("capacity", 0))
 
-        except Exception as e:
-            logger.error(f"{device.ip} limit error: {e}")
+        except Exception:
+            logger.exception("Qurilma event limitini o'qib bo'lmadi: device_id=%s ip=%s", device.id, device.ip)
 
         return 0
 
@@ -54,7 +55,7 @@ class EventSyncService:
         threshold = int(limit * 0.95)
 
         if used >= threshold:
-            logger.warning(f"Device {device.ip} → event limit {used}/{limit} → AUTO CLEAN!")
+            logger.warning("Device %s → event limit %s/%s → AUTO CLEAN!", device.ip, used, limit)
 
             url = f"http://{device.ip}/ISAPI/AccessControl/AcsEvent?format=json"
             payload = {"AcsEventCond": {"deleteAll": True}}
@@ -62,15 +63,15 @@ class EventSyncService:
             try:
                 r = requests.put(url, json=payload, auth=HTTPDigestAuth(device.username, device.password), timeout=10)
                 if r.status_code == 200:
-                    logger.warning(f"Device {device.ip} eski eventlar o‘chirildi")
+                    logger.warning("Device %s eski eventlar o‘chirildi", device.ip)
                 else:
-                    logger.error(f"{device.ip} delete failed: {r.text}")
-            except Exception as e:
-                logger.error(f"{device.ip} delete error: {e}")
+                    logger.error("%s delete failed: status=%s", device.ip, r.status_code)
+            except Exception:
+                logger.exception("Qurilmada eski eventlarni o'chirib bo'lmadi: ip=%s", device.ip)
 
     @staticmethod
     def sync_events(devices, full=False):
-        device_since_map = {}
+        device_since_map: dict[int, datetime | None] = {}
         device_descriptions = []
 
         latest_by_device = {}
@@ -78,35 +79,35 @@ class EventSyncService:
             latest_by_device = {
                 row["device"]: row["latest_time"]
                 for row in (
-                    AccessEvent.objects
-                    .filter(device__in=devices, major=5, minor=75)
+                    AccessEvent.objects.filter(device__in=devices, major=5, minor=75)
                     .values("device")
                     .annotate(latest_time=Max("time"))
                 )
             }
 
         for device in devices:
-            if full:
-                device_since_map[device.id] = None
-            else:
-                device_since_map[device.id] = latest_by_device.get(device.id)
+            since = None if full else latest_by_device.get(device.id)
+            device_since_map[device.id] = since
             device_descriptions.append(
                 {
                     "id": device.id,
                     "ip": device.ip,
                     "name": device.name,
-                    "since": device_since_map[device.id].isoformat() if device_since_map[device.id] else None,
+                    "since": since.isoformat() if since else None,
                 }
             )
 
         logger.info(
             "event sync service started: full=%s devices=%s",
-            full, device_descriptions,
+            full,
+            device_descriptions,
         )
         total = fetch(devices=devices, since_map=device_since_map)
         logger.info(
             "event sync service finished: full=%s total_saved=%s device_count=%s",
-            full, total, len(device_descriptions),
+            full,
+            total,
+            len(device_descriptions),
         )
         return total
 

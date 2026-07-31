@@ -1,6 +1,7 @@
 from django.contrib import admin
+
 from utils.base.admin_base import NameOnlyAdmin
-from utils.models import Devices, Branch, Department, TelegramChannel, Plan, Subscription, Notification
+from utils.models import Branch, Department, Devices, Notification, Plan, Subscription, TelegramChannel
 
 
 @admin.register(Devices)
@@ -20,19 +21,19 @@ class BranchAdmin(NameOnlyAdmin):
 
 @admin.register(TelegramChannel)
 class TelegramChannelAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'chat_id')
+    list_display = ("id", "name", "chat_id")
 
 
 @admin.register(Plan)
 class PlanAdmin(admin.ModelAdmin):
-    list_display = ('id', 'title', 'price')
+    list_display = ("id", "title", "price")
 
 
 @admin.register(Subscription)
 class SubscriptionAdmin(admin.ModelAdmin):
-    list_display = ('id', 'plan', 'is_paid', 'is_active')
+    list_display = ("id", "plan", "is_paid", "is_active")
 
 
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'text')
+    list_display = ("id", "user", "text")

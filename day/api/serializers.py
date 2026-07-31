@@ -1,4 +1,5 @@
 from rest_framework import serializers
+
 from day.models import BreakTime, DayOff, Shift, WorkDay
 from utils.utils.constants import WEEK_DAYS
 
@@ -21,7 +22,7 @@ class DayOffCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DayOff
-        fields = ['name', 'days']
+        fields = ["name", "days"]
 
 
 class WorkDayGetSerializer(serializers.ModelSerializer):
@@ -37,7 +38,7 @@ class WorkDayCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = WorkDay
-        fields = ['name', 'days']
+        fields = ["name", "days"]
 
 
 class BreakTimeGetSerializer(serializers.ModelSerializer):
@@ -49,7 +50,7 @@ class BreakTimeGetSerializer(serializers.ModelSerializer):
 class BreakTimeCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = BreakTime
-        fields = ['name', 'start_time', 'end_time']
+        fields = ["name", "start_time", "end_time"]
 
 
 class ShiftGetSerializer(serializers.ModelSerializer):
@@ -61,5 +62,4 @@ class ShiftGetSerializer(serializers.ModelSerializer):
 class ShiftCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Shift
-        fields = ['break_time', 'name', 'start_time', 'end_time', 'approved_late_min']
-
+        fields = ["break_time", "name", "start_time", "end_time", "approved_late_min"]

@@ -1,12 +1,19 @@
 from calendar import monthrange
 from collections import defaultdict
-from datetime import date, datetime, timedelta, time as dt_time
+from datetime import date, datetime, timedelta
+from datetime import time as dt_time
+
 from django.utils.timezone import localtime, make_aware, now
+
 from attendance.models import AttendanceDaily
-from event.models import AccessEvent
-from attendance.selectors.selectors import get_absent_attendance_records, get_branch_employee, get_branch_employees, \
-    get_employee
+from attendance.selectors.selectors import (
+    get_absent_attendance_records,
+    get_branch_employee,
+    get_branch_employees,
+    get_employee,
+)
 from attendance.utils import count_workdays_in_month, is_employee_workday, minutes_to_hm
+from event.models import AccessEvent
 
 
 class AttendanceService:
@@ -20,8 +27,12 @@ class AttendanceService:
 
         entry_event_employee_ids = set(
             AccessEvent.objects.filter(
-                employee_id__in=[emp.id for emp in employees], time__date=target_date, major=5, minor=75,
-            ).values_list("employee_id", flat=True))
+                employee_id__in=[emp.id for emp in employees],
+                time__date=target_date,
+                major=5,
+                minor=75,
+            ).values_list("employee_id", flat=True)
+        )
 
         for emp in employees:
             if not emp.shift or not emp.shift.start_time or not emp.shift.end_time:
@@ -44,12 +55,7 @@ class AttendanceService:
                 continue
 
             AttendanceDaily.objects.get_or_create(
-                employee=emp,
-                date=target_date,
-                defaults={
-                    "status": "szk",
-                    "comment": "Kirish yoki chiqish eventi yoq"
-                }
+                employee=emp, date=target_date, defaults={"status": "szk", "comment": "Kirish yoki chiqish eventi yoq"}
             )
 
     @staticmethod
@@ -66,18 +72,17 @@ class AttendanceService:
                     "status_label": r.get_status_display(),
                     "comment": r.comment,
                     "fine": r.fine_amount,
-                    "date": r.date
-                } for r in records
-            ]
+                    "date": r.date,
+                }
+                for r in records
+            ],
         }
 
     @staticmethod
     def update_daily_status(*, employee_id, target_date, status_value, comment):
         employee = get_employee(employee_id=employee_id)
         obj, created = AttendanceDaily.objects.update_or_create(
-            employee=employee,
-            date=target_date,
-            defaults={"status": status_value, "comment": comment}
+            employee=employee, date=target_date, defaults={"status": status_value, "comment": comment}
         )
 
         return {
@@ -87,7 +92,7 @@ class AttendanceService:
             "date": obj.date,
             "status": obj.status,
             "status_label": obj.get_status_display(),
-            "fine_amount": obj.fine_amount
+            "fine_amount": obj.fine_amount,
         }
 
     @staticmethod
@@ -99,8 +104,8 @@ class AttendanceService:
 
         employees = (
             get_branch_employee(employee_id=employee_id, branch=branch)
-            if employee_id else
-            get_branch_employees(branch=branch)
+            if employee_id
+            else get_branch_employees(branch=branch)
         ).select_related("shift", "shift__break_time", "work_day", "day_off")
 
         employees = list(employees)
@@ -110,13 +115,10 @@ class AttendanceService:
             return {"year": year, "month": month, "count": 0, "results": []}
 
         attendance_map = {
-            attendance_key: attendance
-            for attendance_key, attendance in (
-                ((item.employee_id, item.date), item)
-                for item in AttendanceDaily.objects.filter(
+            (item.employee_id, item.date): item
+            for item in AttendanceDaily.objects.filter(
                 employee_id__in=employee_ids,
                 date__range=(start_date, end_date),
-            )
             )
         }
 
@@ -125,7 +127,9 @@ class AttendanceService:
 
         events_map = defaultdict(list)
         for event in AccessEvent.objects.filter(
-                employee_id__in=employee_ids, time__gte=event_start, time__lt=event_end,
+            employee_id__in=employee_ids,
+            time__gte=event_start,
+            time__lt=event_end,
         ).order_by("employee_id", "time"):
             events_map[(event.employee_id, localtime(event.time).date())].append(event)
 
@@ -134,8 +138,8 @@ class AttendanceService:
         for emp in employees:
             workdays = count_workdays_in_month(emp.work_day, emp.day_off, year, month)
             day_salary = emp.salary / workdays if workdays else 0
-            total_bonus = 0
-            total_penalty = 0
+            total_bonus: float = 0
+            total_penalty: float = 0
             total_overtime = 0
             total_undertime = 0
             worked_minutes = 0
@@ -145,9 +149,7 @@ class AttendanceService:
             shift_start_time = emp.shift.start_time.strftime("%H:%M") if emp.shift else None
             shift_end_time = emp.shift.end_time.strftime("%H:%M") if emp.shift else None
 
-            for day in (start_date + timedelta(days=i)
-                        for i in range((end_date - start_date).days + 1)):
-
+            for day in (start_date + timedelta(days=i) for i in range((end_date - start_date).days + 1)):
                 if day > today:
                     continue
 
@@ -170,49 +172,57 @@ class AttendanceService:
                 break_min = 0
                 if emp.shift.break_time:
                     break_min = int(
-                        (datetime.combine(day, emp.shift.break_time.end_time) -
-                         datetime.combine(day, emp.shift.break_time.start_time)).total_seconds() / 60)
+                        (
+                            datetime.combine(day, emp.shift.break_time.end_time)
+                            - datetime.combine(day, emp.shift.break_time.start_time)
+                        ).total_seconds()
+                        / 60
+                    )
 
                 shift_min -= break_min
 
                 if not events:
                     if attendance and attendance.status == "sbk":
                         sbk_count += 1
-                        details.append({
-                            "date": day,
-                            "status": "sbk",
-                            "status_label": "Sababli kelmadi",
-                            "first_in": None,
-                            "last_out": None,
-                            "worked": "0:00",
-                            "difference": "0:00",
-                            "penalty": 0,
-                            "bonus": 0,
-                            "daily_total": 0,
-                            "att_comment": attendance.comment if attendance else "",
-                        })
+                        details.append(
+                            {
+                                "date": day,
+                                "status": "sbk",
+                                "status_label": "Sababli kelmadi",
+                                "first_in": None,
+                                "last_out": None,
+                                "worked": "0:00",
+                                "difference": "0:00",
+                                "penalty": 0,
+                                "bonus": 0,
+                                "daily_total": 0,
+                                "att_comment": attendance.comment if attendance else "",
+                            }
+                        )
                     else:
                         szk_count += 1
-                        penalty_amount = round(day_salary, 2) if emp.is_fine else 0
+                        penalty_amount: float = round(day_salary, 2) if emp.is_fine else 0
 
                         if total_penalty + penalty_amount > emp.salary:
                             penalty_amount = max(0, emp.salary - total_penalty)
 
                         total_penalty += penalty_amount
 
-                        details.append({
-                            "date": day,
-                            "status": "szk",
-                            "status_label": "Sababsiz kelmadi",
-                            "first_in": None,
-                            "last_out": None,
-                            "worked": "0:00",
-                            "difference": f"-{minutes_to_hm(shift_min)}",
-                            "penalty": penalty_amount,
-                            "bonus": 0,
-                            "daily_total": -penalty_amount,
-                            "att_comment": attendance.comment if attendance else "",
-                        })
+                        details.append(
+                            {
+                                "date": day,
+                                "status": "szk",
+                                "status_label": "Sababsiz kelmadi",
+                                "first_in": None,
+                                "last_out": None,
+                                "worked": "0:00",
+                                "difference": f"-{minutes_to_hm(shift_min)}",
+                                "penalty": penalty_amount,
+                                "bonus": 0,
+                                "daily_total": -penalty_amount,
+                                "att_comment": attendance.comment if attendance else "",
+                            }
+                        )
                     continue
 
                 first_event = events[0]
@@ -227,7 +237,7 @@ class AttendanceService:
 
                 worked_minutes += worked_min
                 minute_salary = day_salary / shift_min if shift_min else 0
-                bonus_amount = 0
+                bonus_amount: float = 0
                 penalty_amount = 0
                 raw_late_minutes = int((first_in.replace(tzinfo=None) - shift_start).total_seconds() / 60)
                 approved_late = emp.shift.approved_late_min or 0
@@ -238,7 +248,7 @@ class AttendanceService:
                 penalty_minutes = late_minutes + early_leave_minutes
                 adjustment_minutes = overtime_minutes - penalty_minutes
 
-                if attendance and attendance.status == 'sbk':
+                if attendance and attendance.status == "sbk":
                     sbk_count += 1
                     status = "sbk"
                     status_label = "Sababli kelmadi"
@@ -263,47 +273,46 @@ class AttendanceService:
 
                             total_penalty += penalty_amount
 
-                details.append({
-                    "date": day,
-                    "status": status,
-                    "status_label": status_label,
-                    "first_in": first_in.strftime("%H:%M"),
-                    "last_out": last_out.strftime("%H:%M"),
-                    "worked": minutes_to_hm(worked_min),
-                    "difference": (
-                        minutes_to_hm(adjustment_minutes)
-                        if adjustment_minutes >= 0
-                        else f"-{minutes_to_hm(abs(adjustment_minutes))}"
-                    ),
-                    "penalty": round(penalty_amount, 2),
-                    "bonus": round(bonus_amount, 2),
-                    "daily_total": round(bonus_amount - penalty_amount, 2),
-                    "att_comment": attendance.comment if attendance else ""
-                })
+                details.append(
+                    {
+                        "date": day,
+                        "status": status,
+                        "status_label": status_label,
+                        "first_in": first_in.strftime("%H:%M"),
+                        "last_out": last_out.strftime("%H:%M"),
+                        "worked": minutes_to_hm(worked_min),
+                        "difference": (
+                            minutes_to_hm(adjustment_minutes)
+                            if adjustment_minutes >= 0
+                            else f"-{minutes_to_hm(abs(adjustment_minutes))}"
+                        ),
+                        "penalty": round(penalty_amount, 2),
+                        "bonus": round(bonus_amount, 2),
+                        "daily_total": round(bonus_amount - penalty_amount, 2),
+                        "att_comment": attendance.comment if attendance else "",
+                    }
+                )
 
-            reports.append({
-                "employee_id": emp.id,
-                "employee_name": emp.name,
-                "shift_start_time": shift_start_time,
-                "shift_end_time": shift_end_time,
-                "year": year,
-                "month": month,
-                "sbk_count": sbk_count,
-                "szk_count": szk_count,
-                "worked_time": minutes_to_hm(worked_minutes),
-                "total_overtime": minutes_to_hm(total_overtime),
-                "total_undertime": minutes_to_hm(total_undertime),
-                "total_bonus": int(round(total_bonus)),
-                "total_penalty": int(round(total_penalty)),
-                "net_adjustment": int(round(total_bonus - total_penalty)),
-                "employee_salary": emp.salary,
-                "new_salary": emp.salary + (int(round(total_bonus - total_penalty))),
-                "details": details
-            })
+            reports.append(
+                {
+                    "employee_id": emp.id,
+                    "employee_name": emp.name,
+                    "shift_start_time": shift_start_time,
+                    "shift_end_time": shift_end_time,
+                    "year": year,
+                    "month": month,
+                    "sbk_count": sbk_count,
+                    "szk_count": szk_count,
+                    "worked_time": minutes_to_hm(worked_minutes),
+                    "total_overtime": minutes_to_hm(total_overtime),
+                    "total_undertime": minutes_to_hm(total_undertime),
+                    "total_bonus": round(total_bonus),
+                    "total_penalty": round(total_penalty),
+                    "net_adjustment": round(total_bonus - total_penalty),
+                    "employee_salary": emp.salary,
+                    "new_salary": emp.salary + (round(total_bonus - total_penalty)),
+                    "details": details,
+                }
+            )
 
-        return {
-            "year": year,
-            "month": month,
-            "count": len(reports),
-            "results": reports
-        }
+        return {"year": year, "month": month, "count": len(reports), "results": reports}

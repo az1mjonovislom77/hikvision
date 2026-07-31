@@ -1,12 +1,17 @@
+import logging
+from datetime import datetime, time
+from urllib.parse import urlparse
+
 import pytz
 import requests
-from utils.models import Devices
-from urllib.parse import urlparse
-from datetime import datetime, time
-from event.models import AccessEvent
-from requests.auth import HTTPDigestAuth
-from django.utils.timezone import make_aware
 from django.core.files.base import ContentFile
+from django.utils.timezone import make_aware
+from requests.auth import HTTPDigestAuth
+
+from event.models import AccessEvent
+from utils.models import Devices
+
+logger = logging.getLogger(__name__)
 
 UZ_TZ = pytz.timezone("Asia/Tashkent")
 
@@ -31,13 +36,15 @@ def download_face_from_url(url):
         if not device:
             return None
 
-        result = requests.get(url, auth=HTTPDigestAuth(device.username, device.password), timeout=10)
+        # username/password modelda null=True — requests None qiymatni ham qabul qiladi.
+        result = requests.get(url, auth=HTTPDigestAuth(device.username, device.password), timeout=10)  # type: ignore[arg-type]
 
         if result.status_code == 200:
             return ContentFile(result.content)
         return None
 
     except Exception:
+        logger.exception("Yuz rasmini yuklab bo'lmadi: url=%s", url)
         return None
 
 
@@ -68,16 +75,21 @@ def get_first_last_events(employee, date_obj):
     employee_no = normalize_employee_no(employee.employee_no)
 
     if hasattr(employee.device, "prefetched_events"):
-        events = [e for e in employee.device.prefetched_events
-                  if normalize_employee_no(e.employee_no) == employee_no and start <= e.time <= end]
+        events = [
+            e
+            for e in employee.device.prefetched_events
+            if normalize_employee_no(e.employee_no) == employee_no and start <= e.time <= end
+        ]
         events.sort(key=lambda x: x.time)
     else:
-        qs = AccessEvent.objects.filter(employee_no=employee_no, device=employee.device,
-                                        time__range=(start, end)).order_by("time")
+        qs = AccessEvent.objects.filter(
+            employee_no=employee_no, device=employee.device, time__range=(start, end)
+        ).order_by("time")
         events = list(qs)
 
     first_entry = next((e for e in events if e.label_name in ["KIRISH", "checkIn", "Kirish", "Keldim"]), None)
     last_exit = next(
-        (e for e in reversed(events) if e.label_name in ["CHIQISH", "checkOut", "Chiqish", "Ketdim"]), None)
+        (e for e in reversed(events) if e.label_name in ["CHIQISH", "checkOut", "Chiqish", "Ketdim"]), None
+    )
 
     return first_entry, last_exit

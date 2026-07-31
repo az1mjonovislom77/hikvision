@@ -1,20 +1,17 @@
-from celery import shared_task
 import logging
 import time
 
+from celery import shared_task
+
 from event.models import AccessEvent
-from utils.models import TelegramChannel, Devices
+from utils.models import Devices, TelegramChannel
 from utils.telegram.telegram import download_image, send_telegram
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(
-    bind=True,
-    autoretry_for=(Exception,),
-    retry_backoff=10,
-    retry_kwargs={"max_retries": 5},
-    rate_limit="20/m"
+    bind=True, autoretry_for=(Exception,), retry_backoff=10, retry_kwargs={"max_retries": 5}, rate_limit="20/m"
 )
 def send_event_to_telegram(self, event_id, msg, picture_url, device_id):
     event = AccessEvent.objects.get(id=event_id)
@@ -33,7 +30,7 @@ def send_event_to_telegram(self, event_id, msg, picture_url, device_id):
             time.sleep(0.3)
 
         except Exception:
-            logger.exception(f"Telegram send failed: {channel.resolved_id}")
+            logger.exception("Telegram send failed: %s", channel.resolved_id)
             raise
 
     event.sent_to_telegram = True

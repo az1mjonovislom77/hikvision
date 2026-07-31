@@ -29,4 +29,3 @@ class SmartCityAPIService:
     def build_daily_stats(*, date, mahalla):
         service = SmartCityDailyStatsService(date=date, mahalla_id=mahalla)
         return service.build()
-

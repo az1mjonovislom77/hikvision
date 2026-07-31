@@ -1,22 +1,33 @@
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from utils.api.views import DevicesViewSet, DepartmentViewSet, BranchViewSet, TelegramChannelViewSet, \
-    SubscriptionViewSet, PlanViewSet, NotificationViewSet, AdminNotificationViewSet, SmartCityAPIView, \
-    SmartCityDailyAPIView, MonthlyAttendanceExcelExportView
+
+from utils.api.views import (
+    AdminNotificationViewSet,
+    BranchViewSet,
+    DepartmentViewSet,
+    DevicesViewSet,
+    MonthlyAttendanceExcelExportView,
+    NotificationViewSet,
+    PlanViewSet,
+    SmartCityAPIView,
+    SmartCityDailyAPIView,
+    SubscriptionViewSet,
+    TelegramChannelViewSet,
+)
 
 router = DefaultRouter()
-router.register('devices', DevicesViewSet)
-router.register('departments', DepartmentViewSet)
-router.register('branch', BranchViewSet)
-router.register('telegramchannel', TelegramChannelViewSet)
-router.register('subscription', SubscriptionViewSet)
-router.register('plan', PlanViewSet)
-router.register('notification', NotificationViewSet)
+router.register("devices", DevicesViewSet)
+router.register("departments", DepartmentViewSet)
+router.register("branch", BranchViewSet)
+router.register("telegramchannel", TelegramChannelViewSet)
+router.register("subscription", SubscriptionViewSet)
+router.register("plan", PlanViewSet)
+router.register("notification", NotificationViewSet)
 router.register("admin/notification", AdminNotificationViewSet, basename="admin-notification")
 
 urlpatterns = [
-    path('', include(router.urls)),
-    path('smartcity_stats/', SmartCityAPIView.as_view(), name="smart-city-stats"),
-    path('smartcity_stats/daily/', SmartCityDailyAPIView.as_view(), name="smart-city-daily"),
+    path("", include(router.urls)),
+    path("smartcity_stats/", SmartCityAPIView.as_view(), name="smart-city-stats"),
+    path("smartcity_stats/daily/", SmartCityDailyAPIView.as_view(), name="smart-city-daily"),
     path("monthly-report-excel/", MonthlyAttendanceExcelExportView.as_view(), name="monthly-report-excel"),
 ]

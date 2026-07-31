@@ -1,6 +1,14 @@
 # Virtual environment
 env/
 venv/
+.venv/
+
+# Test/lint artifacts
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
 
 # Compiled Python files
 *.pyc

@@ -2,41 +2,44 @@
 
 ## Project Description
 
-This project is a robust attendance management system built with Django and Django REST Framework. It is designed to efficiently track and manage attendance records, potentially integrating with Hikvision devices for data collection. The system includes features for user management, event logging, and reporting, leveraging asynchronous tasks with Celery and Redis for improved performance.
+Attendance management system built with Django and Django REST Framework. It syncs access
+events and employee records from Hikvision ISAPI devices, calculates daily/monthly attendance
+(late arrivals, early leaves, overtime, penalties and bonuses) and forwards access events to
+Telegram channels.
 
 ## Features
 
-*   **User Authentication & Authorization**: Secure user management with Django REST Framework Simple JWT.
-*   **Attendance Tracking**: Core functionality for recording and managing attendance.
-*   **Person Management**: Manage individuals whose attendance is being tracked.
-*   **Event Logging**: Record various events related to attendance or system activities.
-*   **Reporting**: Generate reports (e.g., PDF, Excel) for attendance data.
-*   **API Endpoints**: RESTful API for seamless integration with front-end applications or other services.
-*   **Asynchronous Task Processing**: Utilizes Celery and Redis for background tasks, improving responsiveness.
-*   **Internationalization**: Support for multiple languages using `django-modeltranslation`.
-*   **Admin Interface**: Enhanced administrative interface with `django-jazzmin`.
-*   **CORS Support**: Configured for cross-origin resource sharing.
-*   **API Documentation**: Auto-generated API documentation using DRF Spectacular/drf-yasg.
+*   **User Authentication & Authorization**: JWT via `djangorestframework-simplejwt`; the refresh
+    token is stored in an httponly cookie.
+*   **Hikvision Integration**: Employee and access-event sync over ISAPI (HTTP Digest auth),
+    including face image download and remote user create/delete.
+*   **Attendance Tracking**: Daily absence records (`sbk` / `szk`) and a monthly report with
+    per-day breakdown.
+*   **Reporting**: Monthly attendance and daily access exports to Excel (`openpyxl`).
+    There is no PDF export.
+*   **Telegram Notifications**: Access events are pushed to the Telegram channels bound to a device.
+*   **API Documentation**: Auto-generated OpenAPI schema with `drf-spectacular`.
+*   **Admin Interface**: `django-jazzmin`.
+*   **CORS Support**: Configured through `TRUSTED_ORIGINS`.
 
 ## Technologies Used
 
-*   **Backend**: Python, Django, Django REST Framework
-*   **Database**: PostgreSQL (`psycopg2-binary`)
-*   **Asynchronous Tasks**: Celery, Redis
+*   **Backend**: Python 3.12, Django 5.2, Django REST Framework
+*   **Database**: PostgreSQL in production (`psycopg2-binary`), SQLite locally
+*   **Cache**: Redis (`django-redis`) — required outside of tests
+*   **Asynchronous Tasks**: Celery (see the caveat under *Celery Worker Setup*)
 *   **Web Server**: Gunicorn
-*   **API Documentation**: `drf-spectacular`, `drf-yasg`
+*   **API Documentation**: `drf-spectacular`
 *   **Environment Management**: `python-decouple`
-*   **Other Libraries**: `aiohttp`, `openpyxl`, `reportlab`, `pillow_heif`, `lxml`, `PyJWT`, `django-cors-headers`, `django-modeltranslation`, `django-jazzmin`, etc.
+*   **Other Libraries**: `openpyxl`, `pillow`, `requests`, `django-cors-headers`, `django-jazzmin`
 
 ## Setup & Installation
 
-Follow these steps to get the project up and running on your local machine.
-
 ### Prerequisites
 
-*   Python 3.9+
-*   PostgreSQL
-*   Redis
+*   Python 3.12 (CI and the lint/type configuration target 3.12)
+*   Redis — required for the cache backend even in local mode
+*   PostgreSQL — only when `ENVIRON=production`; otherwise SQLite is used
 
 ### 1. Clone the Repository
 
@@ -44,9 +47,8 @@ Follow these steps to get the project up and running on your local machine.
 git clone https://github.com/az1mjonovislom77/hikvision.git
 cd hikvision
 ```
-### 2. Create a Virtual Environment
 
-It's recommended to use a virtual environment to manage project dependencies.
+### 2. Create a Virtual Environment
 
 ```bash
 python -m venv .venv
@@ -55,60 +57,38 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 ### 3. Install Dependencies
 
-Install all required Python packages using pip:
-
 ```bash
 pip install -r requirements.txt
+# For development (lint, types, tests):
+pip install -r requirements-dev.txt
 ```
 
-### 4. Database Setup
+### 4. Environment Variables
 
-Ensure you have PostgreSQL installed and running. Create a new database for the project.
+Copy the sample file and fill it in:
+
+```bash
+cp .env.example .env
+```
+
+`SECRET_KEY` and `BOT_TOKEN` are mandatory — both are read at import time, so even
+`python manage.py check` fails without them. See `.env.example` for the full list.
+
+### 5. Database Setup
+
+With the default `ENVIRON=local` no setup is needed; SQLite is created automatically.
+
+For production (`ENVIRON=production`) create the PostgreSQL database first:
 
 ```sql
 CREATE DATABASE hikvision;
 CREATE USER your_db_user WITH PASSWORD 'your_db_password';
 ALTER ROLE your_db_user SET client_encoding TO 'utf8';
 ALTER ROLE your_db_user SET default_transaction_isolation TO 'read committed';
-ALTER ROLE your_db_user SET timezone TO 'UTC';
 GRANT ALL PRIVILEGES ON DATABASE hikvision TO your_db_user;
 ```
-*(Note: Replace `hikvision`, `your_db_user`, and `your_db_password` with your desired values.)*
-
-### 5. Environment Variables
-
-Create a `.env` file in the project root directory (where `manage.py` is located) and configure your environment variables.
-
-```
-# .env example
-SECRET_KEY='your_django_secret_key'
-DEBUG=True
-
-# Database Configuration
-DB_NAME=hikvision
-DB_USER=your_db_user
-DB_PASSWORD=your_db_password
-DB_HOST=localhost
-DB_PORT=5432
-
-# Redis Configuration for Celery
-REDIS_URL=redis://localhost:6379/0
-
-# Allowed Hosts for Django
-ALLOWED_HOSTS=localhost,127.0.0.1
-
-# Other settings
-# EMAIL_HOST=smtp.example.com
-# EMAIL_PORT=587
-# EMAIL_USE_TLS=True
-# EMAIL_HOST_USER=your_email@example.com
-# EMAIL_HOST_PASSWORD=your_email_password
-```
-*(Make sure to replace placeholder values with your actual settings.)*
 
 ### 6. Run Migrations
-
-Apply database migrations to create the necessary tables:
 
 ```bash
 python manage.py migrate
@@ -116,50 +96,68 @@ python manage.py migrate
 
 ### 7. Create a Superuser
 
-Create an administrative user to access the Django admin panel:
-
 ```bash
 python manage.py createsuperuser
 ```
-Follow the prompts to set up your superuser credentials.
 
 ### 8. Running the Development Server
-
-Start the Django development server:
 
 ```bash
 python manage.py runserver
 ```
+
 The application will be accessible at `http://127.0.0.1:8000/`.
 
 ### 9. Celery Worker Setup
 
-For asynchronous tasks, you need to run a Celery worker. Open a new terminal and navigate to your project root.
+The Celery app lives in `config/celery_config.py`:
 
 ```bash
 celery -A config worker -l info
 ```
-*(Note: `config` is assumed to be your main Django project directory containing `celery.py` or similar configuration.)*
 
-### 10. Gunicorn (for Production)
+**Caveat:** no `CELERY_BEAT_SCHEDULE` is configured and no code path calls `.delay()`, so the
+declared tasks (`attendance.tasks.mark_attendance`, `event.tasks`, `utils.tasks`) never run on
+their own today. Event syncing currently happens inline inside the HTTP request.
 
-For production deployment, you would typically use Gunicorn.
+### 10. Real-time Event Listener
+
+Access events are pushed to Telegram by a long-running management command:
+
+```bash
+python manage.py real_time
+```
+
+### 11. Gunicorn (for Production)
 
 ```bash
 gunicorn config.wsgi:application --bind 0.0.0.0:8000
 ```
-*(Note: `config` is assumed to be your main Django project directory.)*
+
+## Development Checks
+
+The same chain runs in CI (`.github/workflows/ci.yml`):
+
+```bash
+ruff check .
+ruff format --check .
+mypy .
+python manage.py check
+python manage.py makemigrations --check --dry-run
+coverage run manage.py test
+coverage report
+```
+
+`pre-commit install` wires ruff into the commit hook.
 
 ## API Documentation
 
-The project includes auto-generated API documentation. Once the development server is running, you can access:
+Once the development server is running:
 
-*   **Swagger UI**: `http://127.0.0.1:8000/swagger/`
-*   **ReDoc**: `http://127.0.0.1:8000/redoc/`
+*   **Swagger UI**: `http://127.0.0.1:8000/api/swagger/`
+*   **OpenAPI schema**: `http://127.0.0.1:8000/api/schema/`
 
 ## Contributing
-
-Contributions are welcome! Please follow these steps:
 
 1.  Fork the repository.
 2.  Create a new branch (`git checkout -b feature/your-feature-name`).

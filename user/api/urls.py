@@ -1,15 +1,16 @@
-from django.urls import path, include
-from user.api.views.user_views import UserViewSet
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from user.api.views.auth_views import SignInAPIView, RefreshTokenAPIView, MeAPIView, LogOutAPIView
+
+from user.api.views.auth_views import LogOutAPIView, MeAPIView, RefreshTokenAPIView, SignInAPIView
+from user.api.views.user_views import UserViewSet
 
 router = DefaultRouter()
-router.register('users', UserViewSet)
+router.register("users", UserViewSet)
 
 urlpatterns = [
-    path('', include(router.urls)),
-    path('login/', SignInAPIView.as_view(), name='login'),
-    path('logout/', LogOutAPIView.as_view(), name='logout'),
-    path('auth/refresh/', RefreshTokenAPIView.as_view(), name='token_refresh'),
-    path('me/', MeAPIView.as_view(), name='me'),
+    path("", include(router.urls)),
+    path("login/", SignInAPIView.as_view(), name="login"),
+    path("logout/", LogOutAPIView.as_view(), name="logout"),
+    path("auth/refresh/", RefreshTokenAPIView.as_view(), name="token_refresh"),
+    path("me/", MeAPIView.as_view(), name="me"),
 ]

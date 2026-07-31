@@ -1,8 +1,9 @@
-from user.models import User
-from utils.models import Subscription
 from rest_framework import serializers
-from user.services.user_service import UserService
+
+from user.models import User
 from user.selectors.user import get_active_subscription
+from user.services.user_service import UserService
+from utils.models import Subscription
 
 
 class ActiveSubscriptionSerializer(serializers.ModelSerializer):
@@ -12,7 +13,13 @@ class ActiveSubscriptionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Subscription
-        fields = ["plan_name", "plan_type", "billing_cycle", "start_date", "end_date", ]
+        fields = [
+            "plan_name",
+            "plan_type",
+            "billing_cycle",
+            "start_date",
+            "end_date",
+        ]
 
 
 class UserDetailSerializer(serializers.ModelSerializer):
@@ -20,7 +27,14 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "full_name", "phone_number", "role", "is_active", "active_subscription", ]
+        fields = [
+            "id",
+            "full_name",
+            "phone_number",
+            "role",
+            "is_active",
+            "active_subscription",
+        ]
 
     def get_active_subscription(self, user):
         subscription = get_active_subscription(user=user)
@@ -34,8 +48,8 @@ class UserDetailSerializer(serializers.ModelSerializer):
 class UserCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'full_name', 'phone_number', 'password', 'role']
-        extra_kwargs = {'password': {'write_only': True}}
+        fields = ["id", "full_name", "phone_number", "password", "role"]
+        extra_kwargs = {"password": {"write_only": True}}
 
     def create(self, validated_data):
         return UserService.create_user(validated_data)

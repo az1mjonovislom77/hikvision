@@ -1,7 +1,8 @@
-from rest_framework import viewsets
 from django.contrib.auth import get_user_model
-from rest_framework.permissions import IsAuthenticated
+from rest_framework import viewsets
 from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.serializers import BaseSerializer
 
 User = get_user_model()
 
@@ -9,7 +10,8 @@ User = get_user_model()
 class PartialPutMixin:
     def update(self, request, *args, **kwargs):
         kwargs["partial"] = True
-        return super().update(request, *args, **kwargs)
+        # Mixin ModelViewSet bilan birga ishlatiladi — super()da update mavjud.
+        return super().update(request, *args, **kwargs)  # type: ignore[misc]
 
 
 class BaseUserViewSet(PartialPutMixin, viewsets.ModelViewSet):
@@ -19,7 +21,9 @@ class BaseUserViewSet(PartialPutMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        assert user.is_authenticated  # permission_classes = IsAuthenticated
         queryset = self.queryset
+        assert queryset is not None  # har bir subclass queryset belgilaydi
 
         if user.is_staff or user.role == User.UserRoles.SUPERADMIN:
             user_id = self.request.query_params.get("user_id")
@@ -29,12 +33,14 @@ class BaseUserViewSet(PartialPutMixin, viewsets.ModelViewSet):
                     raise ValidationError({"user_id": "Bunday user mavjud emas"})
                 return queryset.filter(user_id=user_id)
 
-            return queryset
+            # .all() — klass darajasidagi queryset keshini so'rovlar orasida ulashmaslik uchun.
+            return queryset.all()
 
         return queryset.filter(user=user)
 
     def perform_create(self, serializer):
         user = self.request.user
+        assert user.is_authenticated  # permission_classes = IsAuthenticated
 
         if user.is_staff or user.role == User.UserRoles.SUPERADMIN:
             user_id = self.request.query_params.get("user_id")
@@ -50,8 +56,12 @@ class BaseUserViewSet(PartialPutMixin, viewsets.ModelViewSet):
 
 class ReadWriteSerializerMixin:
     write_actions = {"create", "update", "partial_update"}
-    write_serializer = None
-    read_serializer = None
+    write_serializer: type[BaseSerializer] | None = None
+    read_serializer: type[BaseSerializer] | None = None
+
+    # GenericViewSet bilan birga ishlatiladi — bu atributlar o'sha yerdan keladi.
+    action: str
+    serializer_class: type[BaseSerializer] | None
 
     def get_serializer_class(self):
         if self.action in self.write_actions:

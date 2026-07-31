@@ -1,19 +1,13 @@
-times = [
-    "week",
-    "month",
-    "3month",
-    "6month",
-    "year"
-]
+times = ["week", "month", "3month", "6month", "year"]
 
 WEEK_DAYS = [
-    ('mon', 'Dushanba'),
-    ('tue', 'Seshanba'),
-    ('wed', 'Chorshanba'),
-    ('thu', 'Payshanba'),
-    ('fri', 'Juma'),
-    ('sat', 'Shanba'),
-    ('sun', 'Yakshanba'),
+    ("mon", "Dushanba"),
+    ("tue", "Seshanba"),
+    ("wed", "Chorshanba"),
+    ("thu", "Payshanba"),
+    ("fri", "Juma"),
+    ("sat", "Shanba"),
+    ("sun", "Yakshanba"),
 ]
 
 WEEKDAY_CODE_MAP = {

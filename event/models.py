@@ -1,6 +1,7 @@
 from django.db import models
-from utils.models import Devices
+
 from person.models import Employee
+from utils.models import Devices
 
 
 class AccessEvent(models.Model):
@@ -21,12 +22,12 @@ class AccessEvent(models.Model):
 
     class Meta:
         unique_together = ("device", "serial_no")
-        ordering = ['-time']
+        ordering = ["-time"]
         indexes = [
-            models.Index(fields=['-time']),
-            models.Index(fields=['serial_no']),
-            models.Index(fields=['major', 'minor']),
-            models.Index(fields=['employee'], name='event_acces_employe_idx'),
+            models.Index(fields=["-time"]),
+            models.Index(fields=["serial_no"]),
+            models.Index(fields=["major", "minor"]),
+            models.Index(fields=["employee"], name="event_acces_employe_idx"),
         ]
 
     def __str__(self):

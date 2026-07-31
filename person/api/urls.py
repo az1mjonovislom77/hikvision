@@ -1,7 +1,15 @@
 from django.urls import path
-from person.api.views.daily_views import DailyAccessListView, DailyAccessExcelExport
-from person.api.views.employee_views import EmployeeSyncView, EmployeeDetailView, EmployeeCreateView, EmployeeUpdateView, \
-    EmployeeDeleteView, EmployeeListView, EmployeeHistoryListView
+
+from person.api.views.daily_views import DailyAccessExcelExport, DailyAccessListView
+from person.api.views.employee_views import (
+    EmployeeCreateView,
+    EmployeeDeleteView,
+    EmployeeDetailView,
+    EmployeeHistoryListView,
+    EmployeeListView,
+    EmployeeSyncView,
+    EmployeeUpdateView,
+)
 
 urlpatterns = [
     path("sync-employees/", EmployeeSyncView.as_view(), name="sync-persons"),
@@ -12,5 +20,5 @@ urlpatterns = [
     path("update/<int:employee_id>/", EmployeeUpdateView.as_view(), name="person-update"),
     path("delete/<int:employee_id>/", EmployeeDeleteView.as_view(), name="person-delete"),
     path("daily-list/", DailyAccessListView.as_view(), name="daily-list"),
-    path('daily-excel/', DailyAccessExcelExport.as_view()),
+    path("daily-excel/", DailyAccessExcelExport.as_view()),
 ]

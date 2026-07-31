@@ -1,7 +1,8 @@
-from user.models import User
 from rest_framework import serializers
-from user.services.auth_service import AuthService
+
+from user.models import User
 from user.selectors.user import get_active_subscription
+from user.services.auth_service import AuthService
 
 
 class SignInSerializer(serializers.Serializer):
@@ -9,8 +10,8 @@ class SignInSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
-        user = AuthService.authenticate_user(phone_number=attrs.get('phone_number'), password=attrs.get('password'))
-        attrs['user'] = user
+        user = AuthService.authenticate_user(phone_number=attrs.get("phone_number"), password=attrs.get("password"))
+        attrs["user"] = user
         return attrs
 
 
@@ -18,7 +19,7 @@ class LogoutSerializer(serializers.Serializer):
     refresh = serializers.CharField()
 
     def save(self, **kwargs):
-        AuthService.logout_user(self.validated_data['refresh'])
+        AuthService.logout_user(self.validated_data["refresh"])
 
 
 class MeSerializer(serializers.ModelSerializer):
@@ -42,5 +43,5 @@ class MeSerializer(serializers.ModelSerializer):
             "is_active": subscription.is_active,
             "start_date": subscription.start_date,
             "end_date": subscription.end_date,
-            "remaining_days": subscription.remaining_days
+            "remaining_days": subscription.remaining_days,
         }

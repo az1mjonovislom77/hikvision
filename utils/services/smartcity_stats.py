@@ -1,6 +1,8 @@
 from datetime import timedelta
-from django.utils import timezone
+
 from django.db.models import Count, Q
+from django.utils import timezone
+
 from person.models import Employee
 from user.models import User
 
@@ -46,10 +48,14 @@ class SmartCityStatsService:
         return round(percent, 1)
 
     def mahalla_statistics(self):
-        qs = (self.base_employee_queryset()
-              .values("device__user__id", "device__user__full_name")
-              .annotate(total_employees=Count("id"),
-                        present_employees=Count("id", filter=Q(begin_time__range=(self.start_date, self.end_date)))))
+        qs = (
+            self.base_employee_queryset()
+            .values("device__user__id", "device__user__full_name")
+            .annotate(
+                total_employees=Count("id"),
+                present_employees=Count("id", filter=Q(begin_time__range=(self.start_date, self.end_date))),
+            )
+        )
 
         result = []
 
@@ -88,15 +94,20 @@ class SmartCityStatsService:
         attendance_data = self.mahalla_statistics()
         best, worst = self.best_and_worst(attendance_data)
 
+        # total/present bir marta hisoblanadi: avval bu yerda 7 ta COUNT so'rovi ketardi.
+        total = self.total_employees()
+        present = self.present_employees()
+
         return {
             "timeFilter": self.time_filter,
             "summary": {
                 "totalMahallas": self.total_mahallas(),
-                "totalEmployees": self.total_employees(),
-                "presentEmployees": self.present_employees(),
-                "absentEmployees": self.absent_employees(),
-                "averageAttendance": self.average_attendance(),
+                "totalEmployees": total,
+                "presentEmployees": present,
+                "absentEmployees": total - present,
+                "averageAttendance": round((present * 100) / total, 1) if total else 0,
                 "bestAttendanceMahalla": best,
                 "worstAttendanceMahalla": worst,
-            }, "attendance": attendance_data
+            },
+            "attendance": attendance_data,
         }

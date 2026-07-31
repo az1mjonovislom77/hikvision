@@ -1,11 +1,12 @@
-from rest_framework import status
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema
-from user.services.token_service import UserTokenService
+from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from user.api.serializers.auth_serializers import SignInSerializer, LogoutSerializer, MeSerializer
-from utils.utils.rate_limit import reset_login_rate_limit, check_login_rate_limit, get_client_ip
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from user.api.serializers.auth_serializers import LogoutSerializer, MeSerializer, SignInSerializer
+from user.services.token_service import UserTokenService
+from utils.utils.rate_limit import check_login_rate_limit, get_client_ip, reset_login_rate_limit
 
 
 @extend_schema(tags=["Auth"])
@@ -19,8 +20,9 @@ class SignInAPIView(APIView):
         phone = request.data.get("phone_number", "unknown")
 
         if not check_login_rate_limit(ip, phone):
-            return Response({"detail": "Too many login attempts. Try again later."},
-                            status=status.HTTP_429_TOO_MANY_REQUESTS)
+            return Response(
+                {"detail": "Too many login attempts. Try again later."}, status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
 
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -29,11 +31,9 @@ class SignInAPIView(APIView):
         tokens = UserTokenService.get_tokens_for_user(user)
 
         response = Response(
-            {
-                "success": True,
-                "message": "User logged in successfully",
-                "data": {"access": tokens["access"]}
-            }, status=status.HTTP_200_OK)
+            {"success": True, "message": "User logged in successfully", "data": {"access": tokens["access"]}},
+            status=status.HTTP_200_OK,
+        )
 
         UserTokenService.set_refresh_cookie(response, tokens["refresh"])
         reset_login_rate_limit(ip, phone)

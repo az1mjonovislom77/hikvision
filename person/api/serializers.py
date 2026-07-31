@@ -1,4 +1,5 @@
 from rest_framework import serializers
+
 from person.models import Employee, EmployeeHistory
 
 
@@ -7,13 +8,35 @@ class EmployeeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Employee
-        fields = ["id", "device", "employee_no", "name", "user_type", "employment", "department", "position", "shift",
-                  "description", "phone_number", "salary", "work_day", "branch", "fine", "day_off",
-                  "begin_time", "end_time", "door_right", "face_url", "local_face", "created_at"]
+        fields = [
+            "id",
+            "device",
+            "employee_no",
+            "name",
+            "user_type",
+            "employment",
+            "department",
+            "position",
+            "shift",
+            "description",
+            "phone_number",
+            "salary",
+            "work_day",
+            "branch",
+            "fine",
+            "day_off",
+            "begin_time",
+            "end_time",
+            "door_right",
+            "face_url",
+            "local_face",
+            "created_at",
+        ]
 
     def get_local_face(self, obj):
         if obj.face_image:
             request = self.context.get("request")
+            assert request is not None  # serializer har doim request context bilan chaqiriladi
             return request.build_absolute_uri(obj.face_image.url)
         return None
 
@@ -27,15 +50,47 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Employee
-        fields = ["device", "name", "user_type", "begin_time", "end_time", "door_right", "employment", "department",
-                  "position", "shift", "description", "phone_number", "salary", "work_day", "fine", "day_off"]
+        fields = [
+            "device",
+            "name",
+            "user_type",
+            "begin_time",
+            "end_time",
+            "door_right",
+            "employment",
+            "department",
+            "position",
+            "shift",
+            "description",
+            "phone_number",
+            "salary",
+            "work_day",
+            "fine",
+            "day_off",
+        ]
 
 
 class EmployeeUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
-        fields = ["device", "name", "user_type", "begin_time", "end_time", "door_right", "employment", "department",
-                  "position", "shift", "description", "phone_number", "salary", "work_day", "fine", "day_off"]
+        fields = [
+            "device",
+            "name",
+            "user_type",
+            "begin_time",
+            "end_time",
+            "door_right",
+            "employment",
+            "department",
+            "position",
+            "shift",
+            "description",
+            "phone_number",
+            "salary",
+            "work_day",
+            "fine",
+            "day_off",
+        ]
         extra_kwargs = {"name": {"required": False}}
 
 

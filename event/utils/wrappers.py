@@ -1,9 +1,12 @@
 import logging
-from event.utils.fetch import fetch_face_events
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
 from django.db import close_old_connections, connection
 
+from event.utils.fetch import fetch_face_events
+
 logger = logging.getLogger(__name__)
+
 
 def fetch(devices, since_map=None):
     total_saved = 0

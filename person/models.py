@@ -1,7 +1,8 @@
 from django.db import models
+
+from day.models import BreakTime, DayOff, Shift, WorkDay
 from utils.base.model_base import TimeStampedModel
-from utils.models import Department, Branch, Devices
-from day.models import Shift, BreakTime, WorkDay, DayOff
+from utils.models import Branch, Department, Devices
 
 
 class Employee(TimeStampedModel):
@@ -46,7 +47,9 @@ class EmployeeHistory(TimeStampedModel):
     label_name = models.CharField(max_length=255, null=True, blank=True)
 
     class Meta:
-        indexes = [models.Index(fields=["employee"]), ]
+        indexes = [
+            models.Index(fields=["employee"]),
+        ]
         ordering = ["-event_time"]
 
     def __str__(self):

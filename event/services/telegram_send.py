@@ -1,6 +1,8 @@
-import time
 import logging
+import time
+
 from django.utils import timezone
+
 from utils.models import TelegramChannel
 from utils.telegram.telegram import download_image, send_telegram
 
@@ -12,12 +14,7 @@ def build_message(event):
     device = event.device
     raw = event.raw_json or {}
 
-    label = (
-            raw.get("labelName")
-            or raw.get("label")
-            or raw.get("name")
-            or ""
-    ).strip().lower()
+    label = (raw.get("labelName") or raw.get("label") or raw.get("name") or "").strip().lower()
 
     direction = (
         "🚪 KIRISH"
@@ -67,7 +64,9 @@ def send_event(event, per_channel_delay=0.3):
     if not channels:
         logger.warning(
             "No resolved telegram channel for device_id=%s (%s) — event %s not sent",
-            device.id, device.name, event.id,
+            device.id,
+            device.name,
+            event.id,
         )
         event.sent_to_telegram = True
         event.save(update_fields=["sent_to_telegram"])

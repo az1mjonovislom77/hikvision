@@ -1,6 +1,7 @@
-from person.models import Employee
 from django.db import models, transaction
+
 from attendance.utils import count_workdays_in_month
+from person.models import Employee
 
 
 class AttendanceDaily(models.Model):
@@ -22,13 +23,15 @@ class AttendanceDaily(models.Model):
             models.Index(fields=["date"], name="attendance_date_idx"),
         ]
 
+    def __str__(self):
+        return f"{self.employee.name} — {self.date} — {self.status}"
+
     def save(self, *args, **kwargs):
         emp = self.employee
 
         old = None
         if self.pk:
-            old = AttendanceDaily.objects.filter(pk=self.pk) \
-                .only("status", "fine_amount").first()
+            old = AttendanceDaily.objects.filter(pk=self.pk).only("status", "fine_amount").first()
 
         with transaction.atomic():
             if self.status == "szk" and emp.is_fine:
@@ -51,6 +54,3 @@ class AttendanceDaily(models.Model):
                 emp.save(update_fields=["fine"])
 
             super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"{self.employee.name} — {self.date} — {self.status}"

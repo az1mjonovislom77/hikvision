@@ -1,7 +1,9 @@
 import logging
+
 from decouple import config
+
 from utils.models import TelegramChannel
-from utils.telegram.telegram import session, BASE_URL
+from utils.telegram.telegram import BASE_URL, session
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +28,10 @@ def sync_channels_from_updates():
         chat = message.get("chat")
         chat_id = str(chat["id"])
         title = chat.get("title")
-        logger.info(f"📡 Update from channel: {title} ({chat_id})")
+        logger.info("📡 Update from channel: %s (%s)", title, chat_id)
         channel = TelegramChannel.objects.filter(name=title, resolved_id__isnull=True).first()
 
         if channel:
             channel.resolved_id = chat_id
             channel.save(update_fields=["resolved_id"])
-            logger.info(f"✅ Channel resolved: {channel.name} → {chat_id}")
+            logger.info("✅ Channel resolved: %s → %s", channel.name, chat_id)

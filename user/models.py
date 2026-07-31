@@ -1,9 +1,9 @@
-from django.db import models
 from django.contrib.auth.base_user import AbstractBaseUser
-from django.contrib.auth.models import PermissionsMixin, Group, Permission, BaseUserManager
+from django.contrib.auth.models import BaseUserManager, PermissionsMixin
+from django.db import models
 
 
-class UserManager(BaseUserManager):
+class UserManager(BaseUserManager["User"]):
     use_in_migrations = True
 
     def create_user(self, phone_number, password=None, **extra_fields):
@@ -22,9 +22,9 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     class UserRoles(models.TextChoices):
-        SUPERADMIN = 's', "superadmin"
-        ADMIN = 'a', "admin"
-        MAHALLA = 'm', "mahalla"
+        SUPERADMIN = "s", "superadmin"
+        ADMIN = "a", "admin"
+        MAHALLA = "m", "mahalla"
 
     full_name = models.CharField(max_length=100, null=True, blank=True)
     phone_number = models.CharField(max_length=100, unique=True, null=True, blank=True)
@@ -32,12 +32,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
-    USERNAME_FIELD = 'phone_number'
+    USERNAME_FIELD = "phone_number"
 
     objects = UserManager()
 
     def __str__(self):
-        return f'{self.full_name or ""} {self.phone_number}'
+        return f"{self.full_name or ''} {self.phone_number}"
 
     class Meta:
-        db_table = 'user'
+        db_table = "user"

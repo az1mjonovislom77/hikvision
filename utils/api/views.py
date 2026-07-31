@@ -1,21 +1,38 @@
 from django.http import HttpResponse
-from rest_framework import status
-from rest_framework import viewsets
-from rest_framework.views import APIView
+from drf_spectacular.utils import OpenApiParameter, extend_schema
+from rest_framework import status, viewsets
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from utils.api.serializers import (
+    AdminNotificationSerializer,
+    BranchCreateSerializer,
+    BranchGetSerializer,
+    DepartmentCreateSerializer,
+    DepartmentGetSerializer,
+    DevicesSerializer,
+    NotificationSerializer,
+    PlanSerializer,
+    SubscriptionCreateSerializer,
+    SubscriptionDetailSerializer,
+    TelegramChannelSerializer,
+)
+from utils.base.views_base import BaseUserViewSet, ReadWriteSerializerMixin
+from utils.selectors.utils import (
+    branch_queryset,
+    department_queryset,
+    devices_queryset,
+    get_monthly_report_for_excel,
+    notification_queryset,
+    notification_queryset_for_user,
+    plan_queryset,
+    subscription_queryset,
+    telegram_channel_queryset,
+)
+from utils.services.api import AdminNotificationAPIService, SmartCityAPIService, SubscriptionAPIService
 from utils.services.monthly_export import AttendanceExcelExportService
 from utils.utils.schema import user_extend_schema
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from drf_spectacular.utils import extend_schema, OpenApiParameter
-from utils.base.views_base import BaseUserViewSet, ReadWriteSerializerMixin
-from utils.api.serializers import DevicesSerializer, TelegramChannelSerializer, \
-    BranchGetSerializer, BranchCreateSerializer, DepartmentCreateSerializer, DepartmentGetSerializer, \
-    PlanSerializer, SubscriptionCreateSerializer, SubscriptionDetailSerializer, NotificationSerializer, \
-    AdminNotificationSerializer
-from utils.selectors.utils import branch_queryset, department_queryset, devices_queryset, notification_queryset, \
-    notification_queryset_for_user, plan_queryset, subscription_queryset, telegram_channel_queryset, \
-    get_monthly_report_for_excel
-from utils.services.api import AdminNotificationAPIService, SmartCityAPIService, SubscriptionAPIService
 
 
 @user_extend_schema("Devices")
@@ -38,11 +55,13 @@ class BranchViewSet(ReadWriteSerializerMixin, BaseUserViewSet):
     read_serializer = BranchGetSerializer
 
 
-@extend_schema(tags=['TelegramChannel'],
-               parameters=[
-                   OpenApiParameter(name="branch_id", type=int, required=True),
-                   OpenApiParameter(name="user_id", type=int, required=False, description="Faqat superadmin uchun")
-               ])
+@extend_schema(
+    tags=["TelegramChannel"],
+    parameters=[
+        OpenApiParameter(name="branch_id", type=int, required=True),
+        OpenApiParameter(name="user_id", type=int, required=False, description="Faqat superadmin uchun"),
+    ],
+)
 class TelegramChannelViewSet(BaseUserViewSet):
     queryset = telegram_channel_queryset()
     serializer_class = TelegramChannelSerializer
@@ -62,7 +81,7 @@ class SubscriptionViewSet(BaseUserViewSet):
     queryset = subscription_queryset()
 
     def get_serializer_class(self):
-        if self.action in ('create', 'update', 'partial_update'):
+        if self.action in ("create", "update", "partial_update"):
             return SubscriptionCreateSerializer
         return SubscriptionDetailSerializer
 
@@ -70,7 +89,8 @@ class SubscriptionViewSet(BaseUserViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         subscription = SubscriptionAPIService.create_from_serializer(
-            serializer=serializer, request_user=request.user, user_id=request.query_params.get("user_id"))
+            serializer=serializer, request_user=request.user, user_id=request.query_params.get("user_id")
+        )
         response = SubscriptionDetailSerializer(subscription, context=self.get_serializer_context())
 
         return Response(response.data, status=status.HTTP_201_CREATED)
@@ -121,7 +141,9 @@ class SmartCityAPIView(APIView):
                 "success": True,
                 "message": "Data fetched successfully",
                 "data": data,
-            }, status=status.HTTP_200_OK)
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 @extend_schema(
@@ -129,24 +151,27 @@ class SmartCityAPIView(APIView):
     parameters=[
         OpenApiParameter(name="date", type=str, required=True),
         OpenApiParameter(name="mahalla", type=int, required=False),
-    ]
+    ],
 )
 class SmartCityDailyAPIView(APIView):
+    permission_classes = [AllowAny]
 
     def get(self, request):
         date = request.GET.get("date")
         mahalla = request.GET.get("mahalla")
 
         if not date:
-            return Response({"success": False, "message": "date parameter is required"},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"success": False, "message": "date parameter is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         if mahalla is not None:
             try:
                 mahalla = int(mahalla)
             except ValueError:
-                return Response({"success": False, "message": "mahalla must be integer"},
-                                status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"success": False, "message": "mahalla must be integer"}, status=status.HTTP_400_BAD_REQUEST
+                )
 
         try:
             data = SmartCityAPIService.build_daily_stats(date=date, mahalla=mahalla)
@@ -155,11 +180,7 @@ class SmartCityDailyAPIView(APIView):
             return Response({"success": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(
-            {
-                "success": True,
-                "message": "Daily stats fetched successfully",
-                "data": data
-            }, status=status.HTTP_200_OK
+            {"success": True, "message": "Daily stats fetched successfully", "data": data}, status=status.HTTP_200_OK
         )
 
 
@@ -172,7 +193,9 @@ class MonthlyAttendanceExcelExportView(APIView):
             OpenApiParameter(name="branch_id", type=int, location=OpenApiParameter.QUERY, required=True),
             OpenApiParameter(name="year", type=int, location=OpenApiParameter.QUERY, required=True),
             OpenApiParameter(name="month", type=int, location=OpenApiParameter.QUERY, required=True),
-            OpenApiParameter(name="employee_id", type=int, location=OpenApiParameter.QUERY, required=False)])
+            OpenApiParameter(name="employee_id", type=int, location=OpenApiParameter.QUERY, required=False),
+        ],
+    )
     def get(self, request):
         branch_id = request.GET.get("branch_id")
         year = request.GET.get("year")
@@ -186,10 +209,10 @@ class MonthlyAttendanceExcelExportView(APIView):
             return HttpResponse("year and month required", status=400)
 
         report = get_monthly_report_for_excel(
-            user=request.user, branch_id=branch_id, year=int(year), month=int(month), employee_id=employee_id)
+            user=request.user, branch_id=branch_id, year=int(year), month=int(month), employee_id=employee_id
+        )
 
         if not report:
             return HttpResponse("Branch not found", status=400)
 
-        return AttendanceExcelExportService.generate_monthly_excel(
-            report=report, year=int(year), month=int(month))
+        return AttendanceExcelExportService.generate_monthly_excel(report=report, year=int(year), month=int(month))

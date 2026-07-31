@@ -1,11 +1,13 @@
 import logging
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.generics import ListAPIView
-from event.api.serializers import AccessEventSerializer
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from event.api.serializers import AccessEventSerializer
 from event.selectors.events import get_access_events_queryset, get_user_devices
 from event.services.api import EventSyncAPIService, truthy_param
 
@@ -21,7 +23,9 @@ class CustomPagination(PageNumberPagination):
     tags=["Event"],
     parameters=[
         OpenApiParameter(name="user_id", type=int, required=False, description="Faqat superadmin uchun"),
-        OpenApiParameter(name="full", type=bool, required=False)])
+        OpenApiParameter(name="full", type=bool, required=False),
+    ],
+)
 class EventSyncView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -29,8 +33,11 @@ class EventSyncView(APIView):
         user = request.user
         logger.info(
             "event sync request started: user_id=%s role=%s is_staff=%s query_params=%s body_keys=%s",
-            user.id, getattr(user, "role", None), user.is_staff, dict(request.query_params),
-            sorted(list(request.data.keys())) if isinstance(getattr(request, "data", None), dict) else [],
+            user.id,
+            getattr(user, "role", None),
+            user.is_staff,
+            dict(request.query_params),
+            sorted(request.data.keys()) if isinstance(getattr(request, "data", None), dict) else [],
         )
 
         devices, error, status_code = EventSyncAPIService.resolve_devices(

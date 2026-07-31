@@ -1,14 +1,16 @@
-import time
 import logging
+import time
+
+from django.core.management.base import BaseCommand
 from django.db import close_old_connections
 from django.utils import timezone
-from django.core.management.base import BaseCommand
+
 from event.models import AccessEvent
-from event.utils.wrappers import fetch
 from event.services.event_state import get_last_event_time, set_last_event_time
+from event.utils.wrappers import fetch
 from utils.models import Devices, TelegramChannel
-from utils.telegram.telegram_updates import sync_channels_from_updates
 from utils.telegram.telegram import download_image, send_telegram
+from utils.telegram.telegram_updates import sync_channels_from_updates
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +21,7 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         self.stdout.write("🚀 Realtime event listener started")
         last_times = {}
+        consecutive_errors = 0
 
         while True:
             try:
@@ -30,12 +33,7 @@ class Command(BaseCommand):
                     if device.id not in last_times:
                         last_time = get_last_event_time(device.id)
                         if last_time is None:
-                            last_event = (
-                                AccessEvent.objects
-                                .filter(device=device)
-                                .order_by("-time")
-                                .first()
-                            )
+                            last_event = AccessEvent.objects.filter(device=device).order_by("-time").first()
                             last_time = last_event.time if last_event else timezone.now()
                         last_times[device.id] = last_time
 
@@ -48,15 +46,19 @@ class Command(BaseCommand):
                     except Exception:
                         logger.exception("Device events failed: device_id=%s", device.id)
 
-            except Exception:
-                logger.exception("MAIN LOOP ERROR")
+                consecutive_errors = 0
 
-            time.sleep(5)
+            except Exception:
+                consecutive_errors += 1
+                logger.exception("MAIN LOOP ERROR (ketma-ket %s-marta)", consecutive_errors)
+
+            # Doimiy xatolikda (masalan qurilma parolini o'zgartirsa) log to'lib
+            # ketmasligi uchun kutish vaqti 5 → 300 soniyagacha o'sadi.
+            time.sleep(min(5 * 2**consecutive_errors, 300) if consecutive_errors else 5)
 
     def _process_device_events(self, device, last_times):
         events = (
-            AccessEvent.objects
-            .filter(device=device, time__gt=last_times[device.id], sent_to_telegram=False)
+            AccessEvent.objects.filter(device=device, time__gt=last_times[device.id], sent_to_telegram=False)
             .select_related("employee", "device", "device__user")
             .order_by("time")
         )
@@ -73,12 +75,7 @@ class Command(BaseCommand):
 
             raw = event.raw_json or {}
 
-            label = (
-                    raw.get("labelName")
-                    or raw.get("label")
-                    or raw.get("name")
-                    or ""
-            ).strip().lower()
+            label = (raw.get("labelName") or raw.get("label") or raw.get("name") or "").strip().lower()
 
             direction = (
                 "🚪 KIRISH"
@@ -107,7 +104,9 @@ class Command(BaseCommand):
             if not channels:
                 logger.warning(
                     "No resolved telegram channel for device_id=%s (%s) — event %s not sent",
-                    device.id, device.name, event.id,
+                    device.id,
+                    device.name,
+                    event.id,
                 )
 
             sent_any = False

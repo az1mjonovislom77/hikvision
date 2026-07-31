@@ -3,7 +3,6 @@ from requests.auth import HTTPDigestAuth
 
 
 class HikvisionService:
-
     @staticmethod
     def _auth(device):
         return HTTPDigestAuth(device.username, device.password)
@@ -16,13 +15,7 @@ class HikvisionService:
     def search_users(device, max_results=300):
         url = HikvisionService._url(device, "AccessControl/UserInfo/Search")
 
-        payload = {
-            "UserInfoSearchCond": {
-                "searchID": "1",
-                "searchResultPosition": 0,
-                "maxResults": max_results
-            }
-        }
+        payload = {"UserInfoSearchCond": {"searchID": "1", "searchResultPosition": 0, "maxResults": max_results}}
 
         result = requests.post(url, json=payload, auth=HikvisionService._auth(device), timeout=20)
 

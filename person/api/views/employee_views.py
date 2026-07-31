@@ -1,4 +1,5 @@
 from datetime import datetime, time
+
 from django.utils.dateparse import parse_date
 from django.utils.timezone import localdate, make_aware
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -8,8 +9,13 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from person.api.serializers import EmployeeCreateSerializer, EmployeeHistorySerializer, EmployeeSerializer, \
-    EmployeeUpdateSerializer
+
+from person.api.serializers import (
+    EmployeeCreateSerializer,
+    EmployeeHistorySerializer,
+    EmployeeSerializer,
+    EmployeeUpdateSerializer,
+)
 from person.selectors.person import get_branch_employees, get_device, get_employee_with_device_user
 from person.services.api import EmployeeAPIService, EmployeeHistoryService
 from user.models import User
@@ -21,19 +27,24 @@ class EmployeePagination(PageNumberPagination):
     max_page_size = 1000
 
     def get_paginated_response(self, data):
-        return Response({
-            "count": self.page.paginator.count,
-            "next": self.get_next_link(),
-            "previous": self.get_previous_link(),
-            "results": data
-        })
+        assert self.page is not None  # paginate_queryset dan keyin chaqiriladi
+        return Response(
+            {
+                "count": self.page.paginator.count,
+                "next": self.get_next_link(),
+                "previous": self.get_previous_link(),
+                "results": data,
+            }
+        )
 
 
-@extend_schema(tags=['Employee'],
-               parameters=[
-                   OpenApiParameter(name="branch_id", type=int, description="Branch ID (majburiy)", required=True),
-                   OpenApiParameter(name="user_id", type=int, required=False, description="Faqat superadmin uchun")
-               ])
+@extend_schema(
+    tags=["Employee"],
+    parameters=[
+        OpenApiParameter(name="branch_id", type=int, description="Branch ID (majburiy)", required=True),
+        OpenApiParameter(name="user_id", type=int, required=False, description="Faqat superadmin uchun"),
+    ],
+)
 class EmployeeSyncView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -60,11 +71,13 @@ class EmployeeSyncView(APIView):
         return Response(EmployeeAPIService.sync_branch_devices(branch=branch))
 
 
-@extend_schema(tags=['Employee'],
-               parameters=[
-                   OpenApiParameter(name="branch_id", type=int, description="Branch ID (majburiy)", required=True),
-                   OpenApiParameter(name="user_id", type=int, required=False, description="Faqat superadmin uchun")
-               ])
+@extend_schema(
+    tags=["Employee"],
+    parameters=[
+        OpenApiParameter(name="branch_id", type=int, description="Branch ID (majburiy)", required=True),
+        OpenApiParameter(name="user_id", type=int, required=False, description="Faqat superadmin uchun"),
+    ],
+)
 class EmployeeListView(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = EmployeeSerializer
@@ -101,9 +114,8 @@ class EmployeeDetailView(APIView):
         if not emp:
             return Response({"error": "Topilmadi"}, status=404)
 
-        if not request.user.UserRoles.SUPERADMIN and not request.user.is_staff:
-            if emp.device.user != request.user:
-                return Response({"error": "Ruxsat yoвЂq"}, status=403)
+        if not request.user.UserRoles.SUPERADMIN and not request.user.is_staff and emp.device.user != request.user:
+            return Response({"error": "Ruxsat yoвЂq"}, status=403)
 
         serializer = EmployeeSerializer(emp, context={"request": request})
         return Response(serializer.data)
@@ -148,9 +160,8 @@ class EmployeeUpdateView(APIView):
         if not emp:
             return Response({"error": "Topilmadi"}, status=404)
 
-        if not request.user.UserRoles.SUPERADMIN and not request.user.is_staff:
-            if emp.device.user != request.user:
-                return Response({"error": "Ruxsat yoвЂq"}, status=403)
+        if not request.user.UserRoles.SUPERADMIN and not request.user.is_staff and emp.device.user != request.user:
+            return Response({"error": "Ruxsat yoвЂq"}, status=403)
 
         serializer = EmployeeUpdateSerializer(emp, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -171,9 +182,8 @@ class EmployeeDeleteView(APIView):
         if not emp:
             return Response({"error": "Not found"}, status=404)
 
-        if not request.user.UserRoles.SUPERADMIN and not request.user.is_staff:
-            if emp.device.user != request.user:
-                return Response({"error": "Ruxsat yoвЂq"}, status=403)
+        if not request.user.UserRoles.SUPERADMIN and not request.user.is_staff and emp.device.user != request.user:
+            return Response({"error": "Ruxsat yoвЂq"}, status=403)
 
         payload, status_code = EmployeeAPIService.delete_employee(employee=emp)
         if status_code:
@@ -187,7 +197,8 @@ class EmployeeDeleteView(APIView):
     parameters=[
         OpenApiParameter(name="employee_id", type=int, required=True),
         OpenApiParameter(name="date", type=str, required=False, description="Sana (YYYY-MM-DD)."),
-    ], responses={200: EmployeeHistorySerializer(many=True)}
+    ],
+    responses={200: EmployeeHistorySerializer(many=True)},
 )
 class EmployeeHistoryListView(ListAPIView):
     serializer_class = EmployeeHistorySerializer
@@ -204,9 +215,12 @@ class EmployeeHistoryListView(ListAPIView):
         date_str = self.request.query_params.get("date")
         date = parse_date(date_str) if date_str else localdate()
 
-        start = make_aware(datetime.combine(date, time.min))
-        end = make_aware(datetime.combine(date, time.max))
+        # parse_date noto'g'ri formatda None qaytaradi va bu yerda TypeError bo'ladi —
+        # mavjud xatti-harakat saqlangan (bug ro'yxatiga kiritilgan).
+        start = make_aware(datetime.combine(date, time.min))  # type: ignore[arg-type]
+        end = make_aware(datetime.combine(date, time.max))  # type: ignore[arg-type]
         employee = get_employee_with_device_user(employee_id=employee_id)
 
         return EmployeeHistoryService.build_queryset(
-            user=self.request.user, employee=employee, employee_id=employee_id, start=start, end=end)
+            user=self.request.user, employee=employee, employee_id=employee_id, start=start, end=end
+        )

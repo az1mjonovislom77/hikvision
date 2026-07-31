@@ -1,6 +1,7 @@
 from rest_framework import serializers
+
 from utils.base.serializers_base import BaseReadSerializer
-from utils.models import Devices, Department, Branch, TelegramChannel, Plan, Subscription, Notification
+from utils.models import Branch, Department, Devices, Notification, Plan, Subscription, TelegramChannel
 from utils.selectors.utils import plan_queryset
 
 
@@ -39,8 +40,17 @@ class TelegramChannelSerializer(BaseReadSerializer):
 class PlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = Plan
-        fields = ["id", "title", "plan_type", "billing_cycle", "duration_months", "price", "description", "currency",
-                  "content"]
+        fields = [
+            "id",
+            "title",
+            "plan_type",
+            "billing_cycle",
+            "duration_months",
+            "price",
+            "description",
+            "currency",
+            "content",
+        ]
         read_only_fields = ["id", "duration_months"]
 
 
@@ -61,11 +71,13 @@ class SubscriptionDetailSerializer(serializers.ModelSerializer):
         fields = ["id", "plan", "start_date", "end_date", "is_active", "remaining_days"]
 
     def get_plan(self, obj):
-        return {"id": obj.plan.id,
-                "title": obj.plan.title,
-                "plan_type": obj.plan.plan_type,
-                "billing_cycle": obj.plan.billing_cycle,
-                "price": obj.plan.price}
+        return {
+            "id": obj.plan.id,
+            "title": obj.plan.title,
+            "plan_type": obj.plan.plan_type,
+            "billing_cycle": obj.plan.billing_cycle,
+            "price": obj.plan.price,
+        }
 
     def get_remaining_days(self, obj):
         return obj.remaining_days

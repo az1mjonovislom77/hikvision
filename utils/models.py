@@ -1,7 +1,8 @@
 from django.db import models
-from user.models import User
 from django.utils import timezone
-from utils.base.model_base import TimeStampedModel, OwnedNamedModel
+
+from user.models import User
+from utils.base.model_base import OwnedNamedModel, TimeStampedModel
 
 
 class Devices(TimeStampedModel):
@@ -49,17 +50,18 @@ class Plan(models.Model):
     description = models.TextField(null=True, blank=True, max_length=500)
     content = models.TextField(null=True, blank=True, max_length=500)
 
+    def __str__(self):
+        return f"{self.title} ({self.duration_months} months)"
+
     def save(self, *args, **kwargs):
-        self.duration_months = {
+        duration_by_cycle: dict[str, int] = {
             self.CycleChoice.MONTHLY: 1,
             self.CycleChoice.QUARTERLY: 3,
             self.CycleChoice.HALF_YEARLY: 6,
             self.CycleChoice.YEARLY: 12,
-        }[self.billing_cycle]
+        }
+        self.duration_months = duration_by_cycle[self.billing_cycle]
         super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"{self.title} ({self.duration_months} months)"
 
 
 class Subscription(TimeStampedModel):
@@ -72,7 +74,9 @@ class Subscription(TimeStampedModel):
 
     @property
     def remaining_days(self):
-        delta = self.end_date - timezone.now()
+        # end_date null=True, lekin bu yerda None bo'lsa TypeError ko'tariladi —
+        # mavjud xatti-harakat saqlangan (bug ro'yxatiga kiritilgan).
+        delta = self.end_date - timezone.now()  # type: ignore[operator]
         return max(delta.days, 0)
 
     def __str__(self):

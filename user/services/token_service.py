@@ -5,28 +5,22 @@ class UserTokenService:
     COOKIE_NAME = "refresh_token"
     COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 
-    COOKIE_SETTINGS = {
-        "httponly": True,
-        "secure": True,
-        "samesite": "Strict",
-        "max_age": COOKIE_MAX_AGE
-    }
+    COOKIE_SETTINGS = {"httponly": True, "secure": True, "samesite": "Strict", "max_age": COOKIE_MAX_AGE}
 
     @staticmethod
     def get_tokens_for_user(user):
         refresh = RefreshToken.for_user(user)
-        return {
-            "refresh": str(refresh),
-            "access": str(refresh.access_token)
-        }
+        return {"refresh": str(refresh), "access": str(refresh.access_token)}
 
     @staticmethod
     def get_tokens_for_user_from_refresh(refresh_token: str):
         try:
-            refresh = RefreshToken(refresh_token)
+            # simplejwt stub'lari token argumentini "Token | None" deb belgilaydi,
+            # aslida str qabul qilinadi.
+            refresh = RefreshToken(refresh_token)  # type: ignore[arg-type]
             return str(refresh.access_token)
-        except TokenError:
-            raise TokenError("Invalid or expired refresh token")
+        except TokenError as exc:
+            raise TokenError("Invalid or expired refresh token") from exc
 
     @classmethod
     def set_refresh_cookie(cls, response, refresh_token: str):

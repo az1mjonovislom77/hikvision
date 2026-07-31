@@ -1,4 +1,5 @@
 from django.db.models import Prefetch
+
 from event.models import AccessEvent
 from person.models import Employee, EmployeeHistory
 from user.models import User
@@ -30,12 +31,11 @@ def get_branch_employees(*, branch):
 
 def get_user_employees_with_events(*, user):
     return (
-        Employee.objects
-        .filter(device__user=user)
+        Employee.objects.filter(device__user=user)
         .select_related("shift", "device")
-        .prefetch_related(Prefetch("device__events",
-                                   queryset=AccessEvent.objects.order_by("time"),
-                                   to_attr="prefetched_events"))
+        .prefetch_related(
+            Prefetch("device__events", queryset=AccessEvent.objects.order_by("time"), to_attr="prefetched_events")
+        )
     )
 
 
@@ -44,10 +44,8 @@ def get_employee_with_device_user(*, employee_id):
 
 
 def get_employee_history_for_day(*, employee_id, start, end):
-    return (
-        EmployeeHistory.objects
-        .filter(employee_id=employee_id, event_time__range=(start, end))
-        .select_related("event", "employee")
+    return EmployeeHistory.objects.filter(employee_id=employee_id, event_time__range=(start, end)).select_related(
+        "event", "employee"
     )
 
 
@@ -56,16 +54,15 @@ def empty_employee_history_queryset():
 
 
 def get_access_events_for_history(*, employee_no, device, start, end):
-    return (
-        AccessEvent.objects
-        .filter(employee_no=employee_no, device=device, time__range=(start, end))
-        .only("id", "time", "label_name")
+    return AccessEvent.objects.filter(employee_no=employee_no, device=device, time__range=(start, end)).only(
+        "id", "time", "label_name"
     )
 
 
 def get_existing_employee_history_event_ids(*, employee, events):
     return set(
         EmployeeHistory.objects.filter(
-            employee=employee, event_id__in=[e.id for e in events],
+            employee=employee,
+            event_id__in=[e.id for e in events],
         ).values_list("event_id", flat=True)
     )

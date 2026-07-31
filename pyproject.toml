@@ -1,0 +1,77 @@
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["migrations", "staticfiles", "media"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "DJ",  # flake8-django
+    "UP",  # pyupgrade
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "RUF", # ruff-specific
+]
+ignore = [
+    # E501: line-length ruff format boshqaradi; uzun o'zbekcha matnlar va URL'lar uchun shovqin.
+    "E501",
+    # RUF001-003: o'zbekcha matndagi ' (modifier apostrophe) va kirillcha harflar
+    # "ambiguous unicode" deb noto'g'ri belgilanadi — atayin ishlatilgan.
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    # RUF012: Django/DRF konvensiyasi (Meta.fields, http_method_names va h.k.) mutable
+    # class-atributlarga tayanadi; ClassVar bilan o'rash foyda bermaydi.
+    "RUF012",
+    # DJ001: null=True'ni CharField'lardan olib tashlash model + migratsiya + ma'lumot
+    # ko'chirish talab qiladi — bu xatti-harakat o'zgarishi, sifat qatlamiga kirmaydi.
+    "DJ001",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["attendance", "config", "day", "event", "person", "user", "utils"]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+exclude = [
+    "^\\.venv/",
+    "/migrations/",
+    "^staticfiles/",
+    "^media/",
+]
+
+[[tool.mypy.overrides]]
+# python-decouple py.typed markerga ega emas va rasmiy stub'lari yo'q.
+module = ["decouple"]
+ignore_missing_imports = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings"
+
+[tool.coverage.run]
+source = ["attendance", "config", "day", "event", "person", "user", "utils"]
+omit = [
+    # Migratsiyalar — generatsiya qilingan kod, testlab bo'lmaydi.
+    "*/migrations/*",
+    # WSGI/ASGI/Celery bootstrap — faqat prod jarayonida ishga tushadi.
+    "config/wsgi.py",
+    "config/asgi.py",
+    "config/celery_config.py",
+    # Cheksiz while-loop bilan ishlaydigan real-time polling komandasi va
+    # Telegram diagnostika komandasi — jonli qurilma/bot talab qiladi.
+    "event/management/commands/real_time.py",
+    "event/management/commands/tg_diag.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+precision = 1

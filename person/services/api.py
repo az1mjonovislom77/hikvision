@@ -1,16 +1,25 @@
 import time
 import uuid
 from io import BytesIO
+
 import openpyxl
-from user.models import User
+
 from person.models import Employee, EmployeeHistory
-from person.selectors.person import empty_employee_history_queryset, get_access_events_for_history, \
-    get_branch_device_queryset, get_existing_employee_history_event_ids, get_employee_history_for_day, \
-    get_user_employees_with_events, get_target_user, get_user_branch
+from person.selectors.person import (
+    empty_employee_history_queryset,
+    get_access_events_for_history,
+    get_branch_device_queryset,
+    get_employee_history_for_day,
+    get_existing_employee_history_event_ids,
+    get_target_user,
+    get_user_branch,
+    get_user_employees_with_events,
+)
 from person.services.access import DailyAccessService
 from person.services.employee import EmployeeService
 from person.services.hikvision import HikvisionService
 from person.utils import fix_hikvision_time, normalize_employee_no
+from user.models import User
 
 
 class EmployeeAPIService:
@@ -58,12 +67,7 @@ class EmployeeAPIService:
                 "name": data["name"],
                 "userType": data.get("user_type", "normal"),
                 "doorRight": data.get("door_right", "1"),
-                "Valid": {
-                    "enable": True,
-                    "beginTime": begin,
-                    "endTime": end,
-                    "timeType": "local"
-                }
+                "Valid": {"enable": True, "beginTime": begin, "endTime": end, "timeType": "local"},
             }
         }
 
@@ -93,12 +97,7 @@ class EmployeeAPIService:
                 "name": name,
                 "userType": user_type,
                 "doorRight": door_right,
-                "Valid": {
-                    "enable": True,
-                    "beginTime": begin_str,
-                    "endTime": end_str,
-                    "timeType": "local"
-                }
+                "Valid": {"enable": True, "beginTime": begin_str, "endTime": end_str, "timeType": "local"},
             }
         }
 
@@ -125,20 +124,21 @@ class EmployeeHistoryService:
         if not employee:
             return empty_employee_history_queryset()
 
-        if not user.role == User.UserRoles.SUPERADMIN and not user.is_staff:
-            if employee.device.user != user:
-                return empty_employee_history_queryset()
+        if user.role != User.UserRoles.SUPERADMIN and not user.is_staff and employee.device.user != user:
+            return empty_employee_history_queryset()
 
         qs = get_employee_history_for_day(employee_id=employee_id, start=start, end=end)
 
         if not qs.exists():
             employee_no = normalize_employee_no(employee.employee_no)
-            events = list(get_access_events_for_history(
-                employee_no=employee_no,
-                device=employee.device,
-                start=start,
-                end=end,
-            ))
+            events = list(
+                get_access_events_for_history(
+                    employee_no=employee_no,
+                    device=employee.device,
+                    start=start,
+                    end=end,
+                )
+            )
 
             existing_event_ids = get_existing_employee_history_event_ids(employee=employee, events=events)
             to_create = []
@@ -146,7 +146,8 @@ class EmployeeHistoryService:
             for ev in events:
                 if ev.id not in existing_event_ids:
                     to_create.append(
-                        EmployeeHistory(employee=employee, event=ev, event_time=ev.time, label_name=ev.label_name))
+                        EmployeeHistory(employee=employee, event=ev, event_time=ev.time, label_name=ev.label_name)
+                    )
 
             if to_create:
                 EmployeeHistory.objects.bulk_create(to_create)
@@ -176,11 +177,7 @@ class DailyAccessAPIService:
 
             results.append(result["data"])
 
-        return {
-            "date": str(date_obj),
-            "employees": results,
-            "stats": stats
-        }
+        return {"date": str(date_obj), "employees": results, "stats": stats}
 
     @staticmethod
     def excel_bytes(*, user, date_obj):
@@ -188,6 +185,7 @@ class DailyAccessAPIService:
 
         workbook = openpyxl.Workbook()
         sheet = workbook.active
+        assert sheet is not None  # yangi Workbook har doim aktiv sahifa bilan yaratiladi
         sheet.title = f"{date_obj}"
         sheet.append(["Employee No", "Name", "Kirish", "Chiqish", "Late", "Shift"])
 

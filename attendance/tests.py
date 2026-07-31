@@ -1,11 +1,14 @@
 from calendar import monthrange
 from datetime import date, datetime, time
+
 from django.test import TestCase
 from django.utils.timezone import make_aware
 from rest_framework.test import APIRequestFactory, force_authenticate
-from attendance.models import AttendanceDaily
-from attendance.utils import count_workdays_in_month, is_employee_workday
+
 from attendance.api.views import MonthlyAttendanceReportView
+from attendance.models import AttendanceDaily
+from attendance.services.attendance import AttendanceService
+from attendance.utils import count_workdays_in_month, is_employee_workday, minutes_to_hm
 from day.models import DayOff, Shift, WorkDay
 from event.models import AccessEvent
 from person.models import Employee
@@ -155,3 +158,92 @@ class AttendanceCalculationTests(TestCase):
         self.assertEqual(result["net_adjustment"], 0)
         self.assertEqual(detail["difference"], "0:00")
         self.assertAlmostEqual(detail["bonus"], detail["penalty"])
+
+
+class MinutesToHmTests(TestCase):
+    def test_zero(self):
+        self.assertEqual(minutes_to_hm(0), "0:00")
+
+    def test_hour_and_minutes(self):
+        self.assertEqual(minutes_to_hm(75), "1:15")
+
+    def test_full_hours(self):
+        self.assertEqual(minutes_to_hm(600), "10:00")
+
+
+class AttendanceServiceTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(phone_number="998905000001", password="pass")
+        self.device = Devices.objects.create(
+            user=self.user,
+            name="Device",
+            ip="127.0.0.2",
+            username="admin",
+            password="admin",
+            status=Devices.Status.ACTIVE,
+        )
+        self.branch = Branch.objects.create(user=self.user, name="Branch", device=self.device)
+        self.workday = WorkDay.objects.create(user=self.user, name="Weekdays", days=["mon", "tue", "wed", "thu", "fri"])
+        self.shift = Shift.objects.create(
+            user=self.user, name="Office", start_time=time(9, 0), end_time=time(18, 0), approved_late_min=0
+        )
+        self.employee = Employee.objects.create(
+            device=self.device,
+            employee_no="50",
+            name="Service Emp",
+            salary=0,
+            shift=self.shift,
+            work_day=self.workday,
+            branch=self.branch,
+        )
+
+    def test_create_missing_absent_records_marks_szk(self):
+        target = date(2026, 3, 3)
+        AttendanceService.create_missing_absent_records(branch=self.branch, target_date=target)
+        record = AttendanceDaily.objects.get(employee=self.employee, date=target)
+        self.assertEqual(record.status, "szk")
+
+    def test_create_missing_absent_records_skips_employee_with_entry_event(self):
+        target = date(2026, 3, 3)
+        AccessEvent.objects.create(
+            employee=self.employee,
+            major=5,
+            minor=75,
+            major_name="m",
+            minor_name="n",
+            name=self.employee.name,
+            employee_no="50",
+            picture_url="",
+            raw_json={},
+            device=self.device,
+            serial_no="evt-1",
+            time=make_aware(datetime(2026, 3, 3, 9, 0)),
+        )
+        AttendanceService.create_missing_absent_records(branch=self.branch, target_date=target)
+        self.assertFalse(AttendanceDaily.objects.filter(employee=self.employee, date=target).exists())
+
+    def test_create_missing_absent_records_skips_non_workday(self):
+        target = date(2026, 3, 1)  # yakshanba
+        AttendanceService.create_missing_absent_records(branch=self.branch, target_date=target)
+        self.assertFalse(AttendanceDaily.objects.filter(employee=self.employee, date=target).exists())
+
+    def test_absent_records_payload_lists_absent_employees(self):
+        target = date(2026, 3, 3)
+        AttendanceDaily.objects.create(employee=self.employee, date=target, status="szk", comment="izoh")
+        payload = AttendanceService.absent_records_payload(target_date=target)
+        self.assertEqual(payload["total"], 1)
+        self.assertEqual(payload["employees"][0]["employee_name"], "Service Emp")
+        self.assertEqual(payload["employees"][0]["status"], "szk")
+
+    def test_update_daily_status_creates_then_updates(self):
+        target = date(2026, 3, 3)
+        created = AttendanceService.update_daily_status(
+            employee_id=self.employee.id, target_date=target, status_value="szk", comment="c1"
+        )
+        self.assertTrue(created["created"])
+        updated = AttendanceService.update_daily_status(
+            employee_id=self.employee.id, target_date=target, status_value="sbk", comment="c2"
+        )
+        self.assertFalse(updated["created"])
+        self.assertEqual(updated["status"], "sbk")
+        self.assertEqual(AttendanceDaily.objects.filter(employee=self.employee, date=target).count(), 1)

@@ -13,4 +13,3 @@ def get_user_devices(*, user):
 
 def get_access_events_queryset():
     return AccessEvent.objects.select_related("device", "employee")
-

@@ -1,15 +1,15 @@
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 from event.utils.fetch_employee import fetch_all_employees
 from person.models import Employee
 from person.utils import download_face_from_url, normalize_employee_no
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
 
 
 class EmployeeService:
-
     @staticmethod
     def sync_from_hikvision(device, hk_users=None):
         logger.info("sync_from_hikvision started: device=%s", device.ip)
@@ -72,17 +72,17 @@ class EmployeeService:
 
         logger.info(
             "sync_from_hikvision processed: device=%s total=%d added=%d faces=%d",
-            device.ip, len(hk_users), added, len(download_tasks),
+            device.ip,
+            len(hk_users),
+            added,
+            len(download_tasks),
         )
 
         def worker(face_url):
             return download_face_from_url(face_url)
 
         with ThreadPoolExecutor(max_workers=2) as executor:
-            future_map = {
-                executor.submit(worker, face_url): emp_obj
-                for emp_obj, face_url in download_tasks
-            }
+            future_map = {executor.submit(worker, face_url): emp_obj for emp_obj, face_url in download_tasks}
 
             for future in as_completed(future_map):
                 emp_obj = future_map[future]
@@ -95,9 +95,7 @@ class EmployeeService:
                             save=True,
                         )
                 except Exception:
-                    logger.exception(
-                        "sync_from_hikvision: face save failed employee_no=%s", emp_obj.employee_no
-                    )
+                    logger.exception("sync_from_hikvision: face save failed employee_no=%s", emp_obj.employee_no)
                 time.sleep(0.2)
 
         logger.info("sync_from_hikvision done: device=%s added=%d", device.ip, added)

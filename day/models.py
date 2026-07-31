@@ -1,4 +1,5 @@
 from django.db import models
+
 from utils.base.model_base import OwnedNamedModel
 
 
@@ -20,5 +21,3 @@ class Shift(OwnedNamedModel):
     start_time = models.TimeField()
     end_time = models.TimeField()
     approved_late_min = models.PositiveIntegerField(default=15)
-
-

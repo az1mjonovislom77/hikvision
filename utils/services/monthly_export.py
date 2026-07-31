@@ -1,11 +1,10 @@
 import openpyxl
 from django.http import HttpResponse
-from openpyxl.styles import Font, Alignment, Border, Side
+from openpyxl.styles import Alignment, Border, Font, Side
 from openpyxl.utils import get_column_letter
 
 
 class AttendanceExcelExportService:
-
     @staticmethod
     def format_money(value):
         try:
@@ -34,10 +33,7 @@ class AttendanceExcelExportService:
     @staticmethod
     def style_sheet(ws):
         thin_border = Border(
-            left=Side(style="thin"),
-            right=Side(style="thin"),
-            top=Side(style="thin"),
-            bottom=Side(style="thin")
+            left=Side(style="thin"), right=Side(style="thin"), top=Side(style="thin"), bottom=Side(style="thin")
         )
 
         for row in ws.iter_rows():
@@ -52,10 +48,23 @@ class AttendanceExcelExportService:
     def generate_monthly_excel(report, year, month):
         wb = openpyxl.Workbook()
         ws = wb.active
+        assert ws is not None  # yangi Workbook har doim aktiv sahifa bilan yaratiladi
         ws.title = "Oylik hisobot"
-        ws.append([
-            "ID", "Hodimlar", "Sababli kelmadi", "Sababsiz kelmadi", "Ishlagan soati", "Smena", "Maosh", "Bonus",
-            "Jarima", "Hisoblangan miqdor", "Yangi maosh"])
+        ws.append(
+            [
+                "ID",
+                "Hodimlar",
+                "Sababli kelmadi",
+                "Sababsiz kelmadi",
+                "Ishlagan soati",
+                "Smena",
+                "Maosh",
+                "Bonus",
+                "Jarima",
+                "Hisoblangan miqdor",
+                "Yangi maosh",
+            ]
+        )
 
         total_salary = 0
         total_bonus = 0
@@ -66,19 +75,21 @@ class AttendanceExcelExportService:
             total_bonus += row["total_bonus"]
             total_penalty += row["total_penalty"]
 
-            ws.append([
-                row["employee_id"],
-                row["employee_name"],
-                row["sbk_count"],
-                row["szk_count"],
-                row["worked_time"],
-                f'{row["shift_start_time"]} - {row["shift_end_time"]}',
-                AttendanceExcelExportService.format_money(row["employee_salary"]),
-                AttendanceExcelExportService.format_money(row["total_bonus"]),
-                AttendanceExcelExportService.format_money(row["total_penalty"]),
-                AttendanceExcelExportService.format_money(row["net_adjustment"]),
-                AttendanceExcelExportService.format_money(row["new_salary"]),
-            ])
+            ws.append(
+                [
+                    row["employee_id"],
+                    row["employee_name"],
+                    row["sbk_count"],
+                    row["szk_count"],
+                    row["worked_time"],
+                    f"{row['shift_start_time']} - {row['shift_end_time']}",
+                    AttendanceExcelExportService.format_money(row["employee_salary"]),
+                    AttendanceExcelExportService.format_money(row["total_bonus"]),
+                    AttendanceExcelExportService.format_money(row["total_penalty"]),
+                    AttendanceExcelExportService.format_money(row["net_adjustment"]),
+                    AttendanceExcelExportService.format_money(row["new_salary"]),
+                ]
+            )
 
         ws.append([])
         ws.append(["Jami hodimlar", report["count"]])
@@ -88,30 +99,42 @@ class AttendanceExcelExportService:
         AttendanceExcelExportService.style_sheet(ws)
         AttendanceExcelExportService.auto_adjust_column_width(ws)
         details_ws = wb.create_sheet("Daily Details")
-        details_ws.append([
-            "Hodimlar", "Sana", "Status", "Birinchi kirish", "Oxirgi chiqish", "Ishladi", "Farq", "Jarima", "Bonus",
-            "Kunlik Jami"])
+        details_ws.append(
+            [
+                "Hodimlar",
+                "Sana",
+                "Status",
+                "Birinchi kirish",
+                "Oxirgi chiqish",
+                "Ishladi",
+                "Farq",
+                "Jarima",
+                "Bonus",
+                "Kunlik Jami",
+            ]
+        )
 
         for emp in report["results"]:
             for detail in emp["details"]:
-                details_ws.append([
-                    emp["employee_name"],
-                    detail.get("date"),
-                    detail.get("status_label"),
-                    detail.get("first_in"),
-                    detail.get("last_out"),
-                    detail.get("worked"),
-                    detail.get("difference"),
-                    AttendanceExcelExportService.format_money(detail.get("penalty")),
-                    AttendanceExcelExportService.format_money(detail.get("bonus")),
-                    AttendanceExcelExportService.format_money(detail.get("daily_total")),
-                ])
+                details_ws.append(
+                    [
+                        emp["employee_name"],
+                        detail.get("date"),
+                        detail.get("status_label"),
+                        detail.get("first_in"),
+                        detail.get("last_out"),
+                        detail.get("worked"),
+                        detail.get("difference"),
+                        AttendanceExcelExportService.format_money(detail.get("penalty")),
+                        AttendanceExcelExportService.format_money(detail.get("bonus")),
+                        AttendanceExcelExportService.format_money(detail.get("daily_total")),
+                    ]
+                )
 
         AttendanceExcelExportService.style_sheet(details_ws)
         AttendanceExcelExportService.auto_adjust_column_width(details_ws)
         response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        response["Content-Disposition"] = (
-            f'attachment; filename=attendance_{year}_{month}.xlsx')
+        response["Content-Disposition"] = f"attachment; filename=attendance_{year}_{month}.xlsx"
 
         wb.save(response)
         return response

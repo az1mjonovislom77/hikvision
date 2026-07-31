@@ -1,4 +1,5 @@
 import logging
+
 from event.selectors.events import get_target_user, get_user_devices
 from event.services.event_sync import EventSyncService
 from user.models import User
@@ -34,12 +35,16 @@ class EventSyncAPIService:
     @staticmethod
     def sync(*, user, devices, full):
         device_info = list(devices.values("id", "name", "ip", "status"))
-        logger.info("event sync devices resolved: user_id=%s full=%s devices=%s",
-                    user.id, full, device_info)
+        logger.info("event sync devices resolved: user_id=%s full=%s devices=%s", user.id, full, device_info)
 
         total_saved = EventSyncService.sync_events(devices, full=full)
-        logger.info("event sync finished: user_id=%s full=%s total_saved=%s device_count=%s",
-                    user.id, full, total_saved, len(device_info))
+        logger.info(
+            "event sync finished: user_id=%s full=%s total_saved=%s device_count=%s",
+            user.id,
+            full,
+            total_saved,
+            len(device_info),
+        )
 
         return {
             "success": True,

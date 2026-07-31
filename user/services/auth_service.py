@@ -4,7 +4,6 @@ from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 
 class AuthService:
-
     @staticmethod
     def authenticate_user(phone_number, password):
         user = authenticate(phone_number=phone_number, password=password)
@@ -16,5 +15,5 @@ class AuthService:
     def logout_user(refresh_token):
         try:
             RefreshToken(refresh_token).blacklist()
-        except TokenError:
-            raise ValidationError("Invalid or expired token.")
+        except TokenError as exc:
+            raise ValidationError("Invalid or expired token.") from exc

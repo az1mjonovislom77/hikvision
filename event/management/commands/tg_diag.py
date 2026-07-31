@@ -1,9 +1,10 @@
-from django.core.management.base import BaseCommand
 from django.core.cache import cache
+from django.core.management.base import BaseCommand
 from django.utils import timezone
+
 from event.models import AccessEvent
 from utils.models import Devices, TelegramChannel
-from utils.telegram.telegram import session, BASE_URL, send_telegram
+from utils.telegram.telegram import BASE_URL, send_telegram, session
 
 
 class Command(BaseCommand):
@@ -22,9 +23,7 @@ class Command(BaseCommand):
             unsent = AccessEvent.objects.filter(device=d, sent_to_telegram=False).count()
             cache_last = cache.get(f"last_event_time:{d.id}")
             lock = cache.get(f"hikvision:event-sync:{d.id}")
-            self.stdout.write(
-                f"device={d.id} name={d.name!r} ip={d.ip} status={d.status} user_id={d.user_id}"
-            )
+            self.stdout.write(f"device={d.id} name={d.name!r} ip={d.ip} status={d.status} user_id={d.user_id}")
             self.stdout.write(
                 f"   oxirgi_event={last.time if last else 'YO`Q'} | unsent={unsent} | cache_last={cache_last} | sync_lock={'BOR' if lock else 'yo`q'}"
             )
@@ -47,10 +46,12 @@ class Command(BaseCommand):
             info = r.json().get("result", {})
             self.stdout.write(f"webhook_url={info.get('url') or '(yo`q — getUpdates ishlaydi)'}")
             if info.get("url"):
-                self.stdout.write(self.style.ERROR(
-                    "❌ Botda WEBHOOK o`rnatilgan! getUpdates ishlamaydi → kanallar resolve bo`lmaydi.\n"
-                    "   Yechim: curl 'https://api.telegram.org/bot<TOKEN>/deleteWebhook'"
-                ))
+                self.stdout.write(
+                    self.style.ERROR(
+                        "❌ Botda WEBHOOK o`rnatilgan! getUpdates ishlamaydi → kanallar resolve bo`lmaydi.\n"
+                        "   Yechim: curl 'https://api.telegram.org/bot<TOKEN>/deleteWebhook'"
+                    )
+                )
             r = session.get(f"{BASE_URL}/getUpdates", params={"timeout": 0}, timeout=15)
             data = r.json()
             self.stdout.write(f"getUpdates ok={data.get('ok')} updates={len(data.get('result', []))}")

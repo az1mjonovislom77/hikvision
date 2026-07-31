@@ -1,6 +1,7 @@
-import time
-import requests
 import logging
+import time
+
+import requests
 from requests.auth import HTTPDigestAuth
 
 logger = logging.getLogger(__name__)
@@ -20,12 +21,12 @@ def fetch_all_employees(device):
     search_id = "0"
     offset = 0
     limit = 50
-    all_users = []
+    all_users: list[dict] = []
     max_loops = 1000
 
     logger.info("fetch_all_employees started: device=%s", device.ip)
 
-    for i in range(max_loops):
+    for _i in range(max_loops):
         payload = {
             "UserInfoSearchCond": {
                 "searchID": search_id,
@@ -65,8 +66,13 @@ def fetch_all_employees(device):
         block = data.get("UserInfoSearch", {})
         users = block.get("UserInfo", []) or []
 
-        logger.debug("fetch_all_employees: batch device=%s offset=%d got=%d total=%d",
-                     device.ip, offset, len(users), len(all_users))
+        logger.debug(
+            "fetch_all_employees: batch device=%s offset=%d got=%d total=%d",
+            device.ip,
+            offset,
+            len(users),
+            len(all_users),
+        )
 
         if block.get("searchID") and block["searchID"] != "0":
             search_id = block["searchID"]

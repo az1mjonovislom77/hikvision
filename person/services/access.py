@@ -1,14 +1,15 @@
-from django.utils.timezone import localtime, make_aware
 from datetime import datetime
+
 from django.db.models import Prefetch
+from django.utils.timezone import localtime, make_aware
+
 from event.models import AccessEvent
-from utils.models import Branch
 from person.models import Employee
-from person.utils import get_first_last_events, format_late, UZ_TZ
+from person.utils import UZ_TZ, format_late, get_first_last_events
+from utils.models import Branch
 
 
 class DailyAccessService:
-
     @staticmethod
     def get_employees(user, branch_id=None):
 
@@ -17,9 +18,7 @@ class DailyAccessService:
         )
 
         if user.is_staff or user.role == user.UserRoles.SUPERADMIN:
-            employees = (Employee.objects
-                         .select_related("shift", "device")
-                         .prefetch_related(event_prefetch).all())
+            employees = Employee.objects.select_related("shift", "device").prefetch_related(event_prefetch).all()
         else:
             branch_qs = Branch.objects.filter(user=user)
             if branch_id:
@@ -27,8 +26,7 @@ class DailyAccessService:
 
             branch = branch_qs.select_related("device").first()
             employees = (
-                Employee.objects
-                .select_related("shift", "device")
+                Employee.objects.select_related("shift", "device")
                 .prefetch_related(event_prefetch)
                 .filter(device=branch.device)
                 if branch and branch.device
@@ -64,8 +62,10 @@ class DailyAccessService:
                 "kirish": localtime(first.time) if first else None,
                 "chiqish": localtime(last.time) if last else None,
                 "late": format_late(late_minutes),
-                "face": request.build_absolute_uri(emp.face_image.url) if emp.face_image else None
-            }, "late_minutes": late_minutes}
+                "face": request.build_absolute_uri(emp.face_image.url) if emp.face_image else None,
+            },
+            "late_minutes": late_minutes,
+        }
 
     @staticmethod
     def build_excel_row(emp, date_obj):
@@ -81,6 +81,6 @@ class DailyAccessService:
                 diff = int((first.time - shift_start).total_seconds() / 60)
                 late_text = format_late(diff)
 
-        shift_start = emp.shift.start_time.strftime("%H:%M") if emp.shift else ""
+        shift_start_str = emp.shift.start_time.strftime("%H:%M") if emp.shift else ""
 
-        return [emp.employee_no, emp.name, kirish, chiqish, late_text, shift_start]
+        return [emp.employee_no, emp.name, kirish, chiqish, late_text, shift_start_str]

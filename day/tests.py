@@ -1,7 +1,9 @@
-from datetime import time, date
+from datetime import date, time
+
 from django.test import TestCase
-from day.models import Shift, WorkDay, DayOff, BreakTime
+
 from attendance.utils import count_workdays_in_month, is_employee_workday
+from day.models import BreakTime, DayOff, Shift, WorkDay
 from user.models import User
 
 
@@ -11,21 +13,28 @@ class ShiftModelTests(TestCase):
 
     def test_shift_default_approved_late_is_15(self):
         shift = Shift.objects.create(
-            user=self.user, name="Morning",
-            start_time=time(9, 0), end_time=time(18, 0),
+            user=self.user,
+            name="Morning",
+            start_time=time(9, 0),
+            end_time=time(18, 0),
         )
         self.assertEqual(shift.approved_late_min, 15)
 
     def test_shift_with_break_time(self):
         break_time = BreakTime.objects.create(
-            user=self.user, name="Lunch",
-            start_time=time(13, 0), end_time=time(14, 0),
+            user=self.user,
+            name="Lunch",
+            start_time=time(13, 0),
+            end_time=time(14, 0),
         )
         shift = Shift.objects.create(
-            user=self.user, name="Office",
-            start_time=time(9, 0), end_time=time(18, 0),
+            user=self.user,
+            name="Office",
+            start_time=time(9, 0),
+            end_time=time(18, 0),
             break_time=break_time,
         )
+        assert shift.break_time is not None
         self.assertEqual(shift.break_time.name, "Lunch")
 
 
@@ -33,7 +42,8 @@ class WorkDayTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(phone_number="998903000002", password="pass")
         self.workday = WorkDay.objects.create(
-            user=self.user, name="Weekdays",
+            user=self.user,
+            name="Weekdays",
             days=["mon", "tue", "wed", "thu", "fri"],
         )
 
