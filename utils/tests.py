@@ -275,8 +275,6 @@ class SmartCityDailyStatsServiceTests(TestCase):
             employee_no="L1",
             name="Late",
             shift=shift,
-            # Servis begin_time.time() ni UTC qiymatida solishtiradi (bug ro'yxatida),
-            # shuning uchun lokal 15:00 (UTC 10:00) LATE holatini beradi.
             begin_time=make_aware(datetime(2026, 6, 10, 15, 0)),
         )
         on_time = Employee.objects.create(
@@ -344,3 +342,113 @@ class MonthlyExcelExportTests(TestCase):
     def test_format_money(self):
         self.assertEqual(AttendanceExcelExportService.format_money(1234567), "1 234 567")
         self.assertEqual(AttendanceExcelExportService.format_money("n/a"), "n/a")
+
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class DevicePasswordExposureTests(TestCase):
+    client: APIClient
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(phone_number="998907300001", password="pass")
+        self.device = Devices.objects.create(
+            user=self.user,
+            name="D",
+            ip="10.0.0.30",
+            username="admin",
+            password="secret123",
+            status=Devices.Status.ACTIVE,
+        )
+
+    def test_device_password_is_not_in_response(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get("/utils/devices/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("password", response.data[0])
+
+    def test_device_password_is_still_writable(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.put(f"/utils/devices/{self.device.id}/", {"password": "newsecret"}, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.device.refresh_from_db()
+        self.assertEqual(self.device.password, "newsecret")
+
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class AdminNotificationPermissionTests(TestCase):
+    client: APIClient
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(phone_number="998907400001", password="pass")
+        self.other = User.objects.create_user(phone_number="998907400002", password="pass")
+        self.admin = User.objects.create_user(
+            phone_number="998907400003", password="pass", role=User.UserRoles.SUPERADMIN
+        )
+
+    def test_regular_user_cannot_broadcast(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.post("/utils/admin/notification/", {"text": "spam"}, format="json")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(Notification.objects.count(), 0)
+
+    def test_superadmin_can_broadcast(self):
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.post("/utils/admin/notification/", {"text": "elon"}, format="json")
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Notification.objects.filter(text="elon").count(), 3)
+
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class PlanPermissionTests(TestCase):
+    client: APIClient
+
+    def setUp(self):
+        self.client = APIClient()
+        self.plan = Plan.objects.create(
+            title="Go", plan_type=Plan.PlanType.GO, billing_cycle=Plan.CycleChoice.MONTHLY, price=10
+        )
+        self.user = User.objects.create_user(phone_number="998907500001", password="pass")
+        self.admin = User.objects.create_user(
+            phone_number="998907500002", password="pass", role=User.UserRoles.SUPERADMIN
+        )
+
+    def test_anonymous_can_read_plans(self):
+        response = self.client.get("/utils/plan/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+
+    def test_anonymous_cannot_delete_plan(self):
+        response = self.client.delete(f"/utils/plan/{self.plan.id}/")
+
+        self.assertIn(response.status_code, (401, 403))
+        self.assertTrue(Plan.objects.filter(id=self.plan.id).exists())
+
+    def test_regular_user_cannot_create_plan(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.post(
+            "/utils/plan/", {"title": "Hack", "plan_type": "go", "billing_cycle": "monthly", "price": 1}, format="json"
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(Plan.objects.count(), 1)
+
+    def test_admin_can_create_plan(self):
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.post(
+            "/utils/plan/", {"title": "New", "plan_type": "plus", "billing_cycle": "yearly", "price": 5}, format="json"
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Plan.objects.count(), 2)

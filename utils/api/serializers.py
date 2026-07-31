@@ -8,6 +8,7 @@ from utils.selectors.utils import plan_queryset
 class DevicesSerializer(BaseReadSerializer):
     class Meta(BaseReadSerializer.Meta):
         model = Devices
+        extra_kwargs = {"password": {"write_only": True}}
 
 
 class DepartmentGetSerializer(BaseReadSerializer):

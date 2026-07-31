@@ -77,8 +77,6 @@ TEMPLATES = [
 ]
 
 REST_FRAMEWORK = {
-    # Xavfsiz sukut: permission_classes yozilmagan view yopiq bo'ladi.
-    # Ataylab ochiq endpointlarda AllowAny aniq yozilgan.
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
@@ -154,7 +152,7 @@ if ENVIRON == "production":
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
     SECURE_SSL_REDIRECT = True
-    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
 
@@ -218,8 +216,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 MEDIA_URL = "/media/"
 
 LOG_LEVEL = config("LOG_LEVEL", default="INFO")
-# LOG_FILE bo'sh bo'lsa faqat konsolga yoziladi (hozirgi xatti-harakat).
-# To'ldirilsa — 10 MB dan keyin aylanadigan fayl handler qo'shiladi.
 LOG_FILE = config("LOG_FILE", default="")
 
 _LOG_HANDLERS = ["console"]
@@ -250,7 +246,6 @@ LOGGING = {
         "user": {"handlers": _LOG_HANDLERS, "level": LOG_LEVEL, "propagate": False},
         "day": {"handlers": _LOG_HANDLERS, "level": LOG_LEVEL, "propagate": False},
         "celery": {"handlers": _LOG_HANDLERS, "level": LOG_LEVEL, "propagate": False},
-        # So'rov xatolari va xavfsizlik hodisalari alohida ko'rinsin.
         "django.request": {"handlers": _LOG_HANDLERS, "level": "WARNING", "propagate": False},
         "django.security": {"handlers": _LOG_HANDLERS, "level": "WARNING", "propagate": False},
     },
@@ -272,11 +267,9 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
-# Osilib qolgan task worker'ni cheksiz band qilmasligi uchun.
 CELERY_TASK_SOFT_TIME_LIMIT = config("CELERY_TASK_SOFT_TIME_LIMIT", default=600, cast=int)
 CELERY_TASK_TIME_LIMIT = config("CELERY_TASK_TIME_LIMIT", default=660, cast=int)
 
-# Test rejimi: tez parol hasher va Redis'siz lokal cache (CI muhitida Redis yo'q).
 TESTING = "test" in sys.argv
 if TESTING:
     PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]

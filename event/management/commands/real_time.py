@@ -52,8 +52,6 @@ class Command(BaseCommand):
                 consecutive_errors += 1
                 logger.exception("MAIN LOOP ERROR (ketma-ket %s-marta)", consecutive_errors)
 
-            # Doimiy xatolikda (masalan qurilma parolini o'zgartirsa) log to'lib
-            # ketmasligi uchun kutish vaqti 5 → 300 soniyagacha o'sadi.
             time.sleep(min(5 * 2**consecutive_errors, 300) if consecutive_errors else 5)
 
     def _process_device_events(self, device, last_times):

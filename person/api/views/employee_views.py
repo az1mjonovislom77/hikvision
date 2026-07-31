@@ -19,6 +19,7 @@ from person.api.serializers import (
 from person.selectors.person import get_branch_employees, get_device, get_employee_with_device_user
 from person.services.api import EmployeeAPIService, EmployeeHistoryService
 from user.models import User
+from utils.base.permissions import is_admin
 
 
 class EmployeePagination(PageNumberPagination):
@@ -27,7 +28,7 @@ class EmployeePagination(PageNumberPagination):
     max_page_size = 1000
 
     def get_paginated_response(self, data):
-        assert self.page is not None  # paginate_queryset dan keyin chaqiriladi
+        assert self.page is not None
         return Response(
             {
                 "count": self.page.paginator.count,
@@ -114,7 +115,7 @@ class EmployeeDetailView(APIView):
         if not emp:
             return Response({"error": "Topilmadi"}, status=404)
 
-        if not request.user.UserRoles.SUPERADMIN and not request.user.is_staff and emp.device.user != request.user:
+        if not is_admin(request.user) and emp.device.user != request.user:
             return Response({"error": "Ruxsat yoвЂq"}, status=403)
 
         serializer = EmployeeSerializer(emp, context={"request": request})
@@ -160,7 +161,7 @@ class EmployeeUpdateView(APIView):
         if not emp:
             return Response({"error": "Topilmadi"}, status=404)
 
-        if not request.user.UserRoles.SUPERADMIN and not request.user.is_staff and emp.device.user != request.user:
+        if not is_admin(request.user) and emp.device.user != request.user:
             return Response({"error": "Ruxsat yoвЂq"}, status=403)
 
         serializer = EmployeeUpdateSerializer(emp, data=request.data, partial=True)
@@ -182,7 +183,7 @@ class EmployeeDeleteView(APIView):
         if not emp:
             return Response({"error": "Not found"}, status=404)
 
-        if not request.user.UserRoles.SUPERADMIN and not request.user.is_staff and emp.device.user != request.user:
+        if not is_admin(request.user) and emp.device.user != request.user:
             return Response({"error": "Ruxsat yoвЂq"}, status=403)
 
         payload, status_code = EmployeeAPIService.delete_employee(employee=emp)
@@ -215,8 +216,6 @@ class EmployeeHistoryListView(ListAPIView):
         date_str = self.request.query_params.get("date")
         date = parse_date(date_str) if date_str else localdate()
 
-        # parse_date noto'g'ri formatda None qaytaradi va bu yerda TypeError bo'ladi —
-        # mavjud xatti-harakat saqlangan (bug ro'yxatiga kiritilgan).
         start = make_aware(datetime.combine(date, time.min))  # type: ignore[arg-type]
         end = make_aware(datetime.combine(date, time.max))  # type: ignore[arg-type]
         employee = get_employee_with_device_user(employee_id=employee_id)

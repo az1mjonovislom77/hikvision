@@ -59,8 +59,8 @@ class AttendanceService:
             )
 
     @staticmethod
-    def absent_records_payload(*, target_date):
-        records = get_absent_attendance_records(target_date=target_date)
+    def absent_records_payload(*, target_date, branch):
+        records = get_absent_attendance_records(target_date=target_date, branch=branch)
         return {
             "date": target_date,
             "total": records.count(),

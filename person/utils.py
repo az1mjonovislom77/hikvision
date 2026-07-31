@@ -36,7 +36,6 @@ def download_face_from_url(url):
         if not device:
             return None
 
-        # username/password modelda null=True — requests None qiymatni ham qabul qiladi.
         result = requests.get(url, auth=HTTPDigestAuth(device.username, device.password), timeout=10)  # type: ignore[arg-type]
 
         if result.status_code == 200:

@@ -15,8 +15,6 @@ class UserTokenService:
     @staticmethod
     def get_tokens_for_user_from_refresh(refresh_token: str):
         try:
-            # simplejwt stub'lari token argumentini "Token | None" deb belgilaydi,
-            # aslida str qabul qilinadi.
             refresh = RefreshToken(refresh_token)  # type: ignore[arg-type]
             return str(refresh.access_token)
         except TokenError as exc:

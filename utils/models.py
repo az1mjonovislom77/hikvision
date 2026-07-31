@@ -74,8 +74,6 @@ class Subscription(TimeStampedModel):
 
     @property
     def remaining_days(self):
-        # end_date null=True, lekin bu yerda None bo'lsa TypeError ko'tariladi —
-        # mavjud xatti-harakat saqlangan (bug ro'yxatiga kiritilgan).
         delta = self.end_date - timezone.now()  # type: ignore[operator]
         return max(delta.days, 0)
 

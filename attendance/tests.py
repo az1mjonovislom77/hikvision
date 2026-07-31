@@ -1,9 +1,9 @@
 from calendar import monthrange
 from datetime import date, datetime, time
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils.timezone import make_aware
-from rest_framework.test import APIRequestFactory, force_authenticate
+from rest_framework.test import APIClient, APIRequestFactory, force_authenticate
 
 from attendance.api.views import MonthlyAttendanceReportView
 from attendance.models import AttendanceDaily
@@ -223,14 +223,14 @@ class AttendanceServiceTests(TestCase):
         self.assertFalse(AttendanceDaily.objects.filter(employee=self.employee, date=target).exists())
 
     def test_create_missing_absent_records_skips_non_workday(self):
-        target = date(2026, 3, 1)  # yakshanba
+        target = date(2026, 3, 1)
         AttendanceService.create_missing_absent_records(branch=self.branch, target_date=target)
         self.assertFalse(AttendanceDaily.objects.filter(employee=self.employee, date=target).exists())
 
     def test_absent_records_payload_lists_absent_employees(self):
         target = date(2026, 3, 3)
         AttendanceDaily.objects.create(employee=self.employee, date=target, status="szk", comment="izoh")
-        payload = AttendanceService.absent_records_payload(target_date=target)
+        payload = AttendanceService.absent_records_payload(target_date=target, branch=self.branch)
         self.assertEqual(payload["total"], 1)
         self.assertEqual(payload["employees"][0]["employee_name"], "Service Emp")
         self.assertEqual(payload["employees"][0]["status"], "szk")
@@ -247,3 +247,81 @@ class AttendanceServiceTests(TestCase):
         self.assertFalse(updated["created"])
         self.assertEqual(updated["status"], "sbk")
         self.assertEqual(AttendanceDaily.objects.filter(employee=self.employee, date=target).count(), 1)
+
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class AbsentEmployeesScopeTests(TestCase):
+    client: APIClient
+
+    def setUp(self):
+        self.client = APIClient()
+        self.owner, self.owner_branch, self.owner_emp = self._create_tenant("998907200001", "1.1.1.1", "own")
+        self.other, self.other_branch, self.other_emp = self._create_tenant("998907200002", "1.1.1.2", "other")
+
+    def _create_tenant(self, phone, ip, prefix):
+        user = User.objects.create_user(phone_number=phone, password="pass")
+        device = Devices.objects.create(
+            user=user, name=prefix, ip=ip, username="admin", password="admin", status=Devices.Status.ACTIVE
+        )
+        branch = Branch.objects.create(user=user, name=prefix, device=device)
+        work_day = WorkDay.objects.create(user=user, name=prefix, days=["mon", "tue", "wed", "thu", "fri"])
+        shift = Shift.objects.create(
+            user=user, name=prefix, start_time=time(9, 0), end_time=time(18, 0), approved_late_min=0
+        )
+        employee = Employee.objects.create(
+            device=device,
+            employee_no=f"{prefix}-1",
+            name=f"{prefix} emp",
+            shift=shift,
+            work_day=work_day,
+            branch=branch,
+            salary=0,
+        )
+        return user, branch, employee
+
+    def test_absent_list_excludes_other_tenant_employees(self):
+        target = date(2026, 3, 3)
+        AttendanceDaily.objects.create(employee=self.owner_emp, date=target, status="szk")
+        AttendanceDaily.objects.create(employee=self.other_emp, date=target, status="szk")
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.get(f"/attendance/absent/?branch_id={self.owner_branch.id}&date=2026-03-03")
+
+        self.assertEqual(response.status_code, 200)
+        names = {row["employee_name"] for row in response.data["employees"]}
+        self.assertEqual(names, {self.owner_emp.name})
+
+    def test_cannot_write_status_for_other_tenant_employee(self):
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.post(
+            "/attendance/absent/",
+            {"employee_id": self.other_emp.id, "date": "2026-03-03", "status": "sbk"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(AttendanceDaily.objects.filter(employee=self.other_emp).exists())
+
+    def test_unknown_employee_id_returns_404_not_500(self):
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.post(
+            "/attendance/absent/",
+            {"employee_id": 999999, "date": "2026-03-03", "status": "sbk"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_owner_can_write_status_for_own_employee(self):
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.post(
+            "/attendance/absent/",
+            {"employee_id": self.owner_emp.id, "date": "2026-03-03", "status": "sbk", "comment": "kasal"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["status"], "sbk")

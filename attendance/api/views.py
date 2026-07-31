@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from attendance.selectors.selectors import get_user_branch
+from attendance.selectors.selectors import get_employee_for_user, get_user_branch
 from attendance.services.attendance import AttendanceService
 
 
@@ -41,7 +41,7 @@ class AbsentEmployeesView(APIView):
             return Response({"error": "Branch topilmadi yoki sizga tegishli emas"}, status=400)
 
         AttendanceService.create_missing_absent_records(branch=branch, target_date=target_date)
-        return Response(AttendanceService.absent_records_payload(target_date=target_date))
+        return Response(AttendanceService.absent_records_payload(target_date=target_date, branch=branch))
 
     @extend_schema(
         tags=["Attendance"],
@@ -64,6 +64,9 @@ class AbsentEmployeesView(APIView):
             parsed_date = date.fromisoformat(q_date)
         except ValueError:
             return Response({"error": "Noto'g'ri sana formati. YYYY-MM-DD ko'rinishida yuboring"}, status=400)
+
+        if not get_employee_for_user(employee_id=employee_id, user=request.user):
+            return Response({"detail": "Xodim topilmadi yoki sizga tegishli emas"}, status=status.HTTP_404_NOT_FOUND)
 
         payload = AttendanceService.update_daily_status(
             employee_id=employee_id,

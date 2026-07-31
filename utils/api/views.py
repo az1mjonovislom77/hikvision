@@ -18,6 +18,7 @@ from utils.api.serializers import (
     SubscriptionDetailSerializer,
     TelegramChannelSerializer,
 )
+from utils.base.permissions import IsAdminOrReadOnly, IsAdminOrSuperadmin
 from utils.base.views_base import BaseUserViewSet, ReadWriteSerializerMixin
 from utils.selectors.utils import (
     branch_queryset,
@@ -71,7 +72,7 @@ class TelegramChannelViewSet(BaseUserViewSet):
 class PlanViewSet(viewsets.ModelViewSet):
     queryset = plan_queryset()
     serializer_class = PlanSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAdminOrReadOnly]
     http_method_names = ["get", "post", "put", "delete"]
     pagination_class = None
 
@@ -109,7 +110,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
 
 @extend_schema(tags=["Notification"])
 class AdminNotificationViewSet(viewsets.ViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminOrSuperadmin]
     serializer_class = AdminNotificationSerializer
 
     def create(self, request):

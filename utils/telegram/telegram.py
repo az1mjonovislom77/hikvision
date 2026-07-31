@@ -18,7 +18,6 @@ def force_ipv4():
     return socket.AF_INET
 
 
-# requests.packages runtime'da mavjud, lekin stub'larda e'lon qilinmagan.
 requests.packages.urllib3.util.connection.allowed_gai_family = force_ipv4  # type: ignore[attr-defined]
 session = requests.Session()
 retries = Retry(total=5, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
@@ -54,7 +53,6 @@ def send_telegram(chat_id, text, image_bytes=None):
             f"{BASE_URL}/sendMessage", json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"}, timeout=20
         )
 
-    # Javob tanasi chat/foydalanuvchi ma'lumotlarini o'z ichiga oladi — faqat DEBUG'da.
     logger.debug("Telegram response: chat_id=%s status=%s", chat_id, r.status_code)
     if not r.ok or not r.json().get("ok"):
         raise RuntimeError(f"Telegram send failed: chat_id={chat_id} response={r.text[:300]}")

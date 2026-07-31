@@ -3,6 +3,7 @@ from rest_framework import serializers
 from user.models import User
 from user.selectors.user import get_active_subscription
 from user.services.user_service import UserService
+from utils.base.permissions import is_admin
 from utils.models import Subscription
 
 
@@ -50,6 +51,14 @@ class UserCreateSerializer(serializers.ModelSerializer):
         model = User
         fields = ["id", "full_name", "phone_number", "password", "role"]
         extra_kwargs = {"password": {"write_only": True}}
+
+    def validate_role(self, value):
+        request = self.context.get("request")
+
+        if request and not is_admin(request.user):
+            raise serializers.ValidationError("Bu maydonni faqat admin o'zgartira oladi")
+
+        return value
 
     def create(self, validated_data):
         return UserService.create_user(validated_data)

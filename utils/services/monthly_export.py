@@ -48,7 +48,7 @@ class AttendanceExcelExportService:
     def generate_monthly_excel(report, year, month):
         wb = openpyxl.Workbook()
         ws = wb.active
-        assert ws is not None  # yangi Workbook har doim aktiv sahifa bilan yaratiladi
+        assert ws is not None
         ws.title = "Oylik hisobot"
         ws.append(
             [

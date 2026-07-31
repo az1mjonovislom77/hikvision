@@ -147,3 +147,81 @@ class AuthServiceTests(TestCase):
         AuthService.logout_user(refresh)
         with self.assertRaises(ValidationError):
             AuthService.logout_user(refresh)
+
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class UserViewSetPermissionTests(TestCase):
+    client: APIClient
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(phone_number="998907100001", password="pass")
+        self.victim = User.objects.create_user(phone_number="998907100002", password="victimpass")
+        self.admin = User.objects.create_user(
+            phone_number="998907100003", password="pass", role=User.UserRoles.SUPERADMIN
+        )
+
+    def test_regular_user_cannot_escalate_own_role(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.put(f"/user/users/{self.user.id}/", {"role": "s"}, format="json")
+
+        self.assertEqual(response.status_code, 400)
+        self.user.refresh_from_db()
+        self.assertIsNone(self.user.role)
+
+    def test_regular_user_cannot_create_superadmin(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.post(
+            "/user/users/", {"phone_number": "998907199999", "password": "pass", "role": "s"}, format="json"
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(User.objects.filter(phone_number="998907199999").exists())
+
+    def test_regular_user_list_shows_only_self(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get("/user/users/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([row["id"] for row in response.data], [self.user.id])
+
+    def test_regular_user_cannot_reset_other_password(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.put(f"/user/users/{self.victim.id}/", {"password": "hacked123"}, format="json")
+
+        self.assertEqual(response.status_code, 404)
+        self.victim.refresh_from_db()
+        self.assertTrue(self.victim.check_password("victimpass"))
+
+    def test_regular_user_cannot_delete_anyone(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.delete(f"/user/users/{self.victim.id}/")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(User.objects.filter(id=self.victim.id).exists())
+
+    def test_superadmin_sees_all_users_and_can_set_role(self):
+        self.client.force_authenticate(self.admin)
+
+        list_response = self.client.get("/user/users/")
+        role_response = self.client.put(f"/user/users/{self.user.id}/", {"role": "a"}, format="json")
+
+        self.assertEqual(list_response.status_code, 200)
+        self.assertEqual(len(list_response.data), 3)
+        self.assertEqual(role_response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.role, User.UserRoles.ADMIN)
+
+    def test_staff_can_delete_user(self):
+        staff = User.objects.create_user(phone_number="998907100004", password="pass", is_staff=True)
+        self.client.force_authenticate(staff)
+
+        response = self.client.delete(f"/user/users/{self.victim.id}/")
+
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(User.objects.filter(id=self.victim.id).exists())

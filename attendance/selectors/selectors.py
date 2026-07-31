@@ -1,6 +1,7 @@
 from attendance.models import AttendanceDaily
 from event.models import AccessEvent
 from person.models import Employee
+from utils.base.permissions import is_admin
 from utils.models import Branch
 
 
@@ -20,12 +21,23 @@ def get_employee(*, employee_id):
     return Employee.objects.get(id=employee_id)
 
 
+def get_employee_for_user(*, employee_id, user):
+    queryset = Employee.objects.filter(id=employee_id)
+
+    if not is_admin(user):
+        queryset = queryset.filter(device__user=user)
+
+    return queryset.first()
+
+
 def has_employee_entry_event(*, employee, target_date):
     return AccessEvent.objects.filter(employee=employee, time__date=target_date, major=5, minor=75).exists()
 
 
-def get_absent_attendance_records(*, target_date):
-    return AttendanceDaily.objects.filter(date=target_date, status__in=["sbk", "szk"]).select_related("employee")
+def get_absent_attendance_records(*, target_date, branch):
+    return AttendanceDaily.objects.filter(
+        date=target_date, status__in=["sbk", "szk"], employee__device=branch.device
+    ).select_related("employee")
 
 
 def get_employee_attendance(*, employee, target_date):

@@ -46,10 +46,23 @@ class EmployeePermissionTests(TestCase):
         response = self.client.get(f"/person/employee-detail/{self.employee.id}/")
         self.assertEqual(response.status_code, 200)
 
-    def test_other_authenticated_user_can_view_employee(self):
+    def test_other_authenticated_user_cannot_view_employee(self):
         self.client.force_authenticate(user=self.other)
         response = self.client.get(f"/person/employee-detail/{self.employee.id}/")
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 403)
+
+    def test_other_authenticated_user_cannot_update_employee(self):
+        self.client.force_authenticate(user=self.other)
+        response = self.client.put(f"/person/update/{self.employee.id}/", {"name": "Hacked"}, format="json")
+        self.assertEqual(response.status_code, 403)
+        self.employee.refresh_from_db()
+        self.assertEqual(self.employee.name, "Test Employee")
+
+    def test_other_authenticated_user_cannot_delete_employee(self):
+        self.client.force_authenticate(user=self.other)
+        response = self.client.delete(f"/person/delete/{self.employee.id}/")
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(Employee.objects.filter(id=self.employee.id).exists())
 
     def test_superadmin_can_view_any_employee(self):
         self.client.force_authenticate(user=self.superadmin)

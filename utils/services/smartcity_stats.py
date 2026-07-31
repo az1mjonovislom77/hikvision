@@ -94,7 +94,6 @@ class SmartCityStatsService:
         attendance_data = self.mahalla_statistics()
         best, worst = self.best_and_worst(attendance_data)
 
-        # total/present bir marta hisoblanadi: avval bu yerda 7 ta COUNT so'rovi ketardi.
         total = self.total_employees()
         present = self.present_employees()
 

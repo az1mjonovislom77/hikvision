@@ -36,7 +36,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
     def get_local_face(self, obj):
         if obj.face_image:
             request = self.context.get("request")
-            assert request is not None  # serializer har doim request context bilan chaqiriladi
+            assert request is not None
             return request.build_absolute_uri(obj.face_image.url)
         return None
 

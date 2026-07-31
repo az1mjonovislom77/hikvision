@@ -185,7 +185,7 @@ class DailyAccessAPIService:
 
         workbook = openpyxl.Workbook()
         sheet = workbook.active
-        assert sheet is not None  # yangi Workbook har doim aktiv sahifa bilan yaratiladi
+        assert sheet is not None
         sheet.title = f"{date_obj}"
         sheet.append(["Employee No", "Name", "Kirish", "Chiqish", "Late", "Shift"])
 

@@ -36,12 +36,6 @@ def build_message(event):
 
 
 def send_event(event, per_channel_delay=0.3):
-    """Eventni qurilmasiga biriktirilgan barcha kanallarga yuboradi.
-
-    Muvaffaqiyatda sent_to_telegram=True qilib saqlaydi va True qaytaradi.
-    Hech bir kanalga ketmasa event unsent qoladi va False qaytadi.
-    Employee/device/user yo'q bo'lsa yuborilmaydi, lekin sent deb belgilanadi.
-    """
     employee = event.employee
     device = event.device
 
