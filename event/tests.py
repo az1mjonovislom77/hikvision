@@ -47,6 +47,9 @@ class FetchFaceEventsTests(TestCase):
                     200,
                     {
                         "AcsEvent": {
+                            "responseStatusStrg": "OK",
+                            "numOfMatches": 1,
+                            "totalMatches": 1,
                             "InfoList": [
                                 {
                                     "serialNo": "abc-1",
