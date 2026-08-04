@@ -105,7 +105,7 @@ def fetch_face_events(devices, since_map=None):
             time_format_cache_key = f"hikvision:time-format-legacy:{device.id}"
             use_legacy_time = bool(cache.get(time_format_cache_key))
             offset = 0
-            limit = 100
+            limit = 30
             max_pages = 200
             logger.info(
                 "event fetch started: device_id=%s ip=%s since=%s search_id=%s max_pages=%s limit=%s forced_minor=75",
@@ -275,13 +275,25 @@ def fetch_face_events(devices, since_map=None):
 
                 offset += len(events)
 
-                if len(events) < limit:
+                status_strg = str(access.get("responseStatusStrg") or "").upper()
+                if status_strg and status_strg != "MORE":
                     logger.info(
-                        "event fetch stopped: device_id=%s reason=last_page page=%s events_count=%s limit=%s forced_minor=75",
+                        "event fetch stopped: device_id=%s reason=last_page page=%s events_count=%s status=%s forced_minor=75",
                         device.id,
                         page_idx + 1,
                         len(events),
-                        limit,
+                        status_strg,
+                    )
+                    break
+
+                total_matches = access.get("totalMatches")
+                if not status_strg and total_matches is not None and offset >= int(total_matches):
+                    logger.info(
+                        "event fetch stopped: device_id=%s reason=all_matched page=%s offset=%s totalMatches=%s forced_minor=75",
+                        device.id,
+                        page_idx + 1,
+                        offset,
+                        total_matches,
                     )
                     break
 

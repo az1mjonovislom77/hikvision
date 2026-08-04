@@ -2,6 +2,7 @@
 ruff==0.16.0
 mypy==2.3.0
 coverage==7.15.2
+celery-types==0.26.0
 django-stubs==6.0.3
 djangorestframework-stubs==3.16.9
 types-openpyxl==3.1.5.20260724
