@@ -61,7 +61,7 @@ class FetchFaceEventsTests(TestCase):
                                     "name": "Granted",
                                     "pictureURL": "http://image.local/1.jpg",
                                 }
-                            ]
+                            ],
                         }
                     },
                 )
